@@ -5,7 +5,7 @@
 ## Memory mapping
 
 | Address range | Use | Size (in bytes) |
-| - | - |
+| - | - | - |
 | 0x00 - 0xEF | Code + data | 240 | 
 | 0xF0 - 0xFF | Stack | 16 |
 
