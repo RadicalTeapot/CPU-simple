@@ -1,26 +1,15 @@
 ﻿using System.Diagnostics;
 
-namespace CPU
+namespace CPU.components
 {
-    public interface IState
-    {
-        byte PC { get; }
-        bool Z { get; }
-        bool C { get; }
-        byte GetRegister(int index);
-        void SetRegister(int index, byte value);
-        void Reset();
-    }
-
-    internal class State : IState
+    public class State
     {
         public byte PC { get; private set; }
         public bool Z { get; private set; }
         public bool C { get; private set; }
         public int RegisterCount { get; }
 
-        public State() : this(DEFAULT_REGISTER_COUNT) { }
-
+        
         public State(int registerCount)
         {
             RegisterCount = registerCount;
@@ -33,7 +22,7 @@ namespace CPU
             PC = 0;
             Z = false;
             C = false;
-            Array.Clear(_registers, 0, DEFAULT_REGISTER_COUNT);
+            Array.Clear(_registers);
         }
 
         public byte GetRegister(int index) => _registers[index];
@@ -41,7 +30,6 @@ namespace CPU
         public void IncrementPC(byte value = 1) => PC += value;
 
         private readonly byte[] _registers;
-        private const int DEFAULT_REGISTER_COUNT = 4;
     }
 
     internal static class StateDebugExtensions

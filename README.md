@@ -1,6 +1,6 @@
 # CPU Simple
 
-A minimal educational CPU implemented in C# with a small runtime, opcode set, and tests. This repository contains the CPU core, an opcode table, a test suite, and a simple console entry point.
+A minimal educational 8-bit CPU implemented in C# with a small runtime, opcode set, and tests. This repository contains the CPU core, an opcode table, a test suite, and a simple console entry point.
 
 ## Repository Structure
 
