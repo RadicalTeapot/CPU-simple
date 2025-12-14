@@ -1,6 +1,4 @@
-﻿using System.Diagnostics;
-
-namespace CPU.components
+﻿namespace CPU.components
 {
     public class State
     {

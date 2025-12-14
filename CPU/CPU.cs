@@ -24,7 +24,12 @@ namespace CPU
             _opcodeTable = new OpcodeTable(_state, _stack, _memory);
         }
 
-        public void Reset() => _state.Reset();
+        public void Reset()
+        {
+            _state.Reset();
+            _stack.Reset();
+            // Note: Memory is not cleared on reset
+        }
 
         public void LoadProgram(byte[] program)
         {
@@ -44,7 +49,7 @@ namespace CPU
                 }
                 catch (OpcodeException.HaltException)
                 {
-                    // Handle HALT exception
+                    // Handle HALT exception gracefully
                     Console.WriteLine("Program halted.");
                     Dump();
                     break;
