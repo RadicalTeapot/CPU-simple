@@ -9,18 +9,27 @@ namespace CPU.opcodes
 
     internal abstract class BaseOpcode : IOpcode
     {
-        public BaseOpcode(byte instructionSize, State cpuState, Memory memory)
+        internal enum RegisterArgsCount
         {
-            _instructionSize = instructionSize;
+            One,
+            Two,
+        }
+
+        public BaseOpcode(byte instructionSizeInByte, State cpuState, Memory memory, RegisterArgsCount registerArgsCount)
+        {
+            _instructionSizeInByte = instructionSizeInByte;
             CpuState = cpuState;
             Memory = memory;
+            _registerParser = registerArgsCount == RegisterArgsCount.One
+                ? new SingleRegisterInstructionParser()
+                : new DoubleRegisterInstructionParser();
         }
 
         public byte Execute(out Trace trace)
         {
             var args = GetInstructionArgs();
             trace = Execute(args);
-            return _instructionSize;
+            return _instructionSizeInByte;
         }
 
         protected readonly State CpuState;
@@ -31,16 +40,38 @@ namespace CPU.opcodes
         private byte[] GetInstructionArgs()
         {
             var instruction = Memory.ReadByte(CpuState.PC);
-            var args = new byte[_instructionSize];
-            args[0] = (byte)(instruction & 0x0F);
-            for (int i = 1; i < _instructionSize; i++)
+            var args = new List<byte>();
+            args.AddRange(_registerParser.ParseArguments(instruction));
+            for (int i = 1; i < _instructionSizeInByte; i++)
             {
-                args[i] = Memory.ReadByte(CpuState.PC + i);
+                args.Add(Memory.ReadByte(CpuState.PC + i));
             }
-            return args;
+            return [.. args];
         }
 
-        private readonly byte _instructionSize;
+        private interface RegisterParser
+        {
+            byte[] ParseArguments(byte instruction);
+        }
+
+        private class SingleRegisterInstructionParser : RegisterParser
+        {
+            public byte[] ParseArguments(byte instruction)
+                => [(byte)(instruction & REGISTER_MASK)];
+
+            private const byte REGISTER_MASK = 0x03;
+        }
+
+        private class DoubleRegisterInstructionParser : RegisterParser
+        {
+            public byte[] ParseArguments(byte instruction)
+                => [(byte)((instruction >> 2) & REGISTER_MASK), (byte)(instruction & REGISTER_MASK)];
+
+            private const byte REGISTER_MASK = 0x03;
+        }
+
+        private readonly byte _instructionSizeInByte;
+        private readonly RegisterParser _registerParser;
     }
 
     internal class NOP : IOpcode
@@ -70,17 +101,17 @@ namespace CPU.opcodes
         }
     }
 
-    internal class MOV(State cpuState, Memory memory) : BaseOpcode(1, cpuState, memory)
+    internal class MOV(State cpuState, Memory memory) : BaseOpcode(1, cpuState, memory, RegisterArgsCount.Two)
     {
         protected override Trace Execute(byte[] args)
         {
-            var destReg = (byte)((args[0] >> 2) & 0x03);
-            var srcReg = (byte)(args[0] & 0x03);
+            var srcReg = args[0];
+            var destReg = args[1];
 
             var trace = new Trace()
             {
                 InstructionName = nameof(MOV),
-                Args = $"RD: {destReg}, RS: {srcReg}",
+                Args = $"RS: {srcReg}, RD: {destReg}",
                 RBefore = [CpuState.GetRegister(destReg), CpuState.GetRegister(srcReg)],
             };
 
@@ -92,11 +123,11 @@ namespace CPU.opcodes
         }
     }
 
-    internal class LDI(State cpuState, Memory memory) : BaseOpcode(2, cpuState, memory)
+    internal class LDI(State cpuState, Memory memory) : BaseOpcode(2, cpuState, memory, RegisterArgsCount.One)
     {
         protected override Trace Execute(byte[] args)
         {
-            var destReg = (byte)((args[0] >> 2) & 0x03);
+            var destReg = args[0];
             var immediateValue = args[1];
             
             var trace = new Trace()
@@ -112,11 +143,11 @@ namespace CPU.opcodes
         }
     }
 
-    internal class LDR(State cpuState, Memory memory) : BaseOpcode(2, cpuState, memory)
+    internal class LDR(State cpuState, Memory memory) : BaseOpcode(2, cpuState, memory, RegisterArgsCount.One)
     {
         protected override Trace Execute(byte[] args)
         {
-            var destReg = (byte)((args[0] >> 2) & 0x03);
+            var destReg = args[0];
             var memoryAddress = args[1];
 
             var trace = new Trace()
@@ -132,11 +163,11 @@ namespace CPU.opcodes
         }
     }
 
-    internal class STR(State cpuState, Memory memory) : BaseOpcode(2, cpuState, memory)
+    internal class STR(State cpuState, Memory memory) : BaseOpcode(2, cpuState, memory, RegisterArgsCount.One)
     {
         protected override Trace Execute(byte[] args)
         {
-            var srcReg = (byte)((args[0] >> 2) & 0x03);
+            var srcReg = args[0];
             var memoryAddress = args[1];
 
             var trace = new Trace()

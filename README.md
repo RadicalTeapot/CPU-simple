@@ -12,11 +12,7 @@ A minimal educational 8-bit CPU implemented in C# with a small runtime, opcode s
 
 ## Documentation
 
-Refer to the following documents for design details and the ISA:
-
-- `docs/CPU spec.md`: Full CPU specification and behavior
-- `docs/Opcode map.md`: Opcode list, encoding, and semantics
-- `docs/Design phases.md`: Development phases and architectural notes
+Documentation can be found in the `docs` folder.
 
 ## Getting Started
 

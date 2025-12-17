@@ -29,7 +29,7 @@ namespace CPU.Tests
                 out var state,
                 out _,
                 out _);
-            state.SetRegister(1, 42); // Set R1 to a known value
+            state.SetRegister(0, 42); // Set R0 to a known value
 
             // Act
             cpu.Step(traceEnabled: false);
