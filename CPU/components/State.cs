@@ -26,6 +26,8 @@
         public byte GetRegister(int index) => _registers[index];
         public void SetRegister(int index, byte value) => _registers[index] = value;
         public void IncrementPC(byte value = 1) => PC += value;
+        public void SetZeroFlag(bool value) => Z = value;
+        public void SetCarryFlag(bool value) => C = value;
 
         private readonly byte[] _registers;
     }

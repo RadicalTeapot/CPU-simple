@@ -45,7 +45,7 @@ namespace CPU.Tests
     public class LDI_tests
     {
         [Test]
-        public void LDI_R0_100_LoadsImmediateValueIntoR0()
+        public void LDI_R0_1_LoadsImmediateValueIntoR0()
         {
             // Arrange
             var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
@@ -107,7 +107,7 @@ namespace CPU.Tests
     public class LDR_tests
     {
         [Test]
-        public void LDR_R0_0_LoadsValueFromMemoryIntoR0()
+        public void LDR_R0_2_LoadsValueFromMemoryIntoR0()
         {
             // Arrange
             var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
@@ -115,7 +115,7 @@ namespace CPU.Tests
                 out var state,
                 out _,
                 out var memory);
-            memory.WriteByte(0x02, 1); // Set memory at address 0 to 1
+            memory.WriteByte(0x02, 1); // Set memory at address 2 to 1
 
             // Act
             cpu.Step(traceEnabled: false);
@@ -146,6 +146,68 @@ namespace CPU.Tests
             // Assert
             Assert.That(memory.ReadByte(0), Is.EqualTo(1), "Memory at address 0 should contain the value from R0.");
             Assert.That(state.PC, Is.EqualTo(2), "PC should increment by 2 after STR instruction.");
+        }
+    }
+
+    [TestFixture]
+    public class ADI_tests
+    {
+        [Test]
+        public void ADI_R0_1_AddValueToR0()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)Opcode.ADI | 0b0000, 0x01], // ADI R0, 1
+                out var state,
+                out _,
+                out _);
+            state.SetRegister(0, 1); // Set R0 to 1
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.GetRegister(0), Is.EqualTo(1 + 1));
+            Assert.That(state.C, Is.False, "Carry flag should not be set.");
+            Assert.That(state.Z, Is.False, "Zero flag should not be set.");
+            Assert.That(state.PC, Is.EqualTo(2), "PC should increment by 2 after ADI instruction.");
+        }
+
+        [Test]
+        public void ADI_R0_255_SetsCarryFlag()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)Opcode.ADI | 0b0000, 0xFF], // ADI R0, 255
+                out var state,
+                out _,
+                out _);
+            state.SetRegister(0, 1); // Set R0 to 1
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.GetRegister(0), Is.EqualTo(0)); // 1 + 255 = 256 -> 0 (byte overflow)
+            Assert.That(state.C, Is.True, "Carry flag should be set.");
+        }
+
+        [Test]
+        public void ADI_R0_255_SetsZeroFlag()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)Opcode.ADI | 0b0000, 0], // ADI R0, 0
+                out var state,
+                out _,
+                out _);
+            
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.GetRegister(0), Is.EqualTo(0));
+            Assert.That(state.Z, Is.True, "Zero flag should be set.");
         }
     }
 }

@@ -21,3 +21,6 @@
 *.VisualState.xml
 TestResult.xml
 nunit-*.xml
+
+# Excel
+~$*.xlsx

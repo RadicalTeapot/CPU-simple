@@ -12,6 +12,7 @@ namespace CPU.opcodes
         LDR = 0x14,
         STR = 0x24,
         MOV = 0x30,
+        ADI = 0x40,
     }
 
     internal class OpcodeTable
@@ -21,11 +22,12 @@ namespace CPU.opcodes
             _opcodes = new Dictionary<Opcode, IOpcode>
             {
                 { Opcode.NOP, new NOP() },
+                { Opcode.HLT, new HLT() },
                 { Opcode.MOV, new MOV(cpuState, memory) },
                 { Opcode.LDI, new LDI(cpuState, memory) },
                 { Opcode.LDR, new LDR(cpuState, memory) },
                 { Opcode.STR, new STR(cpuState, memory) },
-                { Opcode.HLT, new HLT() }
+                { Opcode.ADI, new ADI(cpuState, memory) },
             };
 
             var fullResolution = new Func<byte, byte>(value => value);
@@ -36,7 +38,8 @@ namespace CPU.opcodes
                 { OpcodeGroup.SYSTEM_AND_JUMP, fullResolution },
                 { OpcodeGroup.LOAD, quarterResolution },
                 { OpcodeGroup.STORE, quarterResolution },
-                { OpcodeGroup.MOVE, sixteenthResolution }
+                { OpcodeGroup.MOVE, sixteenthResolution },
+                { OpcodeGroup.SINGLE_REGISTER_ALU, quarterResolution },
             };
         }
 
@@ -62,6 +65,7 @@ namespace CPU.opcodes
             {
                 throw new KeyNotFoundException($"Un-registered opcode group: {opcodeGroupByte:X2} (instruction was {instruction:X2})");
             }
+
             var opcodeByte = instructionParser(instruction);
             if (!Enum.IsDefined(typeof(Opcode), opcodeByte))
             {
@@ -76,6 +80,7 @@ namespace CPU.opcodes
             LOAD = 0x10,
             STORE = 0x20,
             MOVE = 0x30,
+            SINGLE_REGISTER_ALU = 0x40,
         }
 
         private const byte GROUP_MASK = 0xF0;
