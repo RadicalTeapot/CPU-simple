@@ -25,7 +25,7 @@ namespace CPU.Tests
         {
             // Arrange
             var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
-                program: [(byte)Opcode.MOV | 0b0000 | 0b0001], // MOV R0, R1
+                program: [(byte)OpcodeBaseCode.MOV | 0b0000 | 0b0001], // MOV R0, R1
                 out var state,
                 out _,
                 out _);
@@ -49,7 +49,7 @@ namespace CPU.Tests
         {
             // Arrange
             var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
-                program: [(byte)Opcode.LDI | 0b0000, 0x01], // LDI R0, IMM: 1
+                program: [(byte)OpcodeBaseCode.LDI | 0b0000, 0x01], // LDI R0, IMM: 1
                 out var state,
                 out _,
                 out _);
@@ -71,7 +71,7 @@ namespace CPU.Tests
         {
             // Arrange
             var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
-                program: [(byte)Opcode.HLT],
+                program: [(byte)OpcodeBaseCode.HLT],
                 out var state,
                 out _,
                 out _);
@@ -90,7 +90,7 @@ namespace CPU.Tests
         {
             // Arrange
             var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
-                program: [(byte)Opcode.NOP],
+                program: [(byte)OpcodeBaseCode.NOP],
                 out var state,
                 out _,
                 out _);
@@ -111,7 +111,7 @@ namespace CPU.Tests
         {
             // Arrange
             var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
-                program: [(byte)Opcode.LDR | 0b0000, 0x02], // LDR R0, ADDR: 2
+                program: [(byte)OpcodeBaseCode.LDR | 0b0000, 0x02], // LDR R0, ADDR: 2
                 out var state,
                 out _,
                 out var memory);
@@ -134,7 +134,7 @@ namespace CPU.Tests
         {
             // Arrange
             var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
-                program: [(byte)Opcode.STR | 0b0000, 0x00], // STR R0, ADDR: 0
+                program: [(byte)OpcodeBaseCode.STR | 0b0000, 0x00], // STR R0, ADDR: 0
                 out var state,
                 out _,
                 out var memory);
@@ -157,7 +157,7 @@ namespace CPU.Tests
         {
             // Arrange
             var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
-                program: [(byte)Opcode.ADI | 0b0000, 0x01], // ADI R0, 1
+                program: [(byte)OpcodeBaseCode.ADI | 0b0000, 0x01], // ADI R0, 1
                 out var state,
                 out _,
                 out _);
@@ -178,7 +178,7 @@ namespace CPU.Tests
         {
             // Arrange
             var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
-                program: [(byte)Opcode.ADI | 0b0000, 0xFF], // ADI R0, 255
+                program: [(byte)OpcodeBaseCode.ADI | 0b0000, 0xFF], // ADI R0, 255
                 out var state,
                 out _,
                 out _);
@@ -197,7 +197,7 @@ namespace CPU.Tests
         {
             // Arrange
             var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
-                program: [(byte)Opcode.ADI | 0b0000, 0], // ADI R0, 0
+                program: [(byte)OpcodeBaseCode.ADI | 0b0000, 0], // ADI R0, 0
                 out var state,
                 out _,
                 out _);

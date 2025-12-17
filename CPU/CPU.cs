@@ -13,7 +13,7 @@ namespace CPU
             _memory = new Memory(memorySize - stackSize);
             _state = new State(registerCount);
             _stack = new Stack(stackSize, 0xF);
-            _opcodeTable = new OpcodeTable(_state, _stack, _memory);
+            _opcodeFactory = new OpcodeFactory(_state, _stack, _memory);
         }
 
         public CPU(State state, Stack stack, Memory memory)
@@ -21,7 +21,7 @@ namespace CPU
             _state = state;
             _stack = stack;
             _memory = memory;
-            _opcodeTable = new OpcodeTable(_state, _stack, _memory);
+            _opcodeFactory = new OpcodeFactory(_state, _stack, _memory);
         }
 
         public void Reset()
@@ -66,7 +66,7 @@ namespace CPU
         public void Step(bool traceEnabled)
         {
             var instruction = _memory.ReadByte(_state.PC);
-            var opcode = _opcodeTable.GetOpcode(instruction);
+            var opcode = _opcodeFactory.GetOpcodeFromInstruction(instruction);
             var size = opcode.Execute(out var trace);
 
             trace.PcBefore = _state.PC;
@@ -91,6 +91,6 @@ namespace CPU
         private readonly State _state;
         private readonly Stack _stack;
         private readonly Memory _memory;
-        private readonly OpcodeTable _opcodeTable;
+        private readonly OpcodeFactory _opcodeFactory;
     }
 }

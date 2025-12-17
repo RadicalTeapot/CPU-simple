@@ -2,12 +2,24 @@
 
 namespace CPU.opcodes
 {
+    public enum OpcodeBaseCode : byte
+    {
+        NOP = 0x00,
+        HLT = 0x01,
+        LDI = 0x10,
+        LDR = 0x14,
+        STR = 0x24,
+        MOV = 0x30,
+        ADI = 0x40,
+    }
+
     public interface IOpcode
     {
+        void RegisterOpcode(Dictionary<OpcodeBaseCode, IOpcode> opcodeRegistry);
         byte Execute(out Trace trace);
     }
 
-    internal abstract class BaseOpcode : IOpcode
+    internal abstract class BaseOpcode(OpcodeBaseCode opcodeBaseCode, byte instructionSizeInByte, State cpuState, Memory memory, BaseOpcode.RegisterArgsCount registerArgsCount) : IOpcode
     {
         internal enum RegisterArgsCount
         {
@@ -15,46 +27,39 @@ namespace CPU.opcodes
             Two,
         }
 
-        public BaseOpcode(byte instructionSizeInByte, State cpuState, Memory memory, RegisterArgsCount registerArgsCount)
-        {
-            _instructionSizeInByte = instructionSizeInByte;
-            CpuState = cpuState;
-            Memory = memory;
-            _registerParser = registerArgsCount == RegisterArgsCount.One
-                ? new SingleRegisterInstructionParser()
-                : new DoubleRegisterInstructionParser();
-        }
+        public void RegisterOpcode(Dictionary<OpcodeBaseCode, IOpcode> opcodeRegistry)
+            => opcodeRegistry[opcodeBaseCode] = this;
 
         public byte Execute(out Trace trace)
         {
-            var args = GetInstructionArgs();
+            var args = ParseArguments();
             trace = Execute(args);
-            return _instructionSizeInByte;
+            return instructionSizeInByte;
         }
 
-        protected readonly State CpuState;
-        protected readonly Memory Memory;
+        protected readonly State CpuState = cpuState;
+        protected readonly Memory Memory = memory;
 
         protected abstract Trace Execute(byte[] args);
 
-        private byte[] GetInstructionArgs()
+        private byte[] ParseArguments()
         {
             var instruction = Memory.ReadByte(CpuState.PC);
             var args = new List<byte>();
             args.AddRange(_registerParser.ParseArguments(instruction));
-            for (int i = 1; i < _instructionSizeInByte; i++)
+            for (int i = 1; i < instructionSizeInByte; i++)
             {
                 args.Add(Memory.ReadByte(CpuState.PC + i));
             }
             return [.. args];
         }
 
-        private interface RegisterParser
+        private interface IRegisterParser
         {
             byte[] ParseArguments(byte instruction);
         }
 
-        private class SingleRegisterInstructionParser : RegisterParser
+        private class SingleRegisterInstructionParser : IRegisterParser
         {
             public byte[] ParseArguments(byte instruction)
                 => [(byte)(instruction & REGISTER_MASK)];
@@ -62,7 +67,7 @@ namespace CPU.opcodes
             private const byte REGISTER_MASK = 0x03;
         }
 
-        private class DoubleRegisterInstructionParser : RegisterParser
+        private class DoubleRegisterInstructionParser : IRegisterParser
         {
             public byte[] ParseArguments(byte instruction)
                 => [(byte)((instruction >> 2) & REGISTER_MASK), (byte)(instruction & REGISTER_MASK)];
@@ -70,12 +75,16 @@ namespace CPU.opcodes
             private const byte REGISTER_MASK = 0x03;
         }
 
-        private readonly byte _instructionSizeInByte;
-        private readonly RegisterParser _registerParser;
+        private readonly IRegisterParser _registerParser = registerArgsCount == RegisterArgsCount.One
+                ? new SingleRegisterInstructionParser()
+                : new DoubleRegisterInstructionParser();
     }
 
     internal class NOP : IOpcode
     {
+        public void RegisterOpcode(Dictionary<OpcodeBaseCode, IOpcode> opcodeRegistry)
+            => opcodeRegistry[OpcodeBaseCode.NOP] = this;
+
         public byte Execute(out Trace trace)
         {
             // No operation
@@ -90,6 +99,9 @@ namespace CPU.opcodes
 
     internal class HLT : IOpcode
     {
+        public void RegisterOpcode(Dictionary<OpcodeBaseCode, IOpcode> opcodeRegistry)
+            => opcodeRegistry[OpcodeBaseCode.HLT] = this;
+
         public byte Execute(out Trace trace)
         {
             trace = new Trace
@@ -101,7 +113,7 @@ namespace CPU.opcodes
         }
     }
 
-    internal class MOV(State cpuState, Memory memory) : BaseOpcode(1, cpuState, memory, RegisterArgsCount.Two)
+    internal class MOV(State cpuState, Memory memory) : BaseOpcode(OpcodeBaseCode.MOV, 1, cpuState, memory, RegisterArgsCount.Two)
     {
         protected override Trace Execute(byte[] args)
         {
@@ -123,7 +135,7 @@ namespace CPU.opcodes
         }
     }
 
-    internal class LDI(State cpuState, Memory memory) : BaseOpcode(2, cpuState, memory, RegisterArgsCount.One)
+    internal class LDI(State cpuState, Memory memory) : BaseOpcode(OpcodeBaseCode.LDI, 2, cpuState, memory, RegisterArgsCount.One)
     {
         protected override Trace Execute(byte[] args)
         {
@@ -143,7 +155,7 @@ namespace CPU.opcodes
         }
     }
 
-    internal class LDR(State cpuState, Memory memory) : BaseOpcode(2, cpuState, memory, RegisterArgsCount.One)
+    internal class LDR(State cpuState, Memory memory) : BaseOpcode(OpcodeBaseCode.LDR, 2, cpuState, memory, RegisterArgsCount.One)
     {
         protected override Trace Execute(byte[] args)
         {
@@ -163,7 +175,7 @@ namespace CPU.opcodes
         }
     }
 
-    internal class STR(State cpuState, Memory memory) : BaseOpcode(2, cpuState, memory, RegisterArgsCount.One)
+    internal class STR(State cpuState, Memory memory) : BaseOpcode(OpcodeBaseCode.STR, 2, cpuState, memory, RegisterArgsCount.One)
     {
         protected override Trace Execute(byte[] args)
         {
@@ -183,7 +195,7 @@ namespace CPU.opcodes
         }
     }
 
-    internal class ADI(State cpuState, Memory memory): BaseOpcode(2, cpuState, memory, RegisterArgsCount.One)
+    internal class ADI(State cpuState, Memory memory): BaseOpcode(OpcodeBaseCode.ADI, 2, cpuState, memory, RegisterArgsCount.One)
     {
         protected override Trace Execute(byte[] args)
         {
