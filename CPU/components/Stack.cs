@@ -7,11 +7,14 @@ namespace CPU.components
         public byte SP { get; private set; } // Note: Keep as byte for both 8-bit and 16-bit architectures, stack size is max 256 bytes
         public int Size => _memory.Size;
 
-        public Stack(int stackSize)
+        public Stack(int stackSize): this(new Memory(stackSize), (byte)(stackSize - 1)) { }
+
+        public Stack(Memory memory, byte pointerStartAddress)
         {
-            Debug.Assert(stackSize > 0 && stackSize <= 256, "Stack size must be between 1 and 256 bytes.");
-            _memory = new Memory(stackSize);
-            _pointerStartAddress = (byte)(stackSize - 1);
+            Debug.Assert(memory.Size > 0 && memory.Size <= 256, "Stack size must be between 1 and 256 bytes.");
+            Debug.Assert(pointerStartAddress < memory.Size, "Pointer start address must be within memory bounds.");
+            _memory = memory;
+            _pointerStartAddress = pointerStartAddress;
             Reset();
         }
 
@@ -42,29 +45,9 @@ namespace CPU.components
         }
 
 #if x16
-        public void PushAddress(ushort value)
-        {
-            if (SP < 2)
-                throw new InvalidOperationException("Stack overflow");
-            _memory.WriteByte((ushort)(SP - 1), (byte)(value & 0xFF));
-            _memory.WriteByte(SP--, (byte)((value >> 8) & 0xFF));
-        }
-        public ushort PopAddress()
-        {
-            if (SP > _pointerStartAddress - 2)
-                throw new InvalidOperationException("Stack underflow");
-            ushort high = _memory.ReadByte(++SP);
-            ushort low = _memory.ReadByte(++SP);
-            return (ushort)(low | (high << 8));
-        }
-        public ushort PeekAddress()
-        {
-            if (SP > _pointerStartAddress - 2)
-                throw new InvalidOperationException("Stack underflow");
-            ushort high = _memory.ReadByte(SP + 1);
-            ushort low = _memory.ReadByte(SP + 2);
-            return (ushort)(low | (high << 8));
-        }
+        public void PushAddress(ushort value) => PushWord(value);
+        public ushort PopAddress() => PopWord();
+        public ushort PeekAddress() => PeekWord();
 #else
         public void PushAddress(byte value) => PushByte(value);
         public byte PopAddress() => PopByte();
@@ -72,11 +55,37 @@ namespace CPU.components
 #endif
 
         // Used for debugging (see StackDebugExtensions)
-        public byte ReadByte(int offset)
+        public byte PeekByte(int offset)
         {
             if (offset < 0 || offset >= Size)
                 throw new ArgumentOutOfRangeException(nameof(offset), $"Stack read offset out of bounds: {offset}.");
             return _memory.ReadByte(offset);
+        }
+
+        private void PushWord(ushort value)
+        {
+            if (SP < 2)
+                throw new InvalidOperationException("Stack overflow");
+            _memory.WriteByte(SP--, (byte)(value & 0xFF));
+            _memory.WriteByte(SP--, (byte)((value >> 8) & 0xFF));
+        }
+
+        private ushort PopWord()
+        {
+            if (SP > _pointerStartAddress - 2)
+                throw new InvalidOperationException("Stack underflow");
+            ushort high = _memory.ReadByte(++SP);
+            ushort low = _memory.ReadByte(++SP);
+            return (ushort)(low | (high << 8));
+        }
+
+        private ushort PeekWord()
+        {
+            if (SP > _pointerStartAddress - 2)
+                throw new InvalidOperationException("Stack underflow");
+            ushort high = _memory.ReadByte(SP + 1);
+            ushort low = _memory.ReadByte(SP + 2);
+            return (ushort)(low | (high << 8));
         }
 
         private readonly Memory _memory;
@@ -90,7 +99,7 @@ namespace CPU.components
             Console.WriteLine("Stack Dump:");
             for (int i = 0; i < stack.Size; i++)
             {
-                Console.Write($"{stack.ReadByte(i):X2} ");
+                Console.Write($"{stack.PeekByte(i):X2} ");
             }
             Console.WriteLine();
         }

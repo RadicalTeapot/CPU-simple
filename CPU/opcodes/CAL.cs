@@ -16,10 +16,10 @@ namespace CPU.opcodes
             };
 
             cpuState.IncrementPC(); // Move to operand
-            var targetAddress = memory.ReadByte(cpuState.GetPC());
+            var targetAddress = memory.ReadAddress(cpuState.GetPC(), out var size);
             trace.Args = $"ADDR: {targetAddress}";
 
-            cpuState.IncrementPC(); // Move past operand
+            cpuState.IncrementPC(size); // Move to next instruction
             var returnAddress = cpuState.GetPC();
             stack.PushAddress(returnAddress);
 

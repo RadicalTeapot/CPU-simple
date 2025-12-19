@@ -1,15 +1,22 @@
-﻿using CPU.components;
+﻿using NUnit.Framework;
+using CPU.components;
 using CPU.opcodes;
-using NUnit.Framework;
 
 namespace CPU.Tests
 {
     internal static class OpcodeTestHelpers
     {
-        public static CPU CreateCPUWithProgram(byte[] program, out State state, out Stack stack, out Memory memory)
+#if x16
+        public static byte AddressSize = 2;
+        public static byte[] GetAddress(ushort address) => [(byte)(address & 0xFF), (byte)((address >> 8) & 0xFF)];
+#else
+        public static byte AddressSize = 1;
+        public static byte[] GetAddress(ushort address) => [(byte)(address & 0xFF)];
+#endif
+        public static CPU CreateCPUWithProgram(byte[] program, out State state, out components.Stack stack, out Memory memory)
         {
             state = new State(4);
-            stack = new Stack(16);
+            stack = new components.Stack(16);
             memory = new Memory(256);
             var cpu = new CPU(state, stack, memory);
             cpu.LoadProgram(program);
@@ -86,7 +93,7 @@ namespace CPU.Tests
         {
             // Arrange
             var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
-                program: [(byte)OpcodeBaseCode.CAL, 0x05], // CAL R0, ADDR: 5
+                program: [(byte)OpcodeBaseCode.CAL, ..OpcodeTestHelpers.GetAddress(5)], // CAL R0, ADDR: 5
                 out var state,
                 out var stack,
                 out _);
@@ -96,8 +103,9 @@ namespace CPU.Tests
 
             // Assert
             Assert.That(state.GetPC(), Is.EqualTo(5), "PC should be set to the target address after CAL.");
-            Assert.That(stack.SP, Is.EqualTo(stack.Size - 2), "Stack pointer should have been decremented.");
-            Assert.That(stack.PeekAddress(), Is.EqualTo(2), "Return address should be original PC + size of CAL instruction (2)");
+            Assert.That(stack.SP, Is.EqualTo(stack.Size - 1 - OpcodeTestHelpers.AddressSize), "Stack pointer should have been decremented.");
+            var expectedReturnAddress = 1 + OpcodeTestHelpers.AddressSize; // instruction + address size
+            Assert.That(stack.PeekAddress(), Is.EqualTo(expectedReturnAddress), "Return address should point to next instruction");
         }
     }
 
@@ -177,18 +185,19 @@ namespace CPU.Tests
         {
             // Arrange
             var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
-                program: [(byte)OpcodeBaseCode.LDR | 0b0000, 0x02], // LDR R0, ADDR: 2
+                program: [(byte)OpcodeBaseCode.LDR | 0b0000, ..OpcodeTestHelpers.GetAddress(0x10)], // LDR R0, ADDR: 16
                 out var state,
                 out _,
                 out var memory);
-            memory.WriteByte(0x02, 1); // Set memory at address 2 to 1
+            memory.WriteByte(0x10, 1); // Set memory at address 16 to 1
 
             // Act
             cpu.Step(traceEnabled: false);
 
             // Assert
             Assert.That(state.GetRegister(0), Is.EqualTo(1), "R0 should contain the value loaded from memory.");
-            Assert.That(state.GetPC(), Is.EqualTo(2), "PC should increment by 2 after LDR instruction.");
+            var expectedPc = 1 + OpcodeTestHelpers.AddressSize; // instruction + address size
+            Assert.That(state.GetPC(), Is.EqualTo(expectedPc), $"PC should increment by {OpcodeTestHelpers.AddressSize} after LDR instruction.");
         }
     }
 
@@ -211,7 +220,8 @@ namespace CPU.Tests
 
             // Assert
             Assert.That(memory.ReadByte(0), Is.EqualTo(1), "Memory at address 0 should contain the value from R0.");
-            Assert.That(state.GetPC(), Is.EqualTo(2), "PC should increment by 2 after STR instruction.");
+            var expectedPc = 1 + OpcodeTestHelpers.AddressSize; // instruction + address size
+            Assert.That(state.GetPC(), Is.EqualTo(expectedPc), $"PC should increment by {expectedPc} after STR instruction.");
         }
     }
 

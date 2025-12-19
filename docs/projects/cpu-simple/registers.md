@@ -7,6 +7,7 @@ As this is a "pure" 8bit CPU, the program counter (`PC`) register is 1 byte wide
 ## General purpose registers (GPR)
 
 The current design has 4 general purpose registers (`GPR`), each 1 byte wide.
+
 ## Flags
 
 There is a single ,1 byte wide, flags register.
