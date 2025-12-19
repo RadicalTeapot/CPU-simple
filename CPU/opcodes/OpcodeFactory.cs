@@ -1,4 +1,5 @@
 ﻿using CPU.components;
+using System.Diagnostics;
 
 namespace CPU.opcodes
 {
@@ -16,39 +17,43 @@ namespace CPU.opcodes
 
             _opcodes = [];
             // Register opcodes
-            new NOP().RegisterOpcode(_opcodes);
+            new NOP(cpuState).RegisterOpcode(_opcodes);
             new HLT().RegisterOpcode(_opcodes);
+            new JMP(cpuState, memory).RegisterOpcode(_opcodes);
+            new CAL(cpuState, memory, stack).RegisterOpcode(_opcodes);
+            new RET(cpuState, stack).RegisterOpcode(_opcodes);
             new LDI(cpuState, memory).RegisterOpcode(_opcodes);
             new LDR(cpuState, memory).RegisterOpcode(_opcodes);
             new STR(cpuState, memory).RegisterOpcode(_opcodes);
             new MOV(cpuState, memory).RegisterOpcode(_opcodes);
             new ADI(cpuState, memory).RegisterOpcode(_opcodes);
+            new SBI(cpuState, memory).RegisterOpcode(_opcodes);
         }
 
         public IOpcode GetOpcodeFromInstruction(byte instruction)
         {
-            var opcodeBaseCode = ExtractOpcodeBaseCodeFromInstruction(instruction);
+            var opcodeGroup = GetOpcodeGroupFromInstruction(instruction);
+            var opcodeBaseCode = opcodeGroup.ExtractOpcodeBaseCodeFromInstruction(instruction);
 
-            if (!_opcodes.TryGetValue(opcodeBaseCode, out var op))
-            {
-                throw new KeyNotFoundException($"Un-registered opcode base code: {opcodeBaseCode:X2} (instruction was {instruction:X2})");
-            }
-            return op;
+            Debug.Assert(
+                _opcodes.ContainsKey(opcodeBaseCode),
+                $"Unregistered opcode base code: {opcodeBaseCode} (instruction was {instruction:X2})");
+
+            return _opcodes[opcodeBaseCode];
         }
 
-        private OpcodeBaseCode ExtractOpcodeBaseCodeFromInstruction(byte instruction)
+        private IOpcodeGroup GetOpcodeGroupFromInstruction(byte instruction)
         {
             var opcodeGroupByte = (byte)(instruction & GROUP_MASK);
-            if (!Enum.IsDefined(typeof(OpcodeGroupBaseCode), opcodeGroupByte))
-            {
-                throw new KeyNotFoundException($"Unkown opcode group byte: {opcodeGroupByte:X2} (instruction was {instruction:X2})");
-            }
-            if (!_opcodeGroupRegistry.TryGetValue((OpcodeGroupBaseCode)opcodeGroupByte, out var opcodeGroup))
-            {
-                throw new KeyNotFoundException($"Un-registered opcode group: {opcodeGroupByte:X2} (instruction was {instruction:X2})");
-            }
 
-            return opcodeGroup.ExtractOpcodeBaseCodeFromInstruction(instruction);
+            Debug.Assert(
+                Enum.IsDefined(typeof(OpcodeGroupBaseCode), opcodeGroupByte), 
+                $"Unknown opcode group byte: {opcodeGroupByte:X2} (instruction was {instruction:X2})");
+            Debug.Assert(
+                _opcodeGroupRegistry.ContainsKey((OpcodeGroupBaseCode)opcodeGroupByte),
+                $"Opcode group not registered: {opcodeGroupByte:X2} (instruction was {instruction:X2})");
+
+            return _opcodeGroupRegistry[(OpcodeGroupBaseCode)opcodeGroupByte];
         }
 
         private const byte GROUP_MASK = 0xF0;

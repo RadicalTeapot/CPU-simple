@@ -5,10 +5,10 @@
         public byte SP { get; private set; }
         public int Size => _memory.Size;
 
-        public Stack(int stackSize, byte pointerStartAddress)
+        public Stack(int stackSize)
         {
             _memory = new Memory(stackSize);
-            _pointerStartAddress = pointerStartAddress;
+            _pointerStartAddress = (byte)(stackSize - 1);
             Reset();
         }
 
@@ -20,7 +20,7 @@
 
         public void Push(byte value)
         {
-            if (SP == Size - 1)
+            if (SP == 0)
                 throw new InvalidOperationException("Stack overflow");
             _memory.WriteByte(SP--, value);
         }

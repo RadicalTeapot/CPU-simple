@@ -12,7 +12,7 @@ namespace CPU
         {
             _memory = new Memory(memorySize - stackSize);
             _state = new State(registerCount);
-            _stack = new Stack(stackSize, 0xF);
+            _stack = new Stack(stackSize);
             _opcodeFactory = new OpcodeFactory(_state, _stack, _memory);
         }
 
@@ -67,11 +67,7 @@ namespace CPU
         {
             var instruction = _memory.ReadByte(_state.PC);
             var opcode = _opcodeFactory.GetOpcodeFromInstruction(instruction);
-            var size = opcode.Execute(out var trace);
-
-            trace.PcBefore = _state.PC;
-            _state.IncrementPC(size);
-            trace.PcAfter = _state.PC;
+            opcode.Execute(out var trace);
 
             if (traceEnabled)
             {
