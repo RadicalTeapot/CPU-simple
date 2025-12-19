@@ -2,24 +2,23 @@
 
 namespace CPU.opcodes
 {
-    internal class MOV(State cpuState, Memory memory) : BaseOpcode(OpcodeBaseCode.MOV, 1, cpuState, memory, RegisterArgsCount.Two)
+    internal class MOV(State cpuState, Memory memory) : BaseOpcode(
+        OpcodeBaseCode.MOV, RegisterArgsCount.Two, OperandType.None, 
+        cpuState, memory)
     {
-        protected override Trace Execute(byte[] args)
+        protected override Trace Execute(OpcodeArgs args)
         {
-            var srcReg = args[0];
-            var destReg = args[1];
-
             var trace = new Trace()
             {
                 InstructionName = nameof(MOV),
-                Args = $"RS: {srcReg}, RD: {destReg}",
-                RBefore = [CpuState.GetRegister(destReg), CpuState.GetRegister(srcReg)],
+                Args = $"RD: {args.FirstRegisterId}, RS: {args.SecondRegisterId}",
+                RBefore = [CpuState.GetRegister(args.FirstRegisterId), CpuState.GetRegister(args.SecondRegisterId)],
             };
 
-            var value = CpuState.GetRegister(srcReg);
-            CpuState.SetRegister(destReg, value);
+            var value = CpuState.GetRegister(args.SecondRegisterId);
+            CpuState.SetRegister(args.FirstRegisterId, value);
 
-            trace.RAfter = [CpuState.GetRegister(destReg), CpuState.GetRegister(srcReg)];
+            trace.RAfter = [CpuState.GetRegister(args.FirstRegisterId), CpuState.GetRegister(args.SecondRegisterId)];
             return trace;
         }
     }

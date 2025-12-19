@@ -9,17 +9,23 @@ namespace CPU.opcodes
 
         public void Execute(out Trace trace)
         {
-            var targetAddress = memory.ReadByte(cpuState.PC + 1);
             trace = new Trace()
             {
                 InstructionName = nameof(CAL),
-                Args = $"ADDR: {targetAddress}",
+                PcBefore = cpuState.GetPC(),
             };
-            
-            var returnAddress = (byte)(cpuState.PC + 2);
-            stack.Push(returnAddress);
+
+            cpuState.IncrementPC(); // Move to operand
+            var targetAddress = memory.ReadByte(cpuState.GetPC());
+            trace.Args = $"ADDR: {targetAddress}";
+
+            cpuState.IncrementPC(); // Move past operand
+            var returnAddress = cpuState.GetPC();
+            stack.PushAddress(returnAddress);
 
             cpuState.SetPC(targetAddress);
+
+            trace.PcAfter = cpuState.GetPC();
         }
     }
 }

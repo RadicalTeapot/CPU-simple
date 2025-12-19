@@ -2,8 +2,8 @@
 {
     public class Trace
     {
-        public byte PcBefore;
-        public byte PcAfter;
+        public ushort PcBefore; // ushort for compatibility with 16-bit architectures
+        public ushort PcAfter;  // ushort for compatibility with 16-bit architectures
         public byte Instruction;
         public string InstructionName = "";
         public string Args = "";

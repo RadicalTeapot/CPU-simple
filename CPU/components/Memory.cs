@@ -10,18 +10,70 @@
             Size = size;
         }
 
+#if x16
+        public byte ReadByte(ushort address)
+        {
+            if (address >= Size)
+                throw new ArgumentOutOfRangeException(nameof(address), $"Memory read address out of bounds: {address}.");
+
+            return _memory[address];
+        }
+
+        public void WriteByte(ushort address, byte value)
+        {
+            if (address >= Size)
+                throw new ArgumentOutOfRangeException(nameof(address), $"Memory write address out of bounds: {address}.");
+
+            _memory[address] = value;
+        }
+
+        public ushort ReadAddress(ushort address, out byte size)
+        {
+            if (address + 1 >= Size)
+                throw new ArgumentOutOfRangeException(nameof(address), $"Memory read address out of bounds: {address}.");
+
+            size = 2;
+            return (ushort)(_memory[address] | (_memory[address + 1] << 8));
+        }
+
+        public void WriteAddress(ushort address, ushort value)
+        {
+            if (address + 1 >= Size)
+                throw new ArgumentOutOfRangeException(nameof(address), $"Memory write address out of bounds: {address}.");
+
+            _memory[address] = (byte)(value & 0xFF);
+            _memory[address + 1] = (byte)((value >> 8) & 0xFF);
+        }
+#else
+        public byte ReadByte(byte address)
+        {
+            if (address >= Size)
+                throw new ArgumentOutOfRangeException(nameof(address), $"Memory read address out of bounds: {address}.");
+            return _memory[address];
+        }
+
+        public void WriteByte(byte address, byte value)
+        {
+            if (address >= Size)
+                throw new ArgumentOutOfRangeException(nameof(address), $"Memory write address out of bounds: {address}.");
+            _memory[address] = value;
+        }
+
+        public byte ReadAddress(byte address, out byte size)
+        {
+            size = 1;
+            return ReadByte(address);
+        }
+
+        public void WriteAddress(byte address, byte value) => WriteByte(address, value);
+#endif
+
+        // Used for debugging (see MemoryDebugExtensions)
         public byte ReadByte(int address)
         {
             if (address < 0 || address >= Size)
                 throw new ArgumentOutOfRangeException(nameof(address), $"Memory read address out of bounds: {address}.");
             return _memory[address];
-        }
-
-        public void WriteByte(int address, byte value)
-        {
-            if (address < 0 || address >= Size)
-                throw new ArgumentOutOfRangeException(nameof(address), $"Memory write address out of bounds: {address}.");
-            _memory[address] = value;
         }
 
         public void LoadBytes(int address, byte[] data)

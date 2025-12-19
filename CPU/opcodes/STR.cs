@@ -2,22 +2,22 @@
 
 namespace CPU.opcodes
 {
-    internal class STR(State cpuState, Memory memory) : BaseOpcode(OpcodeBaseCode.STR, 2, cpuState, memory, RegisterArgsCount.One)
+    internal class STR(State cpuState, Memory memory) : BaseOpcode(
+        OpcodeBaseCode.STR, RegisterArgsCount.One, OperandType.Address,
+        cpuState, memory)
     {
-        protected override Trace Execute(byte[] args)
+        protected override Trace Execute(OpcodeArgs args)
         {
-            var srcReg = args[0];
-            var memoryAddress = args[1];
-
             var trace = new Trace()
             {
                 InstructionName = nameof(STR),
-                Args = $"RS: {srcReg}, Memory address: {memoryAddress}",
-                RBefore = [CpuState.GetRegister(srcReg)],
+                Args = $"RS: {args.FirstRegisterId}, Memory address: {args.AddressValue}",
+                RBefore = [CpuState.GetRegister(args.FirstRegisterId)],
             };
 
-            Memory.WriteByte(memoryAddress, CpuState.GetRegister(srcReg));
-            trace.RAfter = [CpuState.GetRegister(srcReg)];
+            Memory.WriteByte(args.AddressValue, CpuState.GetRegister(args.FirstRegisterId));
+
+            trace.RAfter = [CpuState.GetRegister(args.FirstRegisterId)];
             return trace;
         }
     }

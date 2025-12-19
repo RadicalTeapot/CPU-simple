@@ -9,13 +9,19 @@ namespace CPU.opcodes
 
         public void Execute(out Trace trace)
         {
-            var targetAddress = memory.ReadByte(cpuState.PC + 1);
+            var pcBefore = cpuState.GetPC();
+
+            cpuState.IncrementPC(1); // Move to operand
+            var targetAddress = memory.ReadAddress(cpuState.GetPC(), out _);
+            cpuState.SetPC(targetAddress);
+
             trace = new Trace()
             {
                 InstructionName = nameof(JMP),
                 Args = $"ADDR: {targetAddress}",
+                PcBefore = pcBefore,
+                PcAfter = targetAddress
             };
-            cpuState.SetPC(targetAddress);
         }
     }
 }

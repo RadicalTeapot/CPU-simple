@@ -5,6 +5,15 @@
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <Configurations>Debug;Release;DebugX16;ReleaseX16</Configurations>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DebugX16|AnyCPU'">
+    <DefineConstants>$(DefineConstants);x16</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseX16|AnyCPU'">
+    <DefineConstants>$(DefineConstants);x16</DefineConstants>
   </PropertyGroup>
 
 </Project>

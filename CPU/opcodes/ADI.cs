@@ -2,26 +2,26 @@
 
 namespace CPU.opcodes
 {
-    internal class ADI(State cpuState, Memory memory): BaseOpcode(OpcodeBaseCode.ADI, 2, cpuState, memory, RegisterArgsCount.One)
+    internal class ADI(State cpuState, Memory memory): BaseOpcode(
+        OpcodeBaseCode.ADI, RegisterArgsCount.One, OperandType.Immediate, 
+        cpuState, memory)
     {
-        protected override Trace Execute(byte[] args)
+        protected override Trace Execute(OpcodeArgs args)
         {
-            var destReg = args[0];
-            var immediateValue = args[1];
-
             var trace = new Trace()
             {
                 InstructionName = nameof(ADI),
-                Args = $"RD: {destReg}, IMM: {immediateValue}",
-                RBefore = [CpuState.GetRegister(destReg)],
+                Args = $"RD: {args.FirstRegisterId}, IMM: {args.ImmediateValue}",
+                RBefore = [CpuState.GetRegister(args.FirstRegisterId)],
             };
 
-            var currentValue = CpuState.GetRegister(destReg);
-            var result = currentValue + immediateValue + CpuState.GetCarryFlagAsInt();
-            CpuState.SetRegister(destReg, (byte)result); // Wrap around on overflow
+            var currentValue = CpuState.GetRegister(args.FirstRegisterId);
+            var result = currentValue + args.ImmediateValue + CpuState.GetCarryFlagAsInt();
+            CpuState.SetRegister(args.FirstRegisterId, (byte)result); // Wrap around on overflow
             CpuState.SetCarryFlag(result > 0xFF);
             CpuState.SetZeroFlag(result == 0);
-            trace.RAfter = [CpuState.GetRegister(destReg)];
+
+            trace.RAfter = [CpuState.GetRegister(args.FirstRegisterId)];
             return trace;
         }
     }

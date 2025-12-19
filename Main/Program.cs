@@ -2,7 +2,7 @@
 {
     static void Main(string[] args)
     {
-        var cpu = new CPU.CPU();
+        var cpu = new CPU.CPU(new CPU.Config());
         cpu.LoadProgram(
         [
             0x10, 0x01, // LDI R0, 0x01

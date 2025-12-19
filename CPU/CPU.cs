@@ -6,13 +6,11 @@ namespace CPU
 {
     public class CPU
     {
-        public CPU() : this(256, 16, 4) { }
-
-        public CPU(int memorySize, int stackSize, int registerCount)
+        public CPU(Config config)
         {
-            _memory = new Memory(memorySize - stackSize);
-            _state = new State(registerCount);
-            _stack = new Stack(stackSize);
+            _memory = new Memory(config.MemorySize - config.StackSize);
+            _state = new State(config.RegisterCount);
+            _stack = new Stack(config.StackSize);
             _opcodeFactory = new OpcodeFactory(_state, _stack, _memory);
         }
 
@@ -41,7 +39,7 @@ namespace CPU
 
         public void Run(bool traceEnabled)
         {
-            while (_state.PC < _memory.Size)
+            while (_state.GetPC() < _memory.Size) // TODO Fix for 16-bit architecture
             {
                 try
                 {
@@ -65,7 +63,7 @@ namespace CPU
         /// <summary>Executes a single instruction cycle.</summary>
         public void Step(bool traceEnabled)
         {
-            var instruction = _memory.ReadByte(_state.PC);
+            var instruction = _memory.ReadByte(_state.GetPC());
             var opcode = _opcodeFactory.GetOpcodeFromInstruction(instruction);
             opcode.Execute(out var trace);
 

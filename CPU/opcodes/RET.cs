@@ -9,13 +9,18 @@ namespace CPU.opcodes
 
         public void Execute(out Trace trace)
         {
-            var returnAddress = stack.Pop();
+            var pcBefore = cpuState.GetPC();
+
+            var returnAddress = stack.PopAddress();
+            cpuState.SetPC(returnAddress);
+
             trace = new Trace()
             {
                 InstructionName = nameof(RET),
                 Args = $"ADDR: {returnAddress}",
+                PcBefore = pcBefore,
+                PcAfter = returnAddress
             };
-            cpuState.SetPC(returnAddress);
         }
     }
 }

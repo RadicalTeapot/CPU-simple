@@ -34,7 +34,7 @@ namespace CPU.Tests
             cpu.Step(traceEnabled: false);
 
             // Assert
-            Assert.That(state.PC, Is.EqualTo(1), "PC should increment by 1 after NOP.");
+            Assert.That(state.GetPC(), Is.EqualTo(1), "PC should increment by 1 after NOP.");
         }
     }
 
@@ -53,7 +53,7 @@ namespace CPU.Tests
 
             // Act & Assert
             Assert.Throws<OpcodeException.HaltException>(() => cpu.Step(traceEnabled: false));
-            Assert.That(state.PC, Is.EqualTo(0), "PC should halt before PC increment.");
+            Assert.That(state.GetPC(), Is.EqualTo(0), "PC should halt before PC increment.");
         }
     }
 
@@ -74,7 +74,7 @@ namespace CPU.Tests
             cpu.Step(traceEnabled: false);
             
             // Assert
-            Assert.That(state.PC, Is.EqualTo(5), "PC should be set to the target address after JMP.");
+            Assert.That(state.GetPC(), Is.EqualTo(5), "PC should be set to the target address after JMP.");
         }
     }
 
@@ -95,9 +95,9 @@ namespace CPU.Tests
             cpu.Step(traceEnabled: false);
 
             // Assert
-            Assert.That(state.PC, Is.EqualTo(5), "PC should be set to the target address after CAL.");
+            Assert.That(state.GetPC(), Is.EqualTo(5), "PC should be set to the target address after CAL.");
             Assert.That(stack.SP, Is.EqualTo(stack.Size - 2), "Stack pointer should have been decremented.");
-            Assert.That(stack.Pop(), Is.EqualTo(2), "Return address should be original PC + size of CAL instruction (2)");
+            Assert.That(stack.PeekAddress(), Is.EqualTo(2), "Return address should be original PC + size of CAL instruction (2)");
         }
     }
 
@@ -113,13 +113,13 @@ namespace CPU.Tests
                 out var state,
                 out var stack,
                 out _);
-            stack.Push(5);
+            stack.PushAddress(5);
 
             // Act
             cpu.Step(traceEnabled: false);
 
             // Arrange
-            Assert.That(state.PC, Is.EqualTo(5), "PC should be set to the address popped from the stack after RET.");
+            Assert.That(state.GetPC(), Is.EqualTo(5), "PC should be set to the address popped from the stack after RET.");
             Assert.That(stack.SP, Is.EqualTo(stack.Size - 1), "Stack pointer should have been incremented.");
         }
     }
@@ -143,7 +143,7 @@ namespace CPU.Tests
             // Assert
             Assert.That(state.GetRegister(0), Is.EqualTo(42), "R0 should contain the value copied from R1.");
             Assert.That(state.GetRegister(1), Is.EqualTo(42), "R1 should remain unchanged.");
-            Assert.That(state.PC, Is.EqualTo(1), "PC should increment by 1 after MOV instruction.");
+            Assert.That(state.GetPC(), Is.EqualTo(1), "PC should increment by 1 after MOV instruction.");
         }
     }
 
@@ -165,7 +165,7 @@ namespace CPU.Tests
             
             // Assert
             Assert.That(state.GetRegister(0), Is.EqualTo(0x01), "R0 should contain the immediate value 1.");
-            Assert.That(state.PC, Is.EqualTo(2), "PC should increment by 2 after LDI instruction.");
+            Assert.That(state.GetPC(), Is.EqualTo(2), "PC should increment by 2 after LDI instruction.");
         }
     }
 
@@ -188,7 +188,7 @@ namespace CPU.Tests
 
             // Assert
             Assert.That(state.GetRegister(0), Is.EqualTo(1), "R0 should contain the value loaded from memory.");
-            Assert.That(state.PC, Is.EqualTo(2), "PC should increment by 2 after LDR instruction.");
+            Assert.That(state.GetPC(), Is.EqualTo(2), "PC should increment by 2 after LDR instruction.");
         }
     }
 
@@ -211,7 +211,7 @@ namespace CPU.Tests
 
             // Assert
             Assert.That(memory.ReadByte(0), Is.EqualTo(1), "Memory at address 0 should contain the value from R0.");
-            Assert.That(state.PC, Is.EqualTo(2), "PC should increment by 2 after STR instruction.");
+            Assert.That(state.GetPC(), Is.EqualTo(2), "PC should increment by 2 after STR instruction.");
         }
     }
 
@@ -236,7 +236,7 @@ namespace CPU.Tests
             Assert.That(state.GetRegister(0), Is.EqualTo(2), "Result should be R0 + 1 + carry = 1 + 1 + 0 = 2");
             Assert.That(state.C, Is.False, "Carry flag should not be set.");
             Assert.That(state.Z, Is.False, "Zero flag should not be set.");
-            Assert.That(state.PC, Is.EqualTo(2), "PC should increment by 2 after ADI instruction.");
+            Assert.That(state.GetPC(), Is.EqualTo(2), "PC should increment by 2 after ADI instruction.");
         }
 
         [Test]
@@ -317,7 +317,7 @@ namespace CPU.Tests
             Assert.That(state.GetRegister(0), Is.EqualTo(1), "Result shoud be R0 - 1 - (1 - carry) = 2 - 1 - 0 = 1");
             Assert.That(state.C, Is.True, "Carry flag should be set (uses a no borrow carry).");
             Assert.That(state.Z, Is.False, "Zero flag should not be set.");
-            Assert.That(state.PC, Is.EqualTo(2), "PC should increment by 2 after SBI instruction.");
+            Assert.That(state.GetPC(), Is.EqualTo(2), "PC should increment by 2 after SBI instruction.");
         }
 
         [Test]
