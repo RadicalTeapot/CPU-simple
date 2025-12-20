@@ -97,13 +97,14 @@ namespace CPU.Tests
                 out var state,
                 out var stack,
                 out _);
+            var initialSP = stack.SP;
 
             // Act
             cpu.Step(traceEnabled: false);
 
             // Assert
             Assert.That(state.GetPC(), Is.EqualTo(5), "PC should be set to the target address after CAL.");
-            Assert.That(stack.SP, Is.EqualTo(stack.Size - 1 - OpcodeTestHelpers.AddressSize), "Stack pointer should have been decremented.");
+            Assert.That(stack.SP, Is.EqualTo(initialSP - OpcodeTestHelpers.AddressSize), "Stack pointer should have been decremented.");
             var expectedReturnAddress = 1 + OpcodeTestHelpers.AddressSize; // instruction + address size
             Assert.That(stack.PeekAddress(), Is.EqualTo(expectedReturnAddress), "Return address should point to next instruction");
         }
@@ -122,13 +123,14 @@ namespace CPU.Tests
                 out var stack,
                 out _);
             stack.PushAddress(5);
+            var initialSP = stack.SP;
 
             // Act
             cpu.Step(traceEnabled: false);
 
             // Arrange
             Assert.That(state.GetPC(), Is.EqualTo(5), "PC should be set to the address popped from the stack after RET.");
-            Assert.That(stack.SP, Is.EqualTo(stack.Size - 1), "Stack pointer should have been incremented.");
+            Assert.That(stack.SP, Is.EqualTo(initialSP + OpcodeTestHelpers.AddressSize), "Stack pointer should have been incremented.");
         }
     }
 
@@ -748,6 +750,137 @@ namespace CPU.Tests
             // Assert
             var expectedPc = 1 + OpcodeTestHelpers.AddressSize; // instruction + address size
             Assert.That(state.GetPC(), Is.EqualTo(expectedPc), "PC should skip the jump address when zero flag is false.");
+        }
+    }
+
+    [TestFixture]
+    public class PSH_tests
+    {
+        [Test]
+        public void PSH_R0_PushesValueOntoStack()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.PSH | 0b0000], // PSH R0
+                out var state,
+                out var stack,
+                out _);
+            state.SetRegister(0, 1);
+            var initialSP = stack.SP;
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(stack.PeekByte(), Is.EqualTo(1), "Stack should contain the value from R0.");
+            Assert.That(stack.SP, Is.EqualTo(initialSP - 1), "Stack pointer should have been decremented.");
+            Assert.That(state.GetPC(), Is.EqualTo(1), "PC should increment by 1 after PSH instruction.");
+        }
+
+        [Test]
+        public void PSH_R0_DoesNotModifyRegister()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.PSH | 0b0000], // PSH R0
+                out var state,
+                out _,
+                out _);
+            state.SetRegister(0, 1);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.GetRegister(0), Is.EqualTo(1), "R0 should remain unchanged after PSH.");
+        }
+    }
+
+    [TestFixture]
+    public class PEK_tests
+    {
+        [Test]
+        public void PEK_R0_PeeksValueFromStack()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.PEK | 0b0000], // PEK R0
+                out var state,
+                out var stack,
+                out _);
+            stack.PushByte(1);
+            var initialSP = stack.SP;
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.GetRegister(0), Is.EqualTo(1), "R0 should contain the value peeked from stack.");
+            Assert.That(stack.SP, Is.EqualTo(initialSP), "Stack pointer should remain unchanged after PEK.");
+            Assert.That(state.GetPC(), Is.EqualTo(1), "PC should increment by 1 after PEK instruction.");
+        }
+
+        [Test]
+        public void PEK_R0_DoesNotRemoveValueFromStack()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.PEK | 0b0000], // PEK R0
+                out _,
+                out var stack,
+                out _);
+            stack.PushByte(1);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(stack.PeekByte(), Is.EqualTo(1), "Stack value should still be present after PEK.");
+        }
+    }
+
+    [TestFixture]
+    public class POP_tests
+    {
+        [Test]
+        public void POP_R0_PopsValueFromStack()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.POP | 0b0000], // POP R0
+                out var state,
+                out var stack,
+                out _);
+            stack.PushByte(1);
+            var initialSP = stack.SP;
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.GetRegister(0), Is.EqualTo(1), "R0 should contain the value popped from stack.");
+            Assert.That(stack.SP, Is.EqualTo(initialSP + 1), "Stack pointer should have been incremented after POP.");
+            Assert.That(state.GetPC(), Is.EqualTo(1), "PC should increment by 1 after POP instruction.");
+        }
+
+        [Test]
+        public void POP_R0_RemovesValueFromStack()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.POP | 0b0000], // POP R0
+                out var state,
+                out var stack,
+                out _);
+            stack.PushByte(1);
+            stack.PushByte(2);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.GetRegister(0), Is.EqualTo(2), "R0 should contain the top value.");
+            Assert.That(stack.PeekByte(), Is.EqualTo(1), "Stack should now have previous value at top.");
         }
     }
 }

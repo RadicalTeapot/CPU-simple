@@ -33,7 +33,10 @@ namespace CPU.opcodes
             new RET(cpuState, stack).RegisterOpcode(_opcodes);
             new LDI(cpuState, memory).RegisterOpcode(_opcodes);
             new LDA(cpuState, memory).RegisterOpcode(_opcodes);
+            new POP(cpuState, memory, stack).RegisterOpcode(_opcodes);
+            new PEK(cpuState, memory, stack).RegisterOpcode(_opcodes);
             new STA(cpuState, memory).RegisterOpcode(_opcodes);
+            new PSH(cpuState, memory, stack).RegisterOpcode(_opcodes);
             new MOV(cpuState, memory).RegisterOpcode(_opcodes);
             new ADI(cpuState, memory).RegisterOpcode(_opcodes);
             new SBI(cpuState, memory).RegisterOpcode(_opcodes);
