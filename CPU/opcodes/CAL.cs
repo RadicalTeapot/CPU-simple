@@ -2,6 +2,7 @@
 
 namespace CPU.opcodes
 {
+    // Note: This doesn't inherit from BaseOpcode because it has to handle PC differently
     internal class CAL(State cpuState, Memory memory, Stack stack) : IOpcode
     {
         public void RegisterOpcode(Dictionary<OpcodeBaseCode, IOpcode> opcodeRegistry)
