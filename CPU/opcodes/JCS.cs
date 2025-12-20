@@ -21,7 +21,7 @@ namespace CPU.opcodes
 
             trace = new Trace()
             {
-                InstructionName = nameof(JMP),
+                InstructionName = nameof(JCS),
                 Args = $"ADDR: {targetAddress}",
                 PcBefore = pcBefore,
                 PcAfter = cpuState.GetPC(),
