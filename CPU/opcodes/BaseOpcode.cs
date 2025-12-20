@@ -48,30 +48,43 @@ namespace CPU.opcodes
         protected readonly State CpuState = cpuState;
         protected readonly Memory Memory = memory;
 
+        /// <summary>
+        /// Inner execution logic of the opcode.
+        /// </summary>
+        /// <param name="args">Parsed opcode arguments</param>
+        /// <returns>Execution trace</returns>
+        /// <remarks>PC has already been incremented before calling this</remarks>
         protected abstract Trace Execute(OpcodeArgs args);
 
+        /// <summary>
+        /// Reads and parses opcode arguments from memory, updating PC accordingly.
+        /// </summary>
+        /// <returns>Parsed opcode arguments</returns>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown when <see cref="OperandType"/> is invalid</exception>
         private OpcodeArgs ParseArguments()
         {
-            var instruction = Memory.ReadByte(CpuState.GetPC());
-            CpuState.IncrementPC();
-
             var args = new OpcodeArgs();
+
+            var instruction = Memory.ReadByte(CpuState.GetPC());
             _registerParser.ParseArguments(instruction, ref args);
+            CpuState.IncrementPC(); // Move past instruction byte (to operand, if any)
+
             switch (operandType)
             {
                 case OperandType.None:
                     break;
                 case OperandType.Address:
                     args.AddressValue = Memory.ReadAddress(CpuState.GetPC(), out var size);
-                    CpuState.IncrementPC(size);
+                    CpuState.IncrementPC(size); // Move past address operand
                     break;
                 case OperandType.Immediate:
                     args.ImmediateValue = Memory.ReadByte(CpuState.GetPC());
-                    CpuState.IncrementPC();
+                    CpuState.IncrementPC(); // Move past immediate operand
                     break;
                 default:
                     throw new ArgumentOutOfRangeException();
             }
+
             return args;
         }
 
