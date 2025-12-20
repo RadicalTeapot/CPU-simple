@@ -19,8 +19,8 @@ namespace CPU.Tests
 
             // Assert
             Assert.That(stack.SP, Is.EqualTo(0xFD), "SP should be decremented by 2");
-            Assert.That(memory.ReadByte(0xFF), Is.EqualTo(0x34), "Low byte should be at top of stack");
-            Assert.That(memory.ReadByte(0xFE), Is.EqualTo(0x12), "High byte should be next on stack");
+            Assert.That(memory.ReadByte(0xFF), Is.EqualTo(0x12), "Low byte should be at top of stack");
+            Assert.That(memory.ReadByte(0xFE), Is.EqualTo(0x34), "High byte should be next on stack");
         }
 
         [Test]

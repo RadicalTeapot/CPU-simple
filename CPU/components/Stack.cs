@@ -66,16 +66,16 @@ namespace CPU.components
         {
             if (SP < 2)
                 throw new InvalidOperationException("Stack overflow");
-            _memory.WriteByte(SP--, (byte)(value & 0xFF));
             _memory.WriteByte(SP--, (byte)((value >> 8) & 0xFF));
+            _memory.WriteByte(SP--, (byte)(value & 0xFF));            
         }
 
         private ushort PopWord()
         {
             if (SP > _pointerStartAddress - 2)
                 throw new InvalidOperationException("Stack underflow");
-            ushort high = _memory.ReadByte(++SP);
             ushort low = _memory.ReadByte(++SP);
+            ushort high = _memory.ReadByte(++SP);            
             return (ushort)(low | (high << 8));
         }
 
@@ -83,8 +83,8 @@ namespace CPU.components
         {
             if (SP > _pointerStartAddress - 2)
                 throw new InvalidOperationException("Stack underflow");
-            ushort high = _memory.ReadByte(SP + 1);
-            ushort low = _memory.ReadByte(SP + 2);
+            ushort low = _memory.ReadByte(SP + 1);
+            ushort high = _memory.ReadByte(SP + 2);
             return (ushort)(low | (high << 8));
         }
 
