@@ -23,6 +23,9 @@ namespace CPU.opcodes
             new CLC(cpuState).RegisterOpcode(_opcodes);
             new JMP(cpuState, memory).RegisterOpcode(_opcodes);
             new JCC(cpuState, memory).RegisterOpcode(_opcodes);
+            new JCS(cpuState, memory).RegisterOpcode(_opcodes);
+            new JZC(cpuState, memory).RegisterOpcode(_opcodes);
+            new JZS(cpuState, memory).RegisterOpcode(_opcodes);
             new CAL(cpuState, memory, stack).RegisterOpcode(_opcodes);
             new RET(cpuState, stack).RegisterOpcode(_opcodes);
             new LDI(cpuState, memory).RegisterOpcode(_opcodes);

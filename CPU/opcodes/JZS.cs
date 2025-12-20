@@ -2,10 +2,10 @@
 
 namespace CPU.opcodes
 {
-    internal class JCC(State cpuState, Memory memory) : IOpcode
+    internal class JZS(State cpuState, Memory memory) : IOpcode
     {
         public void RegisterOpcode(Dictionary<OpcodeBaseCode, IOpcode> opcodeRegistry)
-            => opcodeRegistry[OpcodeBaseCode.JCC] = this;
+            => opcodeRegistry[OpcodeBaseCode.JZS] = this;
 
         public void Execute(out Trace trace)
         {
@@ -14,7 +14,7 @@ namespace CPU.opcodes
             cpuState.IncrementPC(); // Move to operand
             var targetAddress = memory.ReadAddress(cpuState.GetPC(), out var size);
 
-            if (cpuState.C)
+            if (!cpuState.Z)
                 cpuState.IncrementPC(size);     // If condition not met, skip the jump address
             else
                 cpuState.SetPC(targetAddress);  // Otherwise, perform the jump

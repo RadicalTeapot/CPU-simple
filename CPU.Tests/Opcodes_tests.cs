@@ -558,4 +558,127 @@ namespace CPU.Tests
             Assert.That(state.GetPC(), Is.EqualTo(expectedPc), "PC should skip the jump address when carry flag is true.");
         }
     }
+
+    [TestFixture]
+    public class JCS_tests
+    {
+        [Test]
+        public void JCS_JumpsToAddress_WhenCarryFlagIsTrue()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.JCS, .. OpcodeTestHelpers.GetAddress(0x10)], // JCS to address 16
+                out var state,
+                out _,
+                out _);
+            state.SetCarryFlag(true);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.GetPC(), Is.EqualTo(0x10), "PC should be set to the target address when carry flag is true.");
+        }
+
+        [Test]
+        public void JCS_SkipsJump_WhenCarryFlagIsFalse()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.JCS, .. OpcodeTestHelpers.GetAddress(0x10)], // JCS to address 16
+                out var state,
+                out _,
+                out _);
+            state.SetCarryFlag(false);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            var expectedPc = 1 + OpcodeTestHelpers.AddressSize; // instruction + address size
+            Assert.That(state.GetPC(), Is.EqualTo(expectedPc), "PC should skip the jump address when carry flag is false.");
+        }
+    }
+
+    [TestFixture]
+    public class JZC_tests
+    {
+        [Test]
+        public void JZC_JumpsToAddress_WhenZeroFlagIsFalse()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.JZC, .. OpcodeTestHelpers.GetAddress(0x10)], // JZC to address 16
+                out var state,
+                out _,
+                out _);
+            state.SetZeroFlag(false);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.GetPC(), Is.EqualTo(0x10), "PC should be set to the target address when zero flag is false.");
+        }
+
+        [Test]
+        public void JZC_SkipsJump_WhenZeroFlagIsTrue()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.JZC, .. OpcodeTestHelpers.GetAddress(0x10)], // JZC to address 16
+                out var state,
+                out _,
+                out _);
+            state.SetZeroFlag(true);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            var expectedPc = 1 + OpcodeTestHelpers.AddressSize; // instruction + address size
+            Assert.That(state.GetPC(), Is.EqualTo(expectedPc), "PC should skip the jump address when zero flag is true.");
+        }
+    }
+
+    [TestFixture]
+    public class JZS_tests
+    {
+        [Test]
+        public void JZS_JumpsToAddress_WhenZeroFlagIsTrue()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.JZS, .. OpcodeTestHelpers.GetAddress(0x10)], // JZS to address 16
+                out var state,
+                out _,
+                out _);
+            state.SetZeroFlag(true);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.GetPC(), Is.EqualTo(0x10), "PC should be set to the target address when zero flag is true.");
+        }
+
+        [Test]
+        public void JZS_SkipsJump_WhenZeroFlagIsFalse()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.JZS, .. OpcodeTestHelpers.GetAddress(0x10)], // JZS to address 16
+                out var state,
+                out _,
+                out _);
+            state.SetZeroFlag(false);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            var expectedPc = 1 + OpcodeTestHelpers.AddressSize; // instruction + address size
+            Assert.That(state.GetPC(), Is.EqualTo(expectedPc), "PC should skip the jump address when zero flag is false.");
+        }
+    }
 }
