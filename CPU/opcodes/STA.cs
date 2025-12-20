@@ -2,20 +2,21 @@
 
 namespace CPU.opcodes
 {
-    internal class LDR(State cpuState, Memory memory) : BaseOpcode(
-        OpcodeBaseCode.LDR, RegisterArgsCount.One, OperandType.Address,
+    internal class STA(State cpuState, Memory memory) : BaseOpcode(
+        OpcodeBaseCode.STA, RegisterArgsCount.One, OperandType.Address,
         cpuState, memory)
     {
         protected override Trace Execute(OpcodeArgs args)
         {
             var trace = new Trace()
             {
-                InstructionName = nameof(LDR),
-                Args = $"RD: {args.FirstRegisterId}, ADDR: {args.AddressValue}",
+                InstructionName = nameof(STA),
+                Args = $"RS: {args.FirstRegisterId}, Memory address: {args.AddressValue}",
                 RBefore = [CpuState.GetRegister(args.FirstRegisterId)],
             };
 
-            CpuState.SetRegister(args.FirstRegisterId, Memory.ReadByte(args.AddressValue));
+            Memory.WriteByte(args.AddressValue, CpuState.GetRegister(args.FirstRegisterId));
+
             trace.RAfter = [CpuState.GetRegister(args.FirstRegisterId)];
             return trace;
         }

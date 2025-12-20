@@ -178,14 +178,14 @@ namespace CPU.Tests
     }
 
     [TestFixture]
-    public class LDR_tests
+    public class LDA_tests
     {
         [Test]
-        public void LDR_R0_2_LoadsValueFromMemoryIntoR0()
+        public void LDA_R0_2_LoadsValueFromMemoryIntoR0()
         {
             // Arrange
             var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
-                program: [(byte)OpcodeBaseCode.LDR | 0b0000, .. OpcodeTestHelpers.GetAddress(0x10)], // LDR R0, ADDR: 16
+                program: [(byte)OpcodeBaseCode.LDA | 0b0000, .. OpcodeTestHelpers.GetAddress(0x10)], // LDR R0, ADDR: 16
                 out var state,
                 out _,
                 out var memory);
@@ -202,14 +202,14 @@ namespace CPU.Tests
     }
 
     [TestFixture]
-    public class STR_tests
+    public class STA_tests
     {
         [Test]
-        public void STR_R0_0_StoresValueFromR0IntoMemory()
+        public void STA_R0_0_StoresValueFromR0IntoMemory()
         {
             // Arrange
             var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
-                program: [(byte)OpcodeBaseCode.STR | 0b0000, 0x00], // STR R0, ADDR: 0
+                program: [(byte)OpcodeBaseCode.STA | 0b0000, 0x00], // STR R0, ADDR: 0
                 out var state,
                 out _,
                 out var memory);
