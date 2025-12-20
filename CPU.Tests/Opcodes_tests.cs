@@ -413,6 +413,75 @@ namespace CPU.Tests
     }
 
     [TestFixture]
+    public class SEC_tests
+    {
+        [Test]
+        public void SEC_SetsCarryFlag()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.SEC], // SEC
+                out var state,
+                out _,
+                out _);
+            state.SetCarryFlag(false);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.C, Is.True, "Carry flag should have been set");
+            Assert.That(state.GetPC(), Is.EqualTo(1), "PC should increment by 1 after SEC instruction");
+        }
+    }
+
+    [TestFixture]
+    public class CLZ_tests
+    {
+        [Test]
+        public void CLZ_ClearsZeroFlag()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.CLZ], // CLZ
+                out var state,
+                out _,
+                out _);
+            state.SetZeroFlag(true);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.Z, Is.False, "Zero flag should have been cleared");
+            Assert.That(state.GetPC(), Is.EqualTo(1), "PC should increment by 1 after CLZ instruction");
+        }
+    }
+
+    [TestFixture]
+    public class SEZ_tests
+    {
+        [Test]
+        public void SEZ_SetsZeroFlag()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.SEZ], // SEZ
+                out var state,
+                out _,
+                out _);
+            state.SetZeroFlag(false);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.Z, Is.True, "Zero flag should have been set");
+            Assert.That(state.GetPC(), Is.EqualTo(1), "PC should increment by 1 after SEZ instruction");
+        }
+    }
+
+    [TestFixture]
     public class CMP_tests
     {
         [Test]
