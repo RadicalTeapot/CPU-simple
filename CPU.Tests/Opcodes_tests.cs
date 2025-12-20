@@ -79,7 +79,7 @@ namespace CPU.Tests
 
             // Act
             cpu.Step(traceEnabled: false);
-            
+
             // Assert
             Assert.That(state.GetPC(), Is.EqualTo(5), "PC should be set to the target address after JMP.");
         }
@@ -93,7 +93,7 @@ namespace CPU.Tests
         {
             // Arrange
             var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
-                program: [(byte)OpcodeBaseCode.CAL, ..OpcodeTestHelpers.GetAddress(5)], // CAL R0, ADDR: 5
+                program: [(byte)OpcodeBaseCode.CAL, .. OpcodeTestHelpers.GetAddress(5)], // CAL R0, ADDR: 5
                 out var state,
                 out var stack,
                 out _);
@@ -167,10 +167,10 @@ namespace CPU.Tests
                 out var state,
                 out _,
                 out _);
-            
+
             // Act
             cpu.Step(traceEnabled: false);
-            
+
             // Assert
             Assert.That(state.GetRegister(0), Is.EqualTo(0x01), "R0 should contain the immediate value 1.");
             Assert.That(state.GetPC(), Is.EqualTo(2), "PC should increment by 2 after LDI instruction.");
@@ -185,7 +185,7 @@ namespace CPU.Tests
         {
             // Arrange
             var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
-                program: [(byte)OpcodeBaseCode.LDR | 0b0000, ..OpcodeTestHelpers.GetAddress(0x10)], // LDR R0, ADDR: 16
+                program: [(byte)OpcodeBaseCode.LDR | 0b0000, .. OpcodeTestHelpers.GetAddress(0x10)], // LDR R0, ADDR: 16
                 out var state,
                 out _,
                 out var memory);
@@ -277,7 +277,7 @@ namespace CPU.Tests
                 out var state,
                 out _,
                 out _);
-            
+
             // Act
             cpu.Step(traceEnabled: false);
 
@@ -386,6 +386,176 @@ namespace CPU.Tests
             // Assert
             Assert.That(state.GetRegister(0), Is.EqualTo(255), "Result should be R0 - 1 - (1 - carry) = 0 - 1 - 0 = 255 (underflow)");
             Assert.That(state.C, Is.False, "Carry flag should not be set (uses a no borrow carry).");
+        }
+    }
+
+    [TestFixture]
+    public class CLC_tests
+    {
+        [Test]
+        public void CLC_ClearsCarryFlag()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.CLC], // CLC
+                out var state,
+                out _,
+                out _);
+            state.SetCarryFlag(true);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.C, Is.False, "Carry flag should have been cleared");
+            Assert.That(state.GetPC(), Is.EqualTo(1), "PC should increment by 1 after CLC instruction");
+        }
+    }
+
+    [TestFixture]
+    public class CMP_tests
+    {
+        [Test]
+        public void CMP_R0_R1_SetsZeroFlagWhenEqual()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.CMP | 0b0000 | 0b0001], // CMP R0, R1
+                out var state,
+                out _,
+                out _);
+            state.SetRegister(0, 1);
+            state.SetRegister(1, 1);
+            state.SetZeroFlag(true);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.Z, Is.True, "Zero flag should be set when R0 equals R1.");
+            Assert.That(state.GetPC(), Is.EqualTo(1), "PC should increment by 1 after CMP instruction.");
+        }
+
+        [Test]
+        public void CMP_RO_R1_ClearsZeroFlagWhenEqual()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.CMP | 0b0000 | 0b0001], // CMP R0, R1
+                out var state,
+                out _,
+                out _);
+            state.SetRegister(0, 1);
+            state.SetRegister(1, 2);
+            state.SetZeroFlag(true);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.Z, Is.False, "Zero flag should be cleared when R0 equals R1.");
+        }
+
+        [Test]
+        public void CMP_R0_R1_SetsCarryFlagWhenDestinationGreaterThanSource()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.CMP | 0b0000 | 0b0001], // CMP R0, R1
+                out var state,
+                out _,
+                out _);
+            state.SetRegister(0, 1); // source
+            state.SetRegister(1, 2); // destination
+            state.SetCarryFlag(false);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.C, Is.True, "Carry flag should be set when destination > source.");
+        }
+
+        [Test]
+        public void CMP_R0_R1_SetsCarryFlagWhenDestinationEqualsSource()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.CMP | 0b0000 | 0b0001], // CMP R0, R1
+                out var state,
+                out _,
+                out _);
+            state.SetRegister(0, 5); // source
+            state.SetRegister(1, 5); // destination
+            state.SetCarryFlag(false);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.C, Is.True, "Carry flag should be set when destination == source.");
+        }
+
+        [Test]
+        public void CMP_R0_R1_ClearsCarryFlagWhenDestinationLessThanSource()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.CMP | 0b0000 | 0b0001], // CMP R0, R1
+                out var state,
+                out _,
+                out _);
+            state.SetRegister(0, 2); // source
+            state.SetRegister(1, 1); // destination
+            state.SetCarryFlag(true);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.C, Is.False, "Carry flag should be cleared when destination < source.");
+        }
+    }
+
+
+    [TestFixture]
+    public class JCC_tests
+    {
+        [Test]
+        public void JCC_JumpsToAddress_WhenCarryFlagIsFalse()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.JCC, .. OpcodeTestHelpers.GetAddress(0x10)], // JCC to address 16
+                out var state,
+                out _,
+                out _);
+            state.SetCarryFlag(false);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.GetPC(), Is.EqualTo(0x10), "PC should be set to the target address when carry flag is false.");
+        }
+
+        [Test]
+        public void JCC_SkipsJump_WhenCarryFlagIsTrue()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.JCC, .. OpcodeTestHelpers.GetAddress(0x10)], // JCC to address 16
+                out var state,
+                out _,
+                out _);
+            state.SetCarryFlag(true);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            var expectedPc = 1 + OpcodeTestHelpers.AddressSize; // instruction + address size
+            Assert.That(state.GetPC(), Is.EqualTo(expectedPc), "PC should skip the jump address when carry flag is true.");
         }
     }
 }

@@ -14,12 +14,15 @@ namespace CPU.opcodes
             new StoreOpcodeGroup().RegisterGroup(_opcodeGroupRegistry);
             new MoveOpcodeGroup().RegisterGroup(_opcodeGroupRegistry);
             new SingleRegisterALUOpcodeGroup().RegisterGroup(_opcodeGroupRegistry);
+            new TwoRegistersCompareOpcodeGroup().RegisterGroup(_opcodeGroupRegistry);
 
             _opcodes = [];
             // Register opcodes
             new NOP(cpuState).RegisterOpcode(_opcodes);
             new HLT().RegisterOpcode(_opcodes);
+            new CLC(cpuState).RegisterOpcode(_opcodes);
             new JMP(cpuState, memory).RegisterOpcode(_opcodes);
+            new JCC(cpuState, memory).RegisterOpcode(_opcodes);
             new CAL(cpuState, memory, stack).RegisterOpcode(_opcodes);
             new RET(cpuState, stack).RegisterOpcode(_opcodes);
             new LDI(cpuState, memory).RegisterOpcode(_opcodes);
@@ -28,6 +31,7 @@ namespace CPU.opcodes
             new MOV(cpuState, memory).RegisterOpcode(_opcodes);
             new ADI(cpuState, memory).RegisterOpcode(_opcodes);
             new SBI(cpuState, memory).RegisterOpcode(_opcodes);
+            new CMP(cpuState, memory).RegisterOpcode(_opcodes);
         }
 
         public IOpcode GetOpcodeFromInstruction(byte instruction)
