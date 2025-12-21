@@ -11,12 +11,12 @@ namespace CPU.opcodes
             var trace = new Trace()
             {
                 InstructionName = nameof(PEK),
-                Args = $"RD: {args.FirstRegisterId}",
-                RBefore = [CpuState.GetRegister(args.FirstRegisterId)],
+                Args = $"RD: {args.LowRegisterIdx}",
+                RBefore = [CpuState.GetRegister(args.LowRegisterIdx)],
             };
             var value = stack.PeekByte();
-            CpuState.SetRegister(args.FirstRegisterId, value);
-            trace.RAfter = [CpuState.GetRegister(args.FirstRegisterId)];
+            CpuState.SetRegister(args.LowRegisterIdx, value);
+            trace.RAfter = [CpuState.GetRegister(args.LowRegisterIdx)];
             return trace;
         }
     }

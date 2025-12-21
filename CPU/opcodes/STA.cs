@@ -11,13 +11,13 @@ namespace CPU.opcodes
             var trace = new Trace()
             {
                 InstructionName = nameof(STA),
-                Args = $"RS: {args.FirstRegisterId}, Memory address: {args.AddressValue}",
-                RBefore = [CpuState.GetRegister(args.FirstRegisterId)],
+                Args = $"RS: {args.LowRegisterIdx}, Memory address: {args.AddressValue}",
+                RBefore = [CpuState.GetRegister(args.LowRegisterIdx)],
             };
 
-            Memory.WriteByte(args.AddressValue, CpuState.GetRegister(args.FirstRegisterId));
+            Memory.WriteByte(args.AddressValue, CpuState.GetRegister(args.LowRegisterIdx));
 
-            trace.RAfter = [CpuState.GetRegister(args.FirstRegisterId)];
+            trace.RAfter = [CpuState.GetRegister(args.LowRegisterIdx)];
             return trace;
         }
     }

@@ -13,13 +13,13 @@ namespace CPU.opcodes
             var trace = new Trace()
             {
                 InstructionName = nameof(LDI),
-                Args = $"RD: {args.FirstRegisterId}, IMM: {immediateValue}",
-                RBefore = [CpuState.GetRegister(args.FirstRegisterId)],
+                Args = $"RD: {args.LowRegisterIdx}, IMM: {immediateValue}",
+                RBefore = [CpuState.GetRegister(args.LowRegisterIdx)],
             };
 
-            CpuState.SetRegister(args.FirstRegisterId, immediateValue);
+            CpuState.SetRegister(args.LowRegisterIdx, immediateValue);
 
-            trace.RAfter = [CpuState.GetRegister(args.FirstRegisterId)];
+            trace.RAfter = [CpuState.GetRegister(args.LowRegisterIdx)];
             return trace;
         }
     }

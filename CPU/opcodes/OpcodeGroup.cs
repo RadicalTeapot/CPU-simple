@@ -13,6 +13,9 @@
         STORE = 0x20,
         MOVE = 0x30,
         SINGLE_REGISTER_ALU = 0x40,
+        ADD = 0x50,
+        SUB = 0x60,
+        BITS_MANIPULATION = 0x70,
         TWO_REGISTERS_COMPARE = 0x90,
     }
 
@@ -37,6 +40,9 @@
     internal class StoreOpcodeGroup() : BaseOpcodeGroup(OpcodeGroupBaseCode.STORE, 0xFC) { }
     internal class MoveOpcodeGroup() : BaseOpcodeGroup(OpcodeGroupBaseCode.MOVE, 0xF0) { }
     internal class SingleRegisterALUOpcodeGroup() : BaseOpcodeGroup(OpcodeGroupBaseCode.SINGLE_REGISTER_ALU, 0xFC) { }
+    internal class AddOpcodeGroup() : BaseOpcodeGroup(OpcodeGroupBaseCode.ADD, 0xF0) { }
+    internal class SubOpcodeGroup() : BaseOpcodeGroup(OpcodeGroupBaseCode.SUB, 0xF0) { }
+    internal class BitsManipulationOpcodeGroup() : BaseOpcodeGroup(OpcodeGroupBaseCode.BITS_MANIPULATION, 0xFC) { }
     internal class TwoRegistersCompareOpcodeGroup() : BaseOpcodeGroup(OpcodeGroupBaseCode.TWO_REGISTERS_COMPARE, 0xF0) { }
 
 }

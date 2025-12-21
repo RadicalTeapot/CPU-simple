@@ -23,7 +23,15 @@
         PSH = 0x28,
         MOV = 0x30,
         ADI = 0x40,
+        ADA = 0x44,
         SBI = 0x48,
+        SBA = 0x4C,
+        ADD = 0x50,
+        SUB = 0x60,
+        LSH = 0x70,
+        RSH = 0x74,
+        LRT = 0x78,
+        RRT = 0x7C,
         CMP = 0x90,
     }
 

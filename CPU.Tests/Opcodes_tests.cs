@@ -491,7 +491,7 @@ namespace CPU.Tests
         {
             // Arrange
             var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
-                program: [(byte)OpcodeBaseCode.CMP | 0b0000 | 0b0001], // CMP R0, R1
+                program: [(byte)OpcodeBaseCode.CMP | 0b0001], // CMP R0, R1
                 out var state,
                 out _,
                 out _);
@@ -512,7 +512,7 @@ namespace CPU.Tests
         {
             // Arrange
             var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
-                program: [(byte)OpcodeBaseCode.CMP | 0b0000 | 0b0001], // CMP R0, R1
+                program: [(byte)OpcodeBaseCode.CMP | 0b0001], // CMP R0, R1
                 out var state,
                 out _,
                 out _);
@@ -532,7 +532,7 @@ namespace CPU.Tests
         {
             // Arrange
             var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
-                program: [(byte)OpcodeBaseCode.CMP | 0b0000 | 0b0001], // CMP R0, R1
+                program: [(byte)OpcodeBaseCode.CMP | 0b0001], // CMP R0, R1
                 out var state,
                 out _,
                 out _);
@@ -552,7 +552,7 @@ namespace CPU.Tests
         {
             // Arrange
             var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
-                program: [(byte)OpcodeBaseCode.CMP | 0b0000 | 0b0001], // CMP R0, R1
+                program: [(byte)OpcodeBaseCode.CMP | 0b0001], // CMP R0, R1
                 out var state,
                 out _,
                 out _);
@@ -572,7 +572,7 @@ namespace CPU.Tests
         {
             // Arrange
             var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
-                program: [(byte)OpcodeBaseCode.CMP | 0b0000 | 0b0001], // CMP R0, R1
+                program: [(byte)OpcodeBaseCode.CMP | 0b0001], // CMP R0, R1
                 out var state,
                 out _,
                 out _);
@@ -881,6 +881,610 @@ namespace CPU.Tests
             // Assert
             Assert.That(state.GetRegister(0), Is.EqualTo(2), "R0 should contain the top value.");
             Assert.That(stack.PeekByte(), Is.EqualTo(1), "Stack should now have previous value at top.");
+        }
+    }
+
+    [TestFixture]
+    public class ADD_tests
+    {
+        [Test]
+        public void ADD_R0_R1_AddsRegisters()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)((byte)OpcodeBaseCode.ADD | 0b0001)], // ADD R0, R1
+                out var state,
+                out _,
+                out _);
+            state.SetRegister(0, 5);
+            state.SetRegister(1, 3);
+            state.SetCarryFlag(false);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.GetRegister(1), Is.EqualTo(8), "Result should be R0 + R1 + carry = 5 + 3 + 0 = 8");
+            Assert.That(state.C, Is.False, "Carry flag should not be set.");
+            Assert.That(state.Z, Is.False, "Zero flag should not be set.");
+            Assert.That(state.GetPC(), Is.EqualTo(1), "PC should increment by 1 after ADD instruction.");
+        }
+
+        [Test]
+        public void ADD_R0_R1_SetsCarryFlagOnOverflow()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)((byte)OpcodeBaseCode.ADD | 0b0001)], // ADD R0, R1
+                out var state,
+                out _,
+                out _);
+            state.SetRegister(0, 2);
+            state.SetRegister(1, 255);
+            state.SetCarryFlag(false);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.GetRegister(1), Is.EqualTo(1), "Result should be (2 + 255) mod 256 = 1");
+            Assert.That(state.C, Is.True, "Carry flag should be set on overflow.");
+        }
+
+        [Test]
+        public void ADD_R0_R1_SetsZeroFlag()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)((byte)OpcodeBaseCode.ADD | 0b0001)], // ADD R0, R1
+                out var state,
+                out _,
+                out _);
+            state.SetRegister(0, 0);
+            state.SetRegister(1, 0);
+            state.SetCarryFlag(false);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.GetRegister(0), Is.EqualTo(0), "Result should be 0");
+            Assert.That(state.Z, Is.True, "Zero flag should be set.");
+        }
+
+        [Test]
+        public void ADD_R0_R1_WithCarry_UsesCarry()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)((byte)OpcodeBaseCode.ADD | 0b0001)], // ADD R0, R1
+                out var state,
+                out _,
+                out _);
+            state.SetRegister(0, 5);
+            state.SetRegister(1, 3);
+            state.SetCarryFlag(true);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.GetRegister(1), Is.EqualTo(9), "Result should be R0 + R1 + carry = 5 + 3 + 1 = 9");
+        }
+    }
+
+    [TestFixture]
+    public class SUB_tests
+    {
+        [Test]
+        public void SUB_R0_R1_SubtractsRegisters()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)((byte)OpcodeBaseCode.SUB | 0b0001)], // SUB R0, R1
+                out var state,
+                out _,
+                out _);
+            state.SetRegister(0, 3);
+            state.SetRegister(1, 10);
+            state.SetCarryFlag(true); // No borrow
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.GetRegister(1), Is.EqualTo(7), "Result should be R1 - R0 - (1 - carry) = 10 - 3 - 0 = 7");
+            Assert.That(state.C, Is.True, "Carry flag should be set (no borrow).");
+            Assert.That(state.Z, Is.False, "Zero flag should not be set.");
+            Assert.That(state.GetPC(), Is.EqualTo(1), "PC should increment by 1 after SUB instruction.");
+        }
+
+        [Test]
+        public void SUB_R0_R1_ClearsCarryFlagOnBorrow()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)((byte)OpcodeBaseCode.SUB | 0b0001)], // SUB R0, R1
+                out var state,
+                out _,
+                out _);
+            state.SetRegister(0, 2);
+            state.SetRegister(1, 1);
+            state.SetCarryFlag(true); // No borrow
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.GetRegister(1), Is.EqualTo(255), "Result should be (1 - 2) mod 256 = 255");
+            Assert.That(state.C, Is.False, "Carry flag should be cleared (borrow occurred).");
+        }
+
+        [Test]
+        public void SUB_R0_R1_SetsZeroFlag()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)((byte)OpcodeBaseCode.SUB | 0b0001)], // SUB R0, R1
+                out var state,
+                out _,
+                out _);
+            state.SetRegister(0, 5);
+            state.SetRegister(1, 5);
+            state.SetCarryFlag(true); // No borrow
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.GetRegister(1), Is.EqualTo(0), "Result should be 0");
+            Assert.That(state.Z, Is.True, "Zero flag should be set.");
+        }
+
+        [Test]
+        public void SUB_R0_R1_WithBorrow_UsesBorrow()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)((byte)OpcodeBaseCode.SUB | 0b0001)], // SUB R0, R1
+                out var state,
+                out _,
+                out _);
+            state.SetRegister(0, 3);
+            state.SetRegister(1, 10);
+            state.SetCarryFlag(false); // Borrow
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.GetRegister(1), Is.EqualTo(6), "Result should be R0 - R1 - (1 - carry) = 10 - 3 - 1 = 6");
+        }
+    }
+
+    [TestFixture]
+    public class ADA_tests
+    {
+        [Test]
+        public void ADA_R0_AddsMemoryValueToRegister()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.ADA | 0b0000, .. OpcodeTestHelpers.GetAddress(0x10)], // ADA R0, ADDR: 16
+                out var state,
+                out _,
+                out var memory);
+            state.SetRegister(0, 5);
+            memory.WriteByte(0x10, 3);
+            state.SetCarryFlag(false);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.GetRegister(0), Is.EqualTo(8), "Result should be R0 + mem[16] + carry = 5 + 3 + 0 = 8");
+            Assert.That(state.C, Is.False, "Carry flag should not be set.");
+            Assert.That(state.Z, Is.False, "Zero flag should not be set.");
+            var expectedPc = 1 + OpcodeTestHelpers.AddressSize;
+            Assert.That(state.GetPC(), Is.EqualTo(expectedPc), $"PC should increment by {expectedPc} after ADA instruction.");
+        }
+
+        [Test]
+        public void ADA_R0_SetsCarryFlagOnOverflow()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.ADA | 0b0000, .. OpcodeTestHelpers.GetAddress(0x10)], // ADA R0, ADDR: 16
+                out var state,
+                out _,
+                out var memory);
+            state.SetRegister(0, 2);
+            memory.WriteByte(0x10, 255);
+            state.SetCarryFlag(false);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.GetRegister(0), Is.EqualTo(1), "Result should be (2 + 255) mod 256 = 1");
+            Assert.That(state.C, Is.True, "Carry flag should be set on overflow.");
+        }
+
+        [Test]
+        public void ADA_R0_SetsZeroFlag()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.ADA | 0b0000, .. OpcodeTestHelpers.GetAddress(0x10)], // ADA R0, ADDR: 16
+                out var state,
+                out _,
+                out var memory);
+            state.SetRegister(0, 0);
+            memory.WriteByte(0x10, 0);
+            state.SetCarryFlag(false);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.GetRegister(0), Is.EqualTo(0), "Result should be 0");
+            Assert.That(state.Z, Is.True, "Zero flag should be set.");
+        }
+
+        [Test]
+        public void ADA_R0_WithCarry_UsesCarry()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.ADA | 0b0000, .. OpcodeTestHelpers.GetAddress(0x10)], // ADA R0, ADDR: 16
+                out var state,
+                out _,
+                out var memory);
+            state.SetRegister(0, 5);
+            memory.WriteByte(0x10, 3);
+            state.SetCarryFlag(true);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.GetRegister(0), Is.EqualTo(9), "Result should be R0 + mem[16] + carry = 5 + 3 + 1 = 9");
+        }
+    }
+
+    [TestFixture]
+    public class SBA_tests
+    {
+        [Test]
+        public void SBA_R0_SubtractsMemoryValueFromRegister()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.SBA | 0b0000, .. OpcodeTestHelpers.GetAddress(0x10)], // SBA R0, ADDR: 16
+                out var state,
+                out _,
+                out var memory);
+            state.SetRegister(0, 10);
+            memory.WriteByte(0x10, 3);
+            state.SetCarryFlag(true); // No borrow
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.GetRegister(0), Is.EqualTo(7), "Result should be R0 - mem[16] - (1 - carry) = 10 - 3 - 0 = 7");
+            Assert.That(state.C, Is.True, "Carry flag should be set (no borrow).");
+            Assert.That(state.Z, Is.False, "Zero flag should not be set.");
+            var expectedPc = 1 + OpcodeTestHelpers.AddressSize;
+            Assert.That(state.GetPC(), Is.EqualTo(expectedPc), $"PC should increment by {expectedPc} after SBA instruction.");
+        }
+
+        [Test]
+        public void SBA_R0_ClearsCarryFlagOnBorrow()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.SBA | 0b0000, .. OpcodeTestHelpers.GetAddress(0x10)], // SBA R0, ADDR: 16
+                out var state,
+                out _,
+                out var memory);
+            state.SetRegister(0, 1);
+            memory.WriteByte(0x10, 2);
+            state.SetCarryFlag(true); // No borrow
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.GetRegister(0), Is.EqualTo(255), "Result should be (1 - 2) mod 256 = 255");
+            Assert.That(state.C, Is.False, "Carry flag should be cleared (borrow occurred).");
+        }
+
+        [Test]
+        public void SBA_R0_SetsZeroFlag()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.SBA | 0b0000, .. OpcodeTestHelpers.GetAddress(0x10)], // SBA R0, ADDR: 16
+                out var state,
+                out _,
+                out var memory);
+            state.SetRegister(0, 5);
+            memory.WriteByte(0x10, 5);
+            state.SetCarryFlag(true); // No borrow
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.GetRegister(0), Is.EqualTo(0), "Result should be 0");
+            Assert.That(state.Z, Is.True, "Zero flag should be set.");
+        }
+
+        [Test]
+        public void SBA_R0_WithBorrow_UsesBorrow()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.SBA | 0b0000, .. OpcodeTestHelpers.GetAddress(0x10)], // SBA R0, ADDR: 16
+                out var state,
+                out _,
+                out var memory);
+            state.SetRegister(0, 10);
+            memory.WriteByte(0x10, 3);
+            state.SetCarryFlag(false); // Borrow
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.GetRegister(0), Is.EqualTo(6), "Result should be R0 - mem[16] - (1 - carry) = 10 - 3 - 1 = 6");
+        }
+    }
+
+    [TestFixture]
+    public class LSH_tests
+    {
+        [Test]
+        public void LSH_R0_ShiftsLeft()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.LSH | 0b0000], // LSH R0
+                out var state,
+                out _,
+                out _);
+            state.SetRegister(0, 0b0010_1010); // 42
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.GetRegister(0), Is.EqualTo(0b0101_0100), "Result should be 42 << 1 = 84");
+            Assert.That(state.C, Is.False, "Carry flag should not be set (bit 7 was 0).");
+            Assert.That(state.GetPC(), Is.EqualTo(1), "PC should increment by 1 after LSH instruction.");
+        }
+
+        [Test]
+        public void LSH_R0_SetsCarryFlagWhenBit7IsSet()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.LSH | 0b0000], // LSH R0
+                out var state,
+                out _,
+                out _);
+            state.SetRegister(0, 0b1000_0001); // 129
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.GetRegister(0), Is.EqualTo(0b0000_0010), "Result should be 129 << 1 = 2");
+            Assert.That(state.C, Is.True, "Carry flag should be set (bit 7 was 1).");
+        }
+
+        [Test]
+        public void LSH_R0_ClearsCarryFlagWhenBit7IsClear()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.LSH | 0b0000], // LSH R0
+                out var state,
+                out _,
+                out _);
+            state.SetRegister(0, 0b0111_1111); // 127
+            state.SetCarryFlag(true);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.GetRegister(0), Is.EqualTo(0b1111_1110), "Result should be 127 << 1 = 254");
+            Assert.That(state.C, Is.False, "Carry flag should be cleared (bit 7 was 0).");
+        }
+    }
+
+    [TestFixture]
+    public class RSH_tests
+    {
+        [Test]
+        public void RSH_R0_ShiftsRight()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.RSH | 0b0000], // RSH R0
+                out var state,
+                out _,
+                out _);
+            state.SetRegister(0, 0b0010_1010); // 42
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.GetRegister(0), Is.EqualTo(0b0001_0101), "Result should be 42 >> 1 = 21");
+            Assert.That(state.C, Is.False, "Carry flag should not be set (bit 0 was 0).");
+            Assert.That(state.GetPC(), Is.EqualTo(1), "PC should increment by 1 after RSH instruction.");
+        }
+
+        [Test]
+        public void RSH_R0_SetsCarryFlagWhenBit0IsSet()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.RSH | 0b0000], // RSH R0
+                out var state,
+                out _,
+                out _);
+            state.SetRegister(0, 0b0000_0011); // 3
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.GetRegister(0), Is.EqualTo(0b0000_0001), "Result should be 3 >> 1 = 1");
+            Assert.That(state.C, Is.True, "Carry flag should be set (bit 0 was 1).");
+        }
+
+        [Test]
+        public void RSH_R0_ClearsCarryFlagWhenBit0IsClear()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.RSH | 0b0000], // RSH R0
+                out var state,
+                out _,
+                out _);
+            state.SetRegister(0, 0b1111_1110); // 254
+            state.SetCarryFlag(true);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.GetRegister(0), Is.EqualTo(0b0111_1111), "Result should be 254 >> 1 = 127");
+            Assert.That(state.C, Is.False, "Carry flag should be cleared (bit 0 was 0).");
+        }
+    }
+
+    [TestFixture]
+    public class LRT_tests
+    {
+        [Test]
+        public void LRT_R0_RotatesLeft()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.LRT | 0b0000], // LRT R0
+                out var state,
+                out _,
+                out _);
+            state.SetRegister(0, 0b0010_1010); // 42
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.GetRegister(0), Is.EqualTo(0b0101_0100), "Result should be 42 rotated left = 84");
+            Assert.That(state.GetPC(), Is.EqualTo(1), "PC should increment by 1 after LRT instruction.");
+        }
+
+        [Test]
+        public void LRT_R0_RotatesBit7ToBit0()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.LRT | 0b0000], // LRT R0
+                out var state,
+                out _,
+                out _);
+            state.SetRegister(0, 0b1000_0000); // 128
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.GetRegister(0), Is.EqualTo(0b0000_0001), "Result should be 128 rotated left = 1");
+        }
+
+        [Test]
+        public void LRT_R0_CarryFlagUnaffected()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.LRT | 0b0000], // LRT R0
+                out var state,
+                out _,
+                out _);
+            state.SetRegister(0, 0b1000_0000); // 128
+            state.SetCarryFlag(false);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.C, Is.False, "Carry flag should remain unaffected.");
+        }
+    }
+
+    [TestFixture]
+    public class RRT_tests
+    {
+        [Test]
+        public void RRT_R0_RotatesRight()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.RRT | 0b0000], // RRT R0
+                out var state,
+                out _,
+                out _);
+            state.SetRegister(0, 0b0010_1010); // 42
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.GetRegister(0), Is.EqualTo(0b0001_0101), "Result should be 42 rotated right = 21");
+            Assert.That(state.GetPC(), Is.EqualTo(1), "PC should increment by 1 after RRT instruction.");
+        }
+
+        [Test]
+        public void RRT_R0_RotatesBit0ToBit7()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.RRT | 0b0000], // RRT R0
+                out var state,
+                out _,
+                out _);
+            state.SetRegister(0, 0b0000_0001); // 1
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.GetRegister(0), Is.EqualTo(0b1000_0000), "Result should be 1 rotated right = 128");
+        }
+
+        [Test]
+        public void RRT_R0_CarryFlagUnaffected()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.RRT | 0b0000], // RRT R0
+                out var state,
+                out _,
+                out _);
+            state.SetRegister(0, 0b0000_0001); // 1
+            state.SetCarryFlag(false);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.C, Is.False, "Carry flag should remain unaffected.");
         }
     }
 }

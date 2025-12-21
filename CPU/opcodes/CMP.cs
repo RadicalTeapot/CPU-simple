@@ -11,16 +11,16 @@ namespace CPU.opcodes
             var trace = new Trace()
             {
                 InstructionName = nameof(CMP),
-                Args = $"RD: {args.FirstRegisterId}, RS: {args.SecondRegisterId}",
-                RBefore = [CpuState.GetRegister(args.FirstRegisterId), CpuState.GetRegister(args.SecondRegisterId)],
+                Args = $"RD: {args.LowRegisterIdx}, RS: {args.HighRegisterIdx}",
+                RBefore = [CpuState.GetRegister(args.LowRegisterIdx), CpuState.GetRegister(args.HighRegisterIdx)],
             };
 
-            var destination = CpuState.GetRegister(args.FirstRegisterId);
-            var source = CpuState.GetRegister(args.SecondRegisterId);
+            var source = CpuState.GetRegister(args.HighRegisterIdx);
+            var destination = CpuState.GetRegister(args.LowRegisterIdx);            
             CpuState.SetZeroFlag(destination == source);
             CpuState.SetCarryFlag(destination >= source); // Similar to SUB (no borrow), but without actual subtraction
 
-            trace.RAfter = [CpuState.GetRegister(args.FirstRegisterId), CpuState.GetRegister(args.SecondRegisterId)];
+            trace.RAfter = [CpuState.GetRegister(args.LowRegisterIdx), CpuState.GetRegister(args.HighRegisterIdx)];
             return trace;
         }
     }

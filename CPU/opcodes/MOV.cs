@@ -11,14 +11,14 @@ namespace CPU.opcodes
             var trace = new Trace()
             {
                 InstructionName = nameof(MOV),
-                Args = $"RD: {args.FirstRegisterId}, RS: {args.SecondRegisterId}",
-                RBefore = [CpuState.GetRegister(args.FirstRegisterId), CpuState.GetRegister(args.SecondRegisterId)],
+                Args = $"RD: {args.LowRegisterIdx}, RS: {args.HighRegisterIdx}",
+                RBefore = [CpuState.GetRegister(args.LowRegisterIdx), CpuState.GetRegister(args.HighRegisterIdx)],
             };
 
-            var value = CpuState.GetRegister(args.SecondRegisterId);
-            CpuState.SetRegister(args.FirstRegisterId, value);
+            var value = CpuState.GetRegister(args.HighRegisterIdx);
+            CpuState.SetRegister(args.LowRegisterIdx, value);
 
-            trace.RAfter = [CpuState.GetRegister(args.FirstRegisterId), CpuState.GetRegister(args.SecondRegisterId)];
+            trace.RAfter = [CpuState.GetRegister(args.LowRegisterIdx), CpuState.GetRegister(args.HighRegisterIdx)];
             return trace;
         }
     }

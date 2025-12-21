@@ -18,8 +18,14 @@ namespace CPU.opcodes
 
     internal struct OpcodeArgs()
     {
-        public byte FirstRegisterId = 0;    // Used only if applicable, bits 0-1
-        public byte SecondRegisterId = 0;   // Used only if applicable, bits 2-3
+        /// <summary>
+        /// Bits 2-3 register index, typically source register, if applicable.
+        /// </summary>
+        public byte HighRegisterIdx = 0;
+        /// <summary>
+        /// Bits 0-1 register index, typically destination register, if applicable.
+        /// </summary>
+        public byte LowRegisterIdx = 0;
         public byte ImmediateValue = 0;
 #if x16
         public ushort AddressValue = 0;
@@ -102,7 +108,7 @@ namespace CPU.opcodes
         {
             public void ParseArguments(byte instruction, ref OpcodeArgs args)
             {
-                args.FirstRegisterId = (byte)(instruction & REGISTER_MASK);
+                args.LowRegisterIdx = (byte)(instruction & REGISTER_MASK);
             }
 
             private const byte REGISTER_MASK = 0x03;
@@ -112,8 +118,8 @@ namespace CPU.opcodes
         {
             public void ParseArguments(byte instruction, ref OpcodeArgs args)
             {
-                args.FirstRegisterId = (byte)(instruction & REGISTER_MASK);
-                args.SecondRegisterId = (byte)((instruction >> 2) & REGISTER_MASK);
+                args.HighRegisterIdx = (byte)((instruction >> 2) & REGISTER_MASK);  // Bits 2-3, typically source register
+                args.LowRegisterIdx = (byte)(instruction & REGISTER_MASK);          // Bits 0-1, typically destination register
             }
 
             private const byte REGISTER_MASK = 0x03;

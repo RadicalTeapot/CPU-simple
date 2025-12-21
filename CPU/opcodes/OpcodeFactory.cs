@@ -14,6 +14,9 @@ namespace CPU.opcodes
             new StoreOpcodeGroup().RegisterGroup(_opcodeGroupRegistry);
             new MoveOpcodeGroup().RegisterGroup(_opcodeGroupRegistry);
             new SingleRegisterALUOpcodeGroup().RegisterGroup(_opcodeGroupRegistry);
+            new AddOpcodeGroup().RegisterGroup(_opcodeGroupRegistry);
+            new SubOpcodeGroup().RegisterGroup(_opcodeGroupRegistry);
+            new BitsManipulationOpcodeGroup().RegisterGroup(_opcodeGroupRegistry);
             new TwoRegistersCompareOpcodeGroup().RegisterGroup(_opcodeGroupRegistry);
 
             _opcodes = [];
@@ -39,7 +42,15 @@ namespace CPU.opcodes
             new PSH(cpuState, memory, stack).RegisterOpcode(_opcodes);
             new MOV(cpuState, memory).RegisterOpcode(_opcodes);
             new ADI(cpuState, memory).RegisterOpcode(_opcodes);
+            new ADA(cpuState, memory).RegisterOpcode(_opcodes);
             new SBI(cpuState, memory).RegisterOpcode(_opcodes);
+            new SBA(cpuState, memory).RegisterOpcode(_opcodes);
+            new ADD(cpuState, memory).RegisterOpcode(_opcodes);
+            new SUB(cpuState, memory).RegisterOpcode(_opcodes);
+            new LSH(cpuState, memory).RegisterOpcode(_opcodes);
+            new RSH(cpuState, memory).RegisterOpcode(_opcodes);
+            new LRT(cpuState, memory).RegisterOpcode(_opcodes);
+            new RRT(cpuState, memory).RegisterOpcode(_opcodes);
             new CMP(cpuState, memory).RegisterOpcode(_opcodes);
         }
 

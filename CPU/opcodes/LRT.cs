@@ -2,20 +2,23 @@
 
 namespace CPU.opcodes
 {
-    internal class POP(State cpuState, Memory memory, Stack stack) : BaseOpcode(
-        OpcodeBaseCode.POP, RegisterArgsCount.One, OperandType.None,
+    internal class LRT(State cpuState, Memory memory) : BaseOpcode(
+        OpcodeBaseCode.LRT, RegisterArgsCount.One, OperandType.None,
         cpuState, memory)
     {
         protected override Trace Execute(OpcodeArgs args)
         {
             var trace = new Trace()
             {
-                InstructionName = nameof(POP),
+                InstructionName = nameof(LRT),
                 Args = $"RD: {args.LowRegisterIdx}",
                 RBefore = [CpuState.GetRegister(args.LowRegisterIdx)],
             };
-            var value = stack.PopByte();
-            CpuState.SetRegister(args.LowRegisterIdx, value);
+
+            var value = CpuState.GetRegister(args.LowRegisterIdx);
+            var msb = (byte)(value & 0x80);
+            CpuState.SetRegister(args.LowRegisterIdx, (byte)((value << 1) | (msb >> 7)));
+
             trace.RAfter = [CpuState.GetRegister(args.LowRegisterIdx)];
             return trace;
         }

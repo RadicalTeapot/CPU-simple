@@ -11,12 +11,12 @@ namespace CPU.opcodes
             var trace = new Trace()
             {
                 InstructionName = nameof(LDA),
-                Args = $"RD: {args.FirstRegisterId}, ADDR: {args.AddressValue}",
-                RBefore = [CpuState.GetRegister(args.FirstRegisterId)],
+                Args = $"RD: {args.LowRegisterIdx}, ADDR: {args.AddressValue}",
+                RBefore = [CpuState.GetRegister(args.LowRegisterIdx)],
             };
 
-            CpuState.SetRegister(args.FirstRegisterId, Memory.ReadByte(args.AddressValue));
-            trace.RAfter = [CpuState.GetRegister(args.FirstRegisterId)];
+            CpuState.SetRegister(args.LowRegisterIdx, Memory.ReadByte(args.AddressValue));
+            trace.RAfter = [CpuState.GetRegister(args.LowRegisterIdx)];
             return trace;
         }
     }
