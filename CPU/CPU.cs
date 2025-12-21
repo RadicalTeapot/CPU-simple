@@ -63,9 +63,10 @@ namespace CPU
         /// <summary>Executes a single instruction cycle.</summary>
         public void Step(bool traceEnabled)
         {
-            var instruction = _memory.ReadByte(_state.GetPC());
-            var opcode = _opcodeFactory.GetOpcodeFromInstruction(instruction);
-            opcode.Execute(out var trace);
+            // TODO: Implement proper instruction fetching with PC incrementing after fetch (currently done in opcodes)
+            var instruction = _memory.ReadByte(_state.GetPC()); // Fetch (partial)
+            var opcode = _opcodeFactory.GetOpcodeFromInstruction(instruction); // Decode
+            opcode.Execute(out var trace); // Execute (some fetching happens here too)
 
             if (traceEnabled)
             {
