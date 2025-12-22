@@ -3,6 +3,10 @@ using System.Diagnostics;
 
 namespace CPU.opcodes
 {
+    /// <summary>
+    /// Factory class responsible for creating and managing opcodes.
+    /// </summary>
+    /// <remarks>This plays the role of the "Control unit" in a CPU architecture.</remarks>
     internal class OpcodeFactory
     {
         public OpcodeFactory(State cpuState, Stack stack, Memory memory)

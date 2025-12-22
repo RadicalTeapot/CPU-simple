@@ -39,7 +39,7 @@ namespace CPU
 
         public void Run(bool traceEnabled)
         {
-            while (_state.GetPC() < _memory.Size) // TODO Fix for 16-bit architecture
+            while (_state.GetPC() - AddressSize <= _memory.Size)
             {
                 try
                 {
@@ -87,5 +87,10 @@ namespace CPU
         private readonly Stack _stack;
         private readonly Memory _memory;
         private readonly OpcodeFactory _opcodeFactory;
+#if x16
+        public const int AddressSize = 2;
+#else
+        public const int AddressSize = 1;
+#endif
     }
 }
