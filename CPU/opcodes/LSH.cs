@@ -2,7 +2,7 @@
 
 namespace CPU.opcodes
 {
-    [Opcode(OpcodeBaseCode.LSH, OpcodeGroupBaseCode.BITS_MANIPULATION, RegisterArgsCount.One, OperandType.None)]
+    [Opcode(OpcodeBaseCode.LSH, OpcodeGroupBaseCode.BitsManipulation, RegisterArgsCount.One, OperandType.None)]
     internal class LSH(State cpuState, Memory memory, Stack stack, OpcodeArgs args) : IOpcode
     {
         public void Execute()

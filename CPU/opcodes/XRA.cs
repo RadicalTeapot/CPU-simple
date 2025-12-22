@@ -1,0 +1,17 @@
+﻿using CPU.components;
+
+namespace CPU.opcodes
+{
+    [Opcode(OpcodeBaseCode.XRA, OpcodeGroupBaseCode.SingleRegisterLogicOne, RegisterArgsCount.One, OperandType.Address)]
+    internal class XRA(State cpuState, Memory memory, Stack stack, OpcodeArgs args) : IOpcode
+    {
+        public void Execute()
+        {
+            var currentValue = cpuState.GetRegister(args.LowRegisterIdx);
+            var valueAtAddress = memory.ReadByte(args.AddressValue);
+            var value = (byte)(currentValue ^ valueAtAddress);
+            cpuState.SetRegister(args.LowRegisterIdx, value);
+            cpuState.SetZeroFlag(value == 0);
+        }
+    }
+}

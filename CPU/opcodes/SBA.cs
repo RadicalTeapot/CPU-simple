@@ -2,7 +2,7 @@
 
 namespace CPU.opcodes
 {
-    [Opcode(OpcodeBaseCode.SBA, OpcodeGroupBaseCode.SINGLE_REGISTER_ALU, RegisterArgsCount.One, OperandType.Address)]
+    [Opcode(OpcodeBaseCode.SBA, OpcodeGroupBaseCode.SingleRegisterALU, RegisterArgsCount.One, OperandType.Address)]
     internal class SBA(State cpuState, Memory memory, Stack stack, OpcodeArgs args) : IOpcode
     {
         public void Execute()

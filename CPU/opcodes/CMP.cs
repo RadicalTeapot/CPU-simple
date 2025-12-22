@@ -2,7 +2,7 @@
 
 namespace CPU.opcodes
 {
-    [Opcode(OpcodeBaseCode.CMP, OpcodeGroupBaseCode.TWO_REGISTERS_COMPARE, RegisterArgsCount.Two, OperandType.None)]
+    [Opcode(OpcodeBaseCode.CMP, OpcodeGroupBaseCode.TwoRegistersCompare, RegisterArgsCount.Two, OperandType.None)]
     internal class CMP(State cpuState, Memory memory, Stack stack, OpcodeArgs args) : IOpcode
     {
         public void Execute()

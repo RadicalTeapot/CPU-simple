@@ -2,7 +2,7 @@
 
 namespace CPU.opcodes
 {
-    [Opcode(OpcodeBaseCode.LRT, OpcodeGroupBaseCode.BITS_MANIPULATION, RegisterArgsCount.One, OperandType.None)]
+    [Opcode(OpcodeBaseCode.LRT, OpcodeGroupBaseCode.BitsManipulation, RegisterArgsCount.One, OperandType.None)]
     internal class LRT(State cpuState, Memory memory, Stack stack, OpcodeArgs args) : IOpcode
     {
         public void Execute()

@@ -32,7 +32,22 @@
         RSH = 0x74,
         LRT = 0x78,
         RRT = 0x7C,
+        CPI = 0x80,
+        CPA = 0x84,
+        ANI = 0x88,
+        ANA = 0x8C,
         CMP = 0x90,
+        AND = 0xA0,
+        ORI = 0xB0,
+        ORA = 0xB4,
+        XRI = 0xB8,
+        XRA = 0xBC,
+        OR = 0xC0,
+        XOR = 0xD0,
+        INC = 0xE0,
+        DEC = 0xE4,
+        BTI = 0xE8,
+        BTA = 0xEC,
     }
 
     internal struct OpcodeArgs()

@@ -2,7 +2,7 @@
 
 namespace CPU.opcodes
 {
-    [Opcode(OpcodeBaseCode.SUB, OpcodeGroupBaseCode.SUB, RegisterArgsCount.Two, OperandType.None)]
+    [Opcode(OpcodeBaseCode.SUB, OpcodeGroupBaseCode.Subtract, RegisterArgsCount.Two, OperandType.None)]
     internal class SUB(State cpuState, Memory memory, Stack stack, OpcodeArgs args) : IOpcode
     {
         public void Execute()

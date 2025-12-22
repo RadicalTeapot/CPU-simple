@@ -2,7 +2,7 @@
 
 namespace CPU.opcodes
 {
-    [Opcode(OpcodeBaseCode.LDA, OpcodeGroupBaseCode.LOAD, RegisterArgsCount.One, OperandType.Address)]
+    [Opcode(OpcodeBaseCode.LDA, OpcodeGroupBaseCode.Load, RegisterArgsCount.One, OperandType.Address)]
     internal class LDA(State cpuState, Memory memory, Stack stack, OpcodeArgs args) : IOpcode
     {
         public void Execute()

@@ -2,7 +2,7 @@
 
 namespace CPU.opcodes
 {
-    [Opcode(OpcodeBaseCode.ADD, OpcodeGroupBaseCode.ADD, RegisterArgsCount.Two, OperandType.None)]
+    [Opcode(OpcodeBaseCode.ADD, OpcodeGroupBaseCode.Add, RegisterArgsCount.Two, OperandType.None)]
     internal class ADD(State cpuState, Memory memory, Stack stack, OpcodeArgs args) : IOpcode
     {
         public void Execute()
