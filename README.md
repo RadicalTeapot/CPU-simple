@@ -52,3 +52,10 @@ dotnet run --project Main/Main.csproj
 - Simple, readable CPU implementation for learning and experimentation
 - Clear opcode definitions and mapping
 - Test-driven verification of CPU behavior
+
+## To do
+
+- [/] Write assembler
+- [ ] Cleanup opcode constructors to take only necessary parameters (or use an interface to mask un-necessary parameters)
+- [ ] Cleanup trace logic to add before and after snapshots of registers, memory and stack
+- [ ] Implement TUI
