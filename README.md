@@ -1,22 +1,30 @@
 # CPU Simple
 
-A minimal educational 8-bit CPU implemented in C# with a small runtime, opcode set, and tests. This repository contains the CPU core, an opcode table, a test suite, and a simple console entry point.
+A minimal educational 8-bit CPU implemented in C# with a small runtime, opcode set, and tests. This repository contains the CPU core, an opcode table, a test suite, a simple console entry point and a terminal UI client to visualize the CPU state.
 
 ## Repository Structure
 
-- `CPU/`: Core CPU implementation (state, stack, trace, opcodes integration)
-- `opcodes/`: Opcode abstractions, table, and exceptions
+- `CPU/CPU.cs`: Core CPU implementation
+- `CPU/opcodes/`: Opcode abstractions, table, and exceptions
+- `CPU/components/`: Memory, Stack and State
 - `CPU.Tests/`: Unit tests for CPU and opcodes
 - `Main/`: Console application that hosts/runs the CPU
+- `TUI/`: Console application to visualize the CPU state while running a program
 - `docs/`: Design and specification documents
 
 ## Documentation
 
 Documentation can be found in the `docs` folder.
 
+## Architectures
+
+The CPU can be built using either an 8bit address space (`Debug` and `Release` configurations) or a 16bit address space (`DebugX16` and `ReleaseX16` configurations).
+This is achieved by setting the `x16` compile flag for 16bit build.
+
 ## Getting Started
 
 ### Prerequisites
+
 - .NET SDK 8.0 or newer installed
 
 ### Build and Test
