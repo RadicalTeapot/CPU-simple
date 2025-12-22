@@ -2,20 +2,12 @@
 
 namespace CPU.opcodes
 {
-    internal class NOP(State cpuState) : IOpcode
+    [Opcode(OpcodeBaseCode.NOP, OpcodeGroupBaseCode.SYSTEM_AND_JUMP, RegisterArgsCount.Zero, OperandType.None)]
+    internal class NOP(State cpuState, Memory memory, Stack stack) : BaseOpcode(cpuState, memory, stack)
     {
-        public void RegisterOpcode(Dictionary<OpcodeBaseCode, IOpcode> opcodeRegistry)
-            => opcodeRegistry[OpcodeBaseCode.NOP] = this;
-
-        public void Execute(out Trace trace)
+        public override void Execute(OpcodeArgs args)
         {
             // No operation
-            trace = new Trace
-            {
-                InstructionName = nameof(NOP),
-                Args = "-",
-            };
-            cpuState.IncrementPC();
         }
     }
 }

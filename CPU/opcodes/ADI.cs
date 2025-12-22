@@ -2,27 +2,16 @@
 
 namespace CPU.opcodes
 {
-    internal class ADI(State cpuState, Memory memory): BaseOpcode(
-        OpcodeBaseCode.ADI, RegisterArgsCount.One, OperandType.Immediate, 
-        cpuState, memory)
+    [Opcode(OpcodeBaseCode.ADI, OpcodeGroupBaseCode.SINGLE_REGISTER_ALU, RegisterArgsCount.One, OperandType.Immediate)]
+    internal class ADI(State cpuState, Memory memory, Stack stack) : BaseOpcode(cpuState, memory, stack)
     {
-        protected override Trace Execute(OpcodeArgs args)
+        public override void Execute(OpcodeArgs args)
         {
-            var trace = new Trace()
-            {
-                InstructionName = nameof(ADI),
-                Args = $"RD: {args.LowRegisterIdx}, IMM: {args.ImmediateValue}",
-                RBefore = [CpuState.GetRegister(args.LowRegisterIdx)],
-            };
-
             var currentValue = CpuState.GetRegister(args.LowRegisterIdx);
             var result = currentValue + args.ImmediateValue + CpuState.GetCarryFlagAsInt();
             CpuState.SetRegister(args.LowRegisterIdx, (byte)result); // Wrap around on overflow
             CpuState.SetCarryFlag(result > 0xFF);
             CpuState.SetZeroFlag(result == 0);
-
-            trace.RAfter = [CpuState.GetRegister(args.LowRegisterIdx)];
-            return trace;
         }
     }
 }

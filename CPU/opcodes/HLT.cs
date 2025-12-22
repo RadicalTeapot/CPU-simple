@@ -1,17 +1,12 @@
-﻿namespace CPU.opcodes
-{
-    internal class HLT: IOpcode
-    {
-        public void RegisterOpcode(Dictionary<OpcodeBaseCode, IOpcode> opcodeRegistry)
-            => opcodeRegistry[OpcodeBaseCode.HLT] = this;
+﻿using CPU.components;
 
-        public void Execute(out Trace trace)
+namespace CPU.opcodes
+{
+    [Opcode(OpcodeBaseCode.HLT, OpcodeGroupBaseCode.SYSTEM_AND_JUMP, RegisterArgsCount.Zero, OperandType.None)]
+    internal class HLT(State cpuState, Memory memory, Stack stack) : BaseOpcode(cpuState, memory, stack)
+    {
+        public override void Execute(OpcodeArgs args)
         {
-            trace = new Trace
-            {
-                InstructionName = nameof(HLT),
-                Args = "-",
-            };
             throw new OpcodeException.HaltException();
         }
     }

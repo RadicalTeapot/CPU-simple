@@ -35,9 +35,19 @@
         CMP = 0x90,
     }
 
-    public interface IOpcode
+    /// <summary>
+    /// Interface for CPU opcodes.
+    /// </summary>
+    /// <remarks>
+    /// Opcodes should be decorated with <see cref="OpcodeAttribute"/> for auto-discovery.
+    /// The Execute method returns true if the opcode modified PC (jumps, calls, returns).
+    /// </remarks>
+    internal interface IOpcode
     {
-        void RegisterOpcode(Dictionary<OpcodeBaseCode, IOpcode> opcodeRegistry);
-        void Execute(out Trace trace);
+        /// <summary>
+        /// Executes the opcode with the given arguments.
+        /// </summary>
+        /// <param name="args">Parsed opcode arguments (registers, immediate, address)</param>
+        void Execute(OpcodeArgs args);
     }
 }

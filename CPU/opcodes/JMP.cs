@@ -2,27 +2,12 @@
 
 namespace CPU.opcodes
 {
-    // Note: This doesn't inherit from BaseOpcode because it has to handle PC differently
-    internal class JMP(State cpuState, Memory memory) : IOpcode
+    [Opcode(OpcodeBaseCode.JMP, OpcodeGroupBaseCode.SYSTEM_AND_JUMP, RegisterArgsCount.Zero, OperandType.Address)]
+    internal class JMP(State cpuState, Memory memory, Stack stack) : BaseOpcode(cpuState, memory, stack)
     {
-        public void RegisterOpcode(Dictionary<OpcodeBaseCode, IOpcode> opcodeRegistry)
-            => opcodeRegistry[OpcodeBaseCode.JMP] = this;
-
-        public void Execute(out Trace trace)
+        public override void Execute(OpcodeArgs args)
         {
-            var pcBefore = cpuState.GetPC();
-
-            cpuState.IncrementPC(1); // Move to operand
-            var targetAddress = memory.ReadAddress(cpuState.GetPC(), out _);
-            cpuState.SetPC(targetAddress);
-
-            trace = new Trace()
-            {
-                InstructionName = nameof(JMP),
-                Args = $"ADDR: {targetAddress}",
-                PcBefore = pcBefore,
-                PcAfter = targetAddress
-            };
+            CpuState.SetPC(args.AddressValue);
         }
     }
 }

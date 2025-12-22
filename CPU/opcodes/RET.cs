@@ -2,26 +2,13 @@
 
 namespace CPU.opcodes
 {
-    // Note: This doesn't inherit from BaseOpcode because it has to handle PC differently
-    internal class RET(State cpuState, Stack stack) : IOpcode
+    [Opcode(OpcodeBaseCode.RET, OpcodeGroupBaseCode.SYSTEM_AND_JUMP, RegisterArgsCount.Zero, OperandType.None)]
+    internal class RET(State cpuState, Memory memory, Stack stack) : BaseOpcode(cpuState, memory, stack)
     {
-        public void RegisterOpcode(Dictionary<OpcodeBaseCode, IOpcode> opcodeRegistry)
-            => opcodeRegistry[OpcodeBaseCode.RET] = this;
-
-        public void Execute(out Trace trace)
+        public override void Execute(OpcodeArgs args)
         {
-            var pcBefore = cpuState.GetPC();
-
-            var returnAddress = stack.PopAddress();
-            cpuState.SetPC(returnAddress);
-
-            trace = new Trace()
-            {
-                InstructionName = nameof(RET),
-                Args = $"ADDR: {returnAddress}",
-                PcBefore = pcBefore,
-                PcAfter = returnAddress
-            };
+            var returnAddress = Stack.PopAddress();
+            CpuState.SetPC(returnAddress);
         }
     }
 }

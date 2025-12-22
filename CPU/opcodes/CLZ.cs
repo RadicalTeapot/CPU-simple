@@ -2,23 +2,12 @@
 
 namespace CPU.opcodes
 {
-    internal class CLZ(State cpuState) : IOpcode
+    [Opcode(OpcodeBaseCode.CLZ, OpcodeGroupBaseCode.SYSTEM_AND_JUMP, RegisterArgsCount.Zero, OperandType.None)]
+    internal class CLZ(State cpuState, Memory memory, Stack stack) : BaseOpcode(cpuState, memory, stack)
     {
-        public void RegisterOpcode(Dictionary<OpcodeBaseCode, IOpcode> opcodeRegistry)
-            => opcodeRegistry[OpcodeBaseCode.CLZ] = this;
-
-        public void Execute(out Trace trace)
+        public override void Execute(OpcodeArgs args)
         {
-            var pcBefore = cpuState.GetPC();
-
-            cpuState.SetZeroFlag(false);
-            cpuState.IncrementPC();
-
-            trace = new Trace()
-            {
-                InstructionName = nameof(CLZ),
-                Args = "-",
-            };
+            CpuState.SetZeroFlag(false);
         }
     }
 }

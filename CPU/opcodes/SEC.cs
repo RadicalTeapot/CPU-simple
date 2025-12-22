@@ -2,23 +2,12 @@
 
 namespace CPU.opcodes
 {
-    internal class SEC(State cpuState) : IOpcode
+    [Opcode(OpcodeBaseCode.SEC, OpcodeGroupBaseCode.SYSTEM_AND_JUMP, RegisterArgsCount.Zero, OperandType.None)]
+    internal class SEC(State cpuState, Memory memory, Stack stack) : BaseOpcode(cpuState, memory, stack)
     {
-        public void RegisterOpcode(Dictionary<OpcodeBaseCode, IOpcode> opcodeRegistry)
-            => opcodeRegistry[OpcodeBaseCode.SEC] = this;
-
-        public void Execute(out Trace trace)
+        public override void Execute(OpcodeArgs args)
         {
-            var pcBefore = cpuState.GetPC();
-
-            cpuState.SetCarryFlag(true);
-            cpuState.IncrementPC();
-
-            trace = new Trace()
-            {
-                InstructionName = nameof(SEC),
-                Args = "-",
-            };
+            CpuState.SetCarryFlag(true);
         }
     }
 }

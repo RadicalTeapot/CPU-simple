@@ -2,23 +2,12 @@
 
 namespace CPU.opcodes
 {
-    internal class SEZ(State cpuState) : IOpcode
+    [Opcode(OpcodeBaseCode.SEZ, OpcodeGroupBaseCode.SYSTEM_AND_JUMP, RegisterArgsCount.Zero, OperandType.None)]
+    internal class SEZ(State cpuState, Memory memory, Stack stack) : BaseOpcode(cpuState, memory, stack)
     {
-        public void RegisterOpcode(Dictionary<OpcodeBaseCode, IOpcode> opcodeRegistry)
-            => opcodeRegistry[OpcodeBaseCode.SEZ] = this;
-
-        public void Execute(out Trace trace)
+        public override void Execute(OpcodeArgs args)
         {
-            var pcBefore = cpuState.GetPC();
-
-            cpuState.SetZeroFlag(true);
-            cpuState.IncrementPC();
-
-            trace = new Trace()
-            {
-                InstructionName = nameof(SEZ),
-                Args = "-",
-            };
+            CpuState.SetZeroFlag(true);
         }
     }
 }

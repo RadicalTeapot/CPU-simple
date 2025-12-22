@@ -1,5 +1,6 @@
 ﻿using CPU.components;
 using System.Diagnostics;
+using System.Reflection;
 
 namespace CPU.opcodes
 {
@@ -9,83 +10,147 @@ namespace CPU.opcodes
     /// <remarks>This plays the role of the "Control unit" in a CPU architecture.</remarks>
     internal class OpcodeFactory
     {
-        public OpcodeFactory(State cpuState, Stack stack, Memory memory)
+        public OpcodeFactory()
         {
-            _opcodeGroupRegistry = [];
-            // Register opcode groups
-            new SystemAndJumpOpcodeGroup().RegisterGroup(_opcodeGroupRegistry);
-            new LoadOpcodeGroup().RegisterGroup(_opcodeGroupRegistry);
-            new StoreOpcodeGroup().RegisterGroup(_opcodeGroupRegistry);
-            new MoveOpcodeGroup().RegisterGroup(_opcodeGroupRegistry);
-            new SingleRegisterALUOpcodeGroup().RegisterGroup(_opcodeGroupRegistry);
-            new AddOpcodeGroup().RegisterGroup(_opcodeGroupRegistry);
-            new SubOpcodeGroup().RegisterGroup(_opcodeGroupRegistry);
-            new BitsManipulationOpcodeGroup().RegisterGroup(_opcodeGroupRegistry);
-            new TwoRegistersCompareOpcodeGroup().RegisterGroup(_opcodeGroupRegistry);
-
-            _opcodes = [];
-            // Register opcodes
-            new NOP(cpuState).RegisterOpcode(_opcodes);
-            new HLT().RegisterOpcode(_opcodes);
-            new CLC(cpuState).RegisterOpcode(_opcodes);
-            new SEC(cpuState).RegisterOpcode(_opcodes);
-            new CLZ(cpuState).RegisterOpcode(_opcodes);
-            new SEZ(cpuState).RegisterOpcode(_opcodes);
-            new JMP(cpuState, memory).RegisterOpcode(_opcodes);
-            new JCC(cpuState, memory).RegisterOpcode(_opcodes);
-            new JCS(cpuState, memory).RegisterOpcode(_opcodes);
-            new JZC(cpuState, memory).RegisterOpcode(_opcodes);
-            new JZS(cpuState, memory).RegisterOpcode(_opcodes);
-            new CAL(cpuState, memory, stack).RegisterOpcode(_opcodes);
-            new RET(cpuState, stack).RegisterOpcode(_opcodes);
-            new LDI(cpuState, memory).RegisterOpcode(_opcodes);
-            new LDA(cpuState, memory).RegisterOpcode(_opcodes);
-            new POP(cpuState, memory, stack).RegisterOpcode(_opcodes);
-            new PEK(cpuState, memory, stack).RegisterOpcode(_opcodes);
-            new STA(cpuState, memory).RegisterOpcode(_opcodes);
-            new PSH(cpuState, memory, stack).RegisterOpcode(_opcodes);
-            new MOV(cpuState, memory).RegisterOpcode(_opcodes);
-            new ADI(cpuState, memory).RegisterOpcode(_opcodes);
-            new ADA(cpuState, memory).RegisterOpcode(_opcodes);
-            new SBI(cpuState, memory).RegisterOpcode(_opcodes);
-            new SBA(cpuState, memory).RegisterOpcode(_opcodes);
-            new ADD(cpuState, memory).RegisterOpcode(_opcodes);
-            new SUB(cpuState, memory).RegisterOpcode(_opcodes);
-            new LSH(cpuState, memory).RegisterOpcode(_opcodes);
-            new RSH(cpuState, memory).RegisterOpcode(_opcodes);
-            new LRT(cpuState, memory).RegisterOpcode(_opcodes);
-            new RRT(cpuState, memory).RegisterOpcode(_opcodes);
-            new CMP(cpuState, memory).RegisterOpcode(_opcodes);
+            _opcodeMetadataCache = DiscoverAndRegisterOpcodes();
         }
 
-        public IOpcode GetOpcodeFromInstruction(byte instruction)
+        public byte GetInstructionSize(byte instruction)
         {
-            var opcodeGroup = GetOpcodeGroupFromInstruction(instruction);
-            var opcodeBaseCode = opcodeGroup.ExtractOpcodeBaseCodeFromInstruction(instruction);
+            var metadata = GetOpcodeMetadata(instruction);
+            return metadata.OperandType switch
+            {
+                OperandType.None => 1,
+                OperandType.Address => 1 + AddressSize,
+                OperandType.Immediate => 2,
+                _ => throw new InvalidOperationException($"Unknown operand type: {metadata.OperandType}"),
+            };
+        }
+
+        /// <summary>
+        /// Decodes an instruction: resolves the opcode, parses registers and operands.
+        /// </summary>
+        /// <param name="instructionBytes">The raw instruction bytes (already fetched)</param>
+        /// <returns>Decoded instruction with opcode reference and parsed arguments</returns>
+        public DecodedInstruction Decode(byte[] instructionBytes)
+        {
+            Debug.Assert(instructionBytes.Length > 0, "Instruction bytes cannot be empty.");
+            var metadata = GetOpcodeMetadata(instructionBytes[0]);
+            var args = ParseArguments(instructionBytes, metadata);
+            return new DecodedInstruction(metadata, args, instructionBytes[0]);
+        }
+
+        /// <summary>
+        /// Gets opcode metadata from an instruction byte.
+        /// </summary>
+        private OpcodeMetadata GetOpcodeMetadata(byte instruction)
+        {
+            var groupCode = GetGroupCode(instruction);
+            var mask = OpcodeGroupMasks.Mask[groupCode];
+            var opcodeBaseCode = (OpcodeBaseCode)(instruction & mask);
 
             Debug.Assert(
-                _opcodes.ContainsKey(opcodeBaseCode),
+                _opcodeMetadataCache.ContainsKey(opcodeBaseCode),
                 $"Unregistered opcode base code: {opcodeBaseCode} (instruction was {instruction:X2})");
 
-            return _opcodes[opcodeBaseCode];
+            return _opcodeMetadataCache[opcodeBaseCode];
         }
 
-        private IOpcodeGroup GetOpcodeGroupFromInstruction(byte instruction)
+        /// <summary>
+        /// Parses arguments from instruction bytes.
+        /// </summary>
+        private static OpcodeArgs ParseArguments(byte[] instructionBytes, OpcodeMetadata metadata)
         {
-            var opcodeGroupByte = (byte)(instruction & GROUP_MASK);
+            var args = new OpcodeArgs();
+
+            // Parse register indices from instruction
+            var instruction = instructionBytes[0];
+            switch (metadata.RegisterArgsCount)
+            {
+                case RegisterArgsCount.Zero:
+                    break;
+                case RegisterArgsCount.One:
+                    args.LowRegisterIdx = (byte)(instruction & REGISTER_MASK);
+                    break;
+                case RegisterArgsCount.Two:
+                    args.HighRegisterIdx = (byte)((instruction >> 2) & REGISTER_MASK);
+                    args.LowRegisterIdx = (byte)(instruction & REGISTER_MASK);
+                    break;
+            }
+
+            // Fetch operand from instruction bytes
+            switch (metadata.OperandType)
+            {
+                case OperandType.None:
+                    break;
+                case OperandType.Address:
+                    args.AddressValue = GetAddressFromInstructionBytes(instructionBytes);
+                    break;
+                case OperandType.Immediate:
+                    args.ImmediateValue = instructionBytes[1];
+                    break;
+            }
+
+            return args;
+        }
+
+        /// <summary>
+        /// Extracts the opcode group code from the instruction's upper nibble.
+        /// </summary>
+        private static OpcodeGroupBaseCode GetGroupCode(byte instruction)
+        {
+            var groupByte = (byte)(instruction & GROUP_MASK);
 
             Debug.Assert(
-                Enum.IsDefined(typeof(OpcodeGroupBaseCode), opcodeGroupByte), 
-                $"Unknown opcode group byte: {opcodeGroupByte:X2} (instruction was {instruction:X2})");
-            Debug.Assert(
-                _opcodeGroupRegistry.ContainsKey((OpcodeGroupBaseCode)opcodeGroupByte),
-                $"Opcode group not registered: {opcodeGroupByte:X2} (instruction was {instruction:X2})");
+                Enum.IsDefined(typeof(OpcodeGroupBaseCode), groupByte),
+                $"Unknown opcode group byte: {groupByte:X2} (instruction was {instruction:X2})");
 
-            return _opcodeGroupRegistry[(OpcodeGroupBaseCode)opcodeGroupByte];
+            return (OpcodeGroupBaseCode)groupByte;
+        }
+
+        /// <summary>
+        /// Discovers all opcode classes with <see cref="OpcodeAttribute"/> and registers them.
+        /// </summary>
+        private static Dictionary<OpcodeBaseCode, OpcodeMetadata> DiscoverAndRegisterOpcodes()
+        {
+            var opcodeTypes = Assembly.GetExecutingAssembly()
+                .GetTypes()
+                .Where(t => t.GetCustomAttribute<OpcodeAttribute>() != null && typeof(IOpcode).IsAssignableFrom(t));
+
+            var opcodeMetadataCache = new Dictionary<OpcodeBaseCode, OpcodeMetadata>();
+            foreach (var type in opcodeTypes)
+            {
+                var attribute = type.GetCustomAttribute<OpcodeAttribute>()!;
+
+                // Standard constructor signature: (State, Memory, Stack)
+                var constructor = type.GetConstructor([typeof(State), typeof(Memory), typeof(Stack)]) 
+                    ?? throw new InvalidOperationException($"Opcode {type.Name} must have a constructor with signature (State, Memory, Stack)");
+
+                var metadata = new OpcodeMetadata(
+                    constructor,
+                    attribute.BaseCode,
+                    attribute.GroupCode,
+                    attribute.RegisterArgsCount,
+                    attribute.OperandType);
+
+                opcodeMetadataCache[attribute.BaseCode] = metadata;
+            }
+            return opcodeMetadataCache;
         }
 
         private const byte GROUP_MASK = 0xF0;
-        private readonly Dictionary<OpcodeBaseCode, IOpcode> _opcodes;
-        private readonly Dictionary<OpcodeGroupBaseCode, IOpcodeGroup> _opcodeGroupRegistry;
+        private const byte REGISTER_MASK = 0x03;
+
+        private readonly Dictionary<OpcodeBaseCode, OpcodeMetadata> _opcodeMetadataCache;
+
+#if x16
+        public const int AddressSize = 2;
+        private static ushort GetAddressFromInstructionBytes(byte[] instructionBytes) 
+            => (ushort)((instructionBytes[2] << 8) | instructionBytes[1]);
+#else
+        public const int AddressSize = 1;
+        private static byte GetAddressFromInstructionBytes(byte[] instructionBytes) 
+            => instructionBytes[1];
+#endif
     }
 }

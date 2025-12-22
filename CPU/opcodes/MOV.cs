@@ -2,24 +2,13 @@
 
 namespace CPU.opcodes
 {
-    internal class MOV(State cpuState, Memory memory) : BaseOpcode(
-        OpcodeBaseCode.MOV, RegisterArgsCount.Two, OperandType.None, 
-        cpuState, memory)
+    [Opcode(OpcodeBaseCode.MOV, OpcodeGroupBaseCode.MOVE, RegisterArgsCount.Two, OperandType.None)]
+    internal class MOV(State cpuState, Memory memory, Stack stack) : BaseOpcode(cpuState, memory, stack)
     {
-        protected override Trace Execute(OpcodeArgs args)
+        public override void Execute(OpcodeArgs args)
         {
-            var trace = new Trace()
-            {
-                InstructionName = nameof(MOV),
-                Args = $"RD: {args.LowRegisterIdx}, RS: {args.HighRegisterIdx}",
-                RBefore = [CpuState.GetRegister(args.LowRegisterIdx), CpuState.GetRegister(args.HighRegisterIdx)],
-            };
-
             var value = CpuState.GetRegister(args.HighRegisterIdx);
             CpuState.SetRegister(args.LowRegisterIdx, value);
-
-            trace.RAfter = [CpuState.GetRegister(args.LowRegisterIdx), CpuState.GetRegister(args.HighRegisterIdx)];
-            return trace;
         }
     }
 }

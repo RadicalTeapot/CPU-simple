@@ -2,25 +2,12 @@
 
 namespace CPU.opcodes
 {
-    internal class LDI(State cpuState, Memory memory) : BaseOpcode(
-        OpcodeBaseCode.LDI, RegisterArgsCount.One, OperandType.Immediate,
-        cpuState, memory)
+    [Opcode(OpcodeBaseCode.LDI, OpcodeGroupBaseCode.LOAD, RegisterArgsCount.One, OperandType.Immediate)]
+    internal class LDI(State cpuState, Memory memory, Stack stack) : BaseOpcode(cpuState, memory, stack)
     {
-        protected override Trace Execute(OpcodeArgs args)
+        public override void Execute(OpcodeArgs args)
         {
-            var immediateValue = args.ImmediateValue;
-            
-            var trace = new Trace()
-            {
-                InstructionName = nameof(LDI),
-                Args = $"RD: {args.LowRegisterIdx}, IMM: {immediateValue}",
-                RBefore = [CpuState.GetRegister(args.LowRegisterIdx)],
-            };
-
-            CpuState.SetRegister(args.LowRegisterIdx, immediateValue);
-
-            trace.RAfter = [CpuState.GetRegister(args.LowRegisterIdx)];
-            return trace;
+            CpuState.SetRegister(args.LowRegisterIdx, args.ImmediateValue);
         }
     }
 }

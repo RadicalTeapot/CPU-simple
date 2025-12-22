@@ -2,31 +2,17 @@
 
 namespace CPU.opcodes
 {
-    // Note: This doesn't inherit from BaseOpcode because it has to handle PC differently
-    internal class CAL(State cpuState, Memory memory, Stack stack) : IOpcode
+    [Opcode(OpcodeBaseCode.CAL, OpcodeGroupBaseCode.SYSTEM_AND_JUMP, RegisterArgsCount.Zero, OperandType.Address)]
+    internal class CAL(State cpuState, Memory memory, Stack stack) : BaseOpcode(cpuState, memory, stack)
     {
-        public void RegisterOpcode(Dictionary<OpcodeBaseCode, IOpcode> opcodeRegistry)
-            => opcodeRegistry[OpcodeBaseCode.CAL] = this;
-
-        public void Execute(out Trace trace)
+        public override void Execute(OpcodeArgs args)
         {
-            trace = new Trace()
-            {
-                InstructionName = nameof(CAL),
-                PcBefore = cpuState.GetPC(),
-            };
+            // Push return address (current PC, which is already past the instruction and operand)
+            var returnAddress = CpuState.GetPC();
+            Stack.PushAddress(returnAddress);
 
-            cpuState.IncrementPC(); // Move to operand
-            var targetAddress = memory.ReadAddress(cpuState.GetPC(), out var size);
-            trace.Args = $"ADDR: {targetAddress}";
-
-            cpuState.IncrementPC(size); // Move to next instruction
-            var returnAddress = cpuState.GetPC();
-            stack.PushAddress(returnAddress);
-
-            cpuState.SetPC(targetAddress);
-
-            trace.PcAfter = cpuState.GetPC();
+            // Jump to target
+            CpuState.SetPC(args.AddressValue);
         }
     }
 }

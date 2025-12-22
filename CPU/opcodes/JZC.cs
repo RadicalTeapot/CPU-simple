@@ -2,31 +2,15 @@
 
 namespace CPU.opcodes
 {
-    // Note: This doesn't inherit from BaseOpcode because it has to handle PC differently
-    internal class JZC(State cpuState, Memory memory) : IOpcode
+    [Opcode(OpcodeBaseCode.JZC, OpcodeGroupBaseCode.SYSTEM_AND_JUMP, RegisterArgsCount.Zero, OperandType.Address)]
+    internal class JZC(State cpuState, Memory memory, Stack stack) : BaseOpcode(cpuState, memory, stack)
     {
-        public void RegisterOpcode(Dictionary<OpcodeBaseCode, IOpcode> opcodeRegistry)
-            => opcodeRegistry[OpcodeBaseCode.JZC] = this;
-
-        public void Execute(out Trace trace)
+        public override void Execute(OpcodeArgs args)
         {
-            var pcBefore = cpuState.GetPC();
-
-            cpuState.IncrementPC(); // Move to operand
-            var targetAddress = memory.ReadAddress(cpuState.GetPC(), out var size);
-
-            if (cpuState.Z)
-                cpuState.IncrementPC(size);     // If condition not met, skip the jump address
-            else
-                cpuState.SetPC(targetAddress);  // Otherwise, perform the jump
-
-            trace = new Trace()
+            if (!CpuState.Z)
             {
-                InstructionName = nameof(JZC),
-                Args = $"ADDR: {targetAddress}",
-                PcBefore = pcBefore,
-                PcAfter = cpuState.GetPC(),
-            };
+                CpuState.SetPC(args.AddressValue);
+            }
         }
     }
 }

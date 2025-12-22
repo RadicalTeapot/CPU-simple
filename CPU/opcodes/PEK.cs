@@ -2,22 +2,13 @@
 
 namespace CPU.opcodes
 {
-    internal class PEK(State cpuState, Memory memory, Stack stack) : BaseOpcode(
-        OpcodeBaseCode.PEK, RegisterArgsCount.One, OperandType.None,
-        cpuState, memory)
+    [Opcode(OpcodeBaseCode.PEK, OpcodeGroupBaseCode.LOAD, RegisterArgsCount.One, OperandType.None)]
+    internal class PEK(State cpuState, Memory memory, Stack stack) : BaseOpcode(cpuState, memory, stack)
     {
-        protected override Trace Execute(OpcodeArgs args)
+        public override void Execute(OpcodeArgs args)
         {
-            var trace = new Trace()
-            {
-                InstructionName = nameof(PEK),
-                Args = $"RD: {args.LowRegisterIdx}",
-                RBefore = [CpuState.GetRegister(args.LowRegisterIdx)],
-            };
-            var value = stack.PeekByte();
+            var value = Stack.PeekByte();
             CpuState.SetRegister(args.LowRegisterIdx, value);
-            trace.RAfter = [CpuState.GetRegister(args.LowRegisterIdx)];
-            return trace;
         }
     }
 }

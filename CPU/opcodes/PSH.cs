@@ -2,22 +2,13 @@
 
 namespace CPU.opcodes
 {
-    internal class PSH(State cpuState, Memory memory, Stack stack) : BaseOpcode(
-        OpcodeBaseCode.PSH, RegisterArgsCount.One, OperandType.None,
-        cpuState, memory)
+    [Opcode(OpcodeBaseCode.PSH, OpcodeGroupBaseCode.STORE, RegisterArgsCount.One, OperandType.None)]
+    internal class PSH(State cpuState, Memory memory, Stack stack) : BaseOpcode(cpuState, memory, stack)
     {
-        protected override Trace Execute(OpcodeArgs args)
+        public override void Execute(OpcodeArgs args)
         {
-            var trace = new Trace()
-            {
-                InstructionName = nameof(PSH),
-                Args = $"RD: {args.LowRegisterIdx}",
-                RBefore = [CpuState.GetRegister(args.LowRegisterIdx)],
-            };
             var value = CpuState.GetRegister(args.LowRegisterIdx);
-            stack.PushByte(value);
-            trace.RAfter = [CpuState.GetRegister(args.LowRegisterIdx)];
-            return trace;
+            Stack.PushByte(value);
         }
     }
 }

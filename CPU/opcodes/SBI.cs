@@ -2,27 +2,16 @@
 
 namespace CPU.opcodes
 {
-    internal class SBI(State cpuState, Memory memory) : BaseOpcode(
-        OpcodeBaseCode.SBI, RegisterArgsCount.One, OperandType.Immediate,
-        cpuState, memory)
+    [Opcode(OpcodeBaseCode.SBI, OpcodeGroupBaseCode.SINGLE_REGISTER_ALU, RegisterArgsCount.One, OperandType.Immediate)]
+    internal class SBI(State cpuState, Memory memory, Stack stack) : BaseOpcode(cpuState, memory, stack)
     {
-        protected override Trace Execute(OpcodeArgs args)
+        public override void Execute(OpcodeArgs args)
         {
-            var trace = new Trace()
-            {
-                InstructionName = nameof(SBI),
-                Args = $"RD: {args.LowRegisterIdx}, IMM: {args.ImmediateValue}",
-                RBefore = [CpuState.GetRegister(args.LowRegisterIdx)],
-            };
-
             var currentValue = CpuState.GetRegister(args.LowRegisterIdx);
             var result = currentValue - args.ImmediateValue - (1 - CpuState.GetCarryFlagAsInt());
             CpuState.SetRegister(args.LowRegisterIdx, (byte)result); // Wrap around on underflow
             CpuState.SetCarryFlag(result >= 0); // No borrow carry
             CpuState.SetZeroFlag(result == 0);
-
-            trace.RAfter = [CpuState.GetRegister(args.LowRegisterIdx)];
-            return trace;
         }
     }
 }

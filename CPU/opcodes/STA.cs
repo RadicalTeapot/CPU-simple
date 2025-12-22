@@ -2,23 +2,12 @@
 
 namespace CPU.opcodes
 {
-    internal class STA(State cpuState, Memory memory) : BaseOpcode(
-        OpcodeBaseCode.STA, RegisterArgsCount.One, OperandType.Address,
-        cpuState, memory)
+    [Opcode(OpcodeBaseCode.STA, OpcodeGroupBaseCode.STORE, RegisterArgsCount.One, OperandType.Address)]
+    internal class STA(State cpuState, Memory memory, Stack stack) : BaseOpcode(cpuState, memory, stack)
     {
-        protected override Trace Execute(OpcodeArgs args)
+        public override void Execute(OpcodeArgs args)
         {
-            var trace = new Trace()
-            {
-                InstructionName = nameof(STA),
-                Args = $"RS: {args.LowRegisterIdx}, Memory address: {args.AddressValue}",
-                RBefore = [CpuState.GetRegister(args.LowRegisterIdx)],
-            };
-
             Memory.WriteByte(args.AddressValue, CpuState.GetRegister(args.LowRegisterIdx));
-
-            trace.RAfter = [CpuState.GetRegister(args.LowRegisterIdx)];
-            return trace;
         }
     }
 }

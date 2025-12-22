@@ -6,20 +6,18 @@ namespace CPU
 {
     public class CPU
     {
-        public CPU(Config config)
-        {
-            _memory = new Memory(config.MemorySize - config.StackSize);
-            _state = new State(config.RegisterCount);
-            _stack = new Stack(config.StackSize);
-            _opcodeFactory = new OpcodeFactory(_state, _stack, _memory);
-        }
+        public CPU(Config config) :
+            this(new State(config.RegisterCount),
+                 new Stack(config.StackSize),
+                 new Memory(config.MemorySize - config.StackSize))
+        { }
 
         public CPU(State state, Stack stack, Memory memory)
         {
             _state = state;
             _stack = stack;
             _memory = memory;
-            _opcodeFactory = new OpcodeFactory(_state, _stack, _memory);
+            _opcodeFactory = new OpcodeFactory();
         }
 
         public void Reset()
@@ -60,20 +58,32 @@ namespace CPU
             }
         }
 
-        /// <summary>Executes a single instruction cycle.</summary>
+        /// <summary>
+        /// Executes a single instruction cycle: Fetch → Decode → Execute.
+        /// </summary>
         public void Step(bool traceEnabled)
         {
-            // TODO: Implement proper instruction fetching with PC incrementing after fetch (currently done in opcodes)
-            var instruction = _memory.ReadByte(_state.GetPC()); // Fetch (partial)
-            var opcode = _opcodeFactory.GetOpcodeFromInstruction(instruction); // Decode
-            opcode.Execute(out var trace); // Execute (some fetching happens here too)
+            // Fetch
+            var pcBefore = _state.GetPC();
+            var instruction = _memory.ReadByte(_state.GetPC());
+            var instructionSize = _opcodeFactory.GetInstructionSize(instruction);
+            var instructionBytes = _memory.ReadBytes(_state.GetPC(), instructionSize);
+            _state.IncrementPC(instructionSize); // Move to next instruction byte
+
+            // Decode
+            var decoded = _opcodeFactory.Decode(instructionBytes);
+            var opcodeInstance = (IOpcode)decoded.OpcodeConstructor.Invoke([ _state, _memory, _stack ]);
+
+            // Execute
+            opcodeInstance.Execute(decoded.Args);
 
             if (traceEnabled)
             {
+                var trace = new Trace(pcBefore, _state.GetPC(), decoded);
                 trace.Dump();
             }
         }
-        
+
         private void Dump()
         {
             Console.WriteLine("=== CPU DUMP ===");

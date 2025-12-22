@@ -60,7 +60,6 @@ namespace CPU.Tests
 
             // Act & Assert
             Assert.Throws<OpcodeException.HaltException>(() => cpu.Step(traceEnabled: false));
-            Assert.That(state.GetPC(), Is.EqualTo(0), "PC should halt before PC increment.");
         }
     }
 

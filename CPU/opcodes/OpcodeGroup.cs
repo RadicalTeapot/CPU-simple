@@ -1,48 +1,38 @@
 ﻿namespace CPU.opcodes
 {
-    internal interface IOpcodeGroup
-    {
-        void RegisterGroup(Dictionary<OpcodeGroupBaseCode, IOpcodeGroup> opcodeGroupRegistry);
-        OpcodeBaseCode ExtractOpcodeBaseCodeFromInstruction(byte instruction);
-    }
-
+    /// <summary>
+    /// Enum defining the opcode group base codes (upper nibble of instruction byte).
+    /// </summary>
+    /// <remarks>
+    /// Groups are used to determine the mask for extracting the opcode base code.
+    /// The mask depends on how many register bits are encoded in the instruction.
+    /// </remarks>
     internal enum OpcodeGroupBaseCode : byte
     {
-        SYSTEM_AND_JUMP = 0x00,
-        LOAD = 0x10,
-        STORE = 0x20,
-        MOVE = 0x30,
-        SINGLE_REGISTER_ALU = 0x40,
-        ADD = 0x50,
-        SUB = 0x60,
-        BITS_MANIPULATION = 0x70,
-        TWO_REGISTERS_COMPARE = 0x90,
+        SYSTEM_AND_JUMP = 0x00,         // Mask 0xFF: no register bits
+        LOAD = 0x10,                    // Mask 0xFC: 2 register bits (1 register)
+        STORE = 0x20,                   // Mask 0xFC: 2 register bits (1 register)
+        MOVE = 0x30,                    // Mask 0xF0: 4 register bits (2 registers)
+        SINGLE_REGISTER_ALU = 0x40,     // Mask 0xFC: 2 register bits (1 register)
+        ADD = 0x50,                     // Mask 0xF0: 4 register bits (2 registers)
+        SUB = 0x60,                     // Mask 0xF0: 4 register bits (2 registers)
+        BITS_MANIPULATION = 0x70,       // Mask 0xFC: 2 register bits (1 register)
+        TWO_REGISTERS_COMPARE = 0x90,   // Mask 0xF0: 4 register bits (2 registers)
     }
 
-    internal abstract class BaseOpcodeGroup(OpcodeGroupBaseCode code, byte baseOpcodeMask) : IOpcodeGroup
+    internal static class OpcodeGroupMasks
     {
-        public void RegisterGroup(Dictionary<OpcodeGroupBaseCode, IOpcodeGroup> opcodeGroupRegistry) 
-            => opcodeGroupRegistry[code] = this;
-
-        public OpcodeBaseCode ExtractOpcodeBaseCodeFromInstruction(byte instruction)
+        public static Dictionary<OpcodeGroupBaseCode, byte> Mask = new()
         {
-            var baseOpcodeByte = (byte)(instruction & baseOpcodeMask);
-            if (!Enum.IsDefined(typeof(OpcodeBaseCode), baseOpcodeByte))
-            {
-                throw new KeyNotFoundException($"Unknown opcode byte: {baseOpcodeByte:X2}");
-            }
-            return (OpcodeBaseCode)baseOpcodeByte;
-        }
+            [OpcodeGroupBaseCode.SYSTEM_AND_JUMP] = 0xFF,       // Full byte (no register args)
+            [OpcodeGroupBaseCode.LOAD] = 0xFC,                  // 2 bits for 1 register
+            [OpcodeGroupBaseCode.STORE] = 0xFC,                 // 2 bits for 1 register
+            [OpcodeGroupBaseCode.MOVE] = 0xF0,                  // 4 bits for 2 registers
+            [OpcodeGroupBaseCode.SINGLE_REGISTER_ALU] = 0xFC,   // 2 bits for 1 register
+            [OpcodeGroupBaseCode.ADD] = 0xF0,                   // 4 bits for 2 registers
+            [OpcodeGroupBaseCode.SUB] = 0xF0,                   // 4 bits for 2 registers
+            [OpcodeGroupBaseCode.BITS_MANIPULATION] = 0xFC,     // 2 bits for 1 register
+            [OpcodeGroupBaseCode.TWO_REGISTERS_COMPARE] = 0xF0, // 4 bits for 2 registers
+        };
     }
-
-    internal class SystemAndJumpOpcodeGroup() : BaseOpcodeGroup(OpcodeGroupBaseCode.SYSTEM_AND_JUMP, 0xFF) { }
-    internal class LoadOpcodeGroup() : BaseOpcodeGroup(OpcodeGroupBaseCode.LOAD, 0xFC) { }
-    internal class StoreOpcodeGroup() : BaseOpcodeGroup(OpcodeGroupBaseCode.STORE, 0xFC) { }
-    internal class MoveOpcodeGroup() : BaseOpcodeGroup(OpcodeGroupBaseCode.MOVE, 0xF0) { }
-    internal class SingleRegisterALUOpcodeGroup() : BaseOpcodeGroup(OpcodeGroupBaseCode.SINGLE_REGISTER_ALU, 0xFC) { }
-    internal class AddOpcodeGroup() : BaseOpcodeGroup(OpcodeGroupBaseCode.ADD, 0xF0) { }
-    internal class SubOpcodeGroup() : BaseOpcodeGroup(OpcodeGroupBaseCode.SUB, 0xF0) { }
-    internal class BitsManipulationOpcodeGroup() : BaseOpcodeGroup(OpcodeGroupBaseCode.BITS_MANIPULATION, 0xFC) { }
-    internal class TwoRegistersCompareOpcodeGroup() : BaseOpcodeGroup(OpcodeGroupBaseCode.TWO_REGISTERS_COMPARE, 0xF0) { }
-
 }

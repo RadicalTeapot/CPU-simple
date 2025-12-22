@@ -2,22 +2,12 @@
 
 namespace CPU.opcodes
 {
-    internal class LDA(State cpuState, Memory memory) : BaseOpcode(
-        OpcodeBaseCode.LDA, RegisterArgsCount.One, OperandType.Address,
-        cpuState, memory)
+    [Opcode(OpcodeBaseCode.LDA, OpcodeGroupBaseCode.LOAD, RegisterArgsCount.One, OperandType.Address)]
+    internal class LDA(State cpuState, Memory memory, Stack stack) : BaseOpcode(cpuState, memory, stack)
     {
-        protected override Trace Execute(OpcodeArgs args)
+        public override void Execute(OpcodeArgs args)
         {
-            var trace = new Trace()
-            {
-                InstructionName = nameof(LDA),
-                Args = $"RD: {args.LowRegisterIdx}, ADDR: {args.AddressValue}",
-                RBefore = [CpuState.GetRegister(args.LowRegisterIdx)],
-            };
-
             CpuState.SetRegister(args.LowRegisterIdx, Memory.ReadByte(args.AddressValue));
-            trace.RAfter = [CpuState.GetRegister(args.LowRegisterIdx)];
-            return trace;
         }
     }
 }

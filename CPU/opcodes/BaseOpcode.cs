@@ -2,20 +2,6 @@
 
 namespace CPU.opcodes
 {
-    internal enum RegisterArgsCount
-    {
-        Zero,
-        One,
-        Two,
-    }
-
-    internal enum OperandType
-    {
-        None,
-        Address,
-        Immediate,
-    }
-
     internal struct OpcodeArgs()
     {
         /// <summary>
@@ -34,103 +20,23 @@ namespace CPU.opcodes
 #endif
     }
 
-    internal abstract class BaseOpcode(
-        OpcodeBaseCode opcodeBaseCode, RegisterArgsCount registerArgsCount, OperandType operandType, 
-        State cpuState, Memory memory) : IOpcode
+    /// <summary>
+    /// Base class for opcodes that follow the standard execution pattern.
+    /// </summary>
+    /// <remarks>
+    /// Opcodes should be decorated with <see cref="OpcodeAttribute"/> for auto-discovery.
+    /// The standard constructor signature is (State, Memory, Stack) for dependency injection.
+    /// </remarks>
+    internal abstract class BaseOpcode(State cpuState, Memory memory, Stack stack) : IOpcode
     {
-        public void RegisterOpcode(Dictionary<OpcodeBaseCode, IOpcode> opcodeRegistry)
-            => opcodeRegistry[opcodeBaseCode] = this;
-
-        public void Execute(out Trace trace)
-        {
-            var pcBefore = CpuState.GetPC();
-            var args = ParseArguments();
-            trace = Execute(args);
-
-            trace.PcBefore = pcBefore;
-            trace.PcAfter = CpuState.GetPC();
-        }
-
         protected readonly State CpuState = cpuState;
         protected readonly Memory Memory = memory;
+        protected readonly Stack Stack = stack;
 
         /// <summary>
-        /// Inner execution logic of the opcode.
+        /// Executes the opcode with the given arguments.
         /// </summary>
         /// <param name="args">Parsed opcode arguments</param>
-        /// <returns>Execution trace</returns>
-        /// <remarks>PC has already been incremented before calling this</remarks>
-        protected abstract Trace Execute(OpcodeArgs args);
-
-        /// <summary>
-        /// Reads and parses opcode arguments from memory, updating PC accordingly.
-        /// </summary>
-        /// <returns>Parsed opcode arguments</returns>
-        /// <exception cref="ArgumentOutOfRangeException">Thrown when <see cref="OperandType"/> is invalid</exception>
-        private OpcodeArgs ParseArguments()
-        {
-            var args = new OpcodeArgs();
-
-            var instruction = Memory.ReadByte(CpuState.GetPC());
-            _registerParser.ParseArguments(instruction, ref args);
-            CpuState.IncrementPC(); // Move past instruction byte (to operand, if any)
-
-            switch (operandType)
-            {
-                case OperandType.None:
-                    break;
-                case OperandType.Address:
-                    args.AddressValue = Memory.ReadAddress(CpuState.GetPC(), out var size);
-                    CpuState.IncrementPC(size); // Move past address operand
-                    break;
-                case OperandType.Immediate:
-                    args.ImmediateValue = Memory.ReadByte(CpuState.GetPC());
-                    CpuState.IncrementPC(); // Move past immediate operand
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException();
-            }
-
-            return args;
-        }
-
-        private interface IRegisterParser
-        {
-            void ParseArguments(byte instruction, ref OpcodeArgs args);
-        }
-
-        private class NoRegisterInstructionParser : IRegisterParser
-        {
-            public void ParseArguments(byte instruction, ref OpcodeArgs args) { }
-        }
-
-        private class SingleRegisterInstructionParser : IRegisterParser
-        {
-            public void ParseArguments(byte instruction, ref OpcodeArgs args)
-            {
-                args.LowRegisterIdx = (byte)(instruction & REGISTER_MASK);
-            }
-
-            private const byte REGISTER_MASK = 0x03;
-        }
-
-        private class DoubleRegisterInstructionParser : IRegisterParser
-        {
-            public void ParseArguments(byte instruction, ref OpcodeArgs args)
-            {
-                args.HighRegisterIdx = (byte)((instruction >> 2) & REGISTER_MASK);  // Bits 2-3, typically source register
-                args.LowRegisterIdx = (byte)(instruction & REGISTER_MASK);          // Bits 0-1, typically destination register
-            }
-
-            private const byte REGISTER_MASK = 0x03;
-        }
-
-        private readonly IRegisterParser _registerParser = registerArgsCount switch
-        {
-            RegisterArgsCount.Zero => new NoRegisterInstructionParser(),
-            RegisterArgsCount.One => new SingleRegisterInstructionParser(),
-            RegisterArgsCount.Two => new DoubleRegisterInstructionParser(),
-            _ => throw new ArgumentOutOfRangeException(nameof(registerArgsCount), registerArgsCount, null)
-        };
+        public abstract void Execute(OpcodeArgs args);
     }
 }
