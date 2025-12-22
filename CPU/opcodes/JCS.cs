@@ -3,13 +3,13 @@
 namespace CPU.opcodes
 {
     [Opcode(OpcodeBaseCode.JCS, OpcodeGroupBaseCode.SYSTEM_AND_JUMP, RegisterArgsCount.Zero, OperandType.Address)]
-    internal class JCS(State cpuState, Memory memory, Stack stack) : BaseOpcode(cpuState, memory, stack)
+    internal class JCS(State cpuState, Memory memory, Stack stack, OpcodeArgs args) : IOpcode
     {
-        public override void Execute(OpcodeArgs args)
+        public void Execute()
         {
-            if (CpuState.C)
+            if (cpuState.C)
             {
-                CpuState.SetPC(args.AddressValue);
+                cpuState.SetPC(args.AddressValue);
             }
         }
     }

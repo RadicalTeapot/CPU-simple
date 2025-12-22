@@ -3,14 +3,14 @@
 namespace CPU.opcodes
 {
     [Opcode(OpcodeBaseCode.CMP, OpcodeGroupBaseCode.TWO_REGISTERS_COMPARE, RegisterArgsCount.Two, OperandType.None)]
-    internal class CMP(State cpuState, Memory memory, Stack stack) : BaseOpcode(cpuState, memory, stack)
+    internal class CMP(State cpuState, Memory memory, Stack stack, OpcodeArgs args) : IOpcode
     {
-        public override void Execute(OpcodeArgs args)
+        public void Execute()
         {
-            var source = CpuState.GetRegister(args.HighRegisterIdx);
-            var destination = CpuState.GetRegister(args.LowRegisterIdx);            
-            CpuState.SetZeroFlag(destination == source);
-            CpuState.SetCarryFlag(destination >= source); // Similar to SUB (no borrow), but without actual subtraction
+            var source = cpuState.GetRegister(args.HighRegisterIdx);
+            var destination = cpuState.GetRegister(args.LowRegisterIdx);            
+            cpuState.SetZeroFlag(destination == source);
+            cpuState.SetCarryFlag(destination >= source); // Similar to SUB (no borrow), but without actual subtraction
         }
     }
 }

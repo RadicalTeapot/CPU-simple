@@ -3,15 +3,15 @@
 namespace CPU.opcodes
 {
     [Opcode(OpcodeBaseCode.SBI, OpcodeGroupBaseCode.SINGLE_REGISTER_ALU, RegisterArgsCount.One, OperandType.Immediate)]
-    internal class SBI(State cpuState, Memory memory, Stack stack) : BaseOpcode(cpuState, memory, stack)
+    internal class SBI(State cpuState, Memory memory, Stack stack, OpcodeArgs args) : IOpcode
     {
-        public override void Execute(OpcodeArgs args)
+        public void Execute()
         {
-            var currentValue = CpuState.GetRegister(args.LowRegisterIdx);
-            var result = currentValue - args.ImmediateValue - (1 - CpuState.GetCarryFlagAsInt());
-            CpuState.SetRegister(args.LowRegisterIdx, (byte)result); // Wrap around on underflow
-            CpuState.SetCarryFlag(result >= 0); // No borrow carry
-            CpuState.SetZeroFlag(result == 0);
+            var currentValue = cpuState.GetRegister(args.LowRegisterIdx);
+            var result = currentValue - args.ImmediateValue - (1 - cpuState.GetCarryFlagAsInt());
+            cpuState.SetRegister(args.LowRegisterIdx, (byte)result); // Wrap around on underflow
+            cpuState.SetCarryFlag(result >= 0); // No borrow carry
+            cpuState.SetZeroFlag(result == 0);
         }
     }
 }

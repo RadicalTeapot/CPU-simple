@@ -3,16 +3,16 @@
 namespace CPU.opcodes
 {
     [Opcode(OpcodeBaseCode.CAL, OpcodeGroupBaseCode.SYSTEM_AND_JUMP, RegisterArgsCount.Zero, OperandType.Address)]
-    internal class CAL(State cpuState, Memory memory, Stack stack) : BaseOpcode(cpuState, memory, stack)
+    internal class CAL(State cpuState, Memory memory, Stack stack, OpcodeArgs args) : IOpcode
     {
-        public override void Execute(OpcodeArgs args)
+        public void Execute()
         {
             // Push return address (current PC, which is already past the instruction and operand)
-            var returnAddress = CpuState.GetPC();
-            Stack.PushAddress(returnAddress);
+            var returnAddress = cpuState.GetPC();
+            stack.PushAddress(returnAddress);
 
             // Jump to target
-            CpuState.SetPC(args.AddressValue);
+            cpuState.SetPC(args.AddressValue);
         }
     }
 }

@@ -63,25 +63,38 @@ namespace CPU
         /// </summary>
         public void Step(bool traceEnabled)
         {
-            // Fetch
             var pcBefore = _state.GetPC();
-            var instruction = _memory.ReadByte(_state.GetPC());
-            var instructionSize = _opcodeFactory.GetInstructionSize(instruction);
-            var instructionBytes = _memory.ReadBytes(_state.GetPC(), instructionSize);
-            _state.IncrementPC(instructionSize); // Move to next instruction byte
 
-            // Decode
-            var decoded = _opcodeFactory.Decode(instructionBytes);
-            var opcodeInstance = (IOpcode)decoded.OpcodeConstructor.Invoke([ _state, _memory, _stack ]);
-
-            // Execute
-            opcodeInstance.Execute(decoded.Args);
+            var instructionBytes = Fetch();
+            var opcodeInstance = Decode(instructionBytes, out DecodedInstruction decoded);
+            opcodeInstance.Execute();
 
             if (traceEnabled)
             {
                 var trace = new Trace(pcBefore, _state.GetPC(), decoded);
                 trace.Dump();
             }
+        }
+
+        private byte[] Fetch()
+        {
+            var instruction = _memory.ReadByte(_state.GetPC());
+            var instructionSize = _opcodeFactory.GetInstructionSize(instruction);
+            var instructionBytes = _memory.ReadBytes(_state.GetPC(), instructionSize);
+            _state.IncrementPC(instructionSize); // Move to next instruction byte
+            return instructionBytes;
+        }
+
+        private IOpcode Decode(byte[] instructionBytes, out DecodedInstruction decoded)
+        {
+            decoded = _opcodeFactory.Decode(instructionBytes);
+            Debug.Assert(
+                decoded.Metadata.OpcodeConstructor != null,
+                "Opcode constructor should not be null after decoding.");
+            Debug.Assert(
+                typeof(IOpcode).IsAssignableFrom(decoded.Metadata.OpcodeConstructor.DeclaringType),
+                "Decoded opcode constructor must belong to a type implementing IOpcode.");
+            return (IOpcode)decoded.OpcodeConstructor.Invoke([_state, _memory, _stack, decoded.Args]);
         }
 
         private void Dump()

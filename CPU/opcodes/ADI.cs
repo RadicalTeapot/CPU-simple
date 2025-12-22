@@ -3,15 +3,15 @@
 namespace CPU.opcodes
 {
     [Opcode(OpcodeBaseCode.ADI, OpcodeGroupBaseCode.SINGLE_REGISTER_ALU, RegisterArgsCount.One, OperandType.Immediate)]
-    internal class ADI(State cpuState, Memory memory, Stack stack) : BaseOpcode(cpuState, memory, stack)
+    internal class ADI(State cpuState, Memory memory, Stack stack, OpcodeArgs args) : IOpcode
     {
-        public override void Execute(OpcodeArgs args)
+        public void Execute()
         {
-            var currentValue = CpuState.GetRegister(args.LowRegisterIdx);
-            var result = currentValue + args.ImmediateValue + CpuState.GetCarryFlagAsInt();
-            CpuState.SetRegister(args.LowRegisterIdx, (byte)result); // Wrap around on overflow
-            CpuState.SetCarryFlag(result > 0xFF);
-            CpuState.SetZeroFlag(result == 0);
+            var currentValue = cpuState.GetRegister(args.LowRegisterIdx);
+            var result = currentValue + args.ImmediateValue + cpuState.GetCarryFlagAsInt();
+            cpuState.SetRegister(args.LowRegisterIdx, (byte)result); // Wrap around on overflow
+            cpuState.SetCarryFlag(result > 0xFF);
+            cpuState.SetZeroFlag(result == 0);
         }
     }
 }

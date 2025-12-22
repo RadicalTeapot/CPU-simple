@@ -35,6 +35,24 @@
         CMP = 0x90,
     }
 
+    internal struct OpcodeArgs()
+    {
+        /// <summary>
+        /// Bits 2-3 register index, typically source register, if applicable.
+        /// </summary>
+        public byte HighRegisterIdx = 0;
+        /// <summary>
+        /// Bits 0-1 register index, typically destination register, if applicable.
+        /// </summary>
+        public byte LowRegisterIdx = 0;
+        public byte ImmediateValue = 0;
+#if x16
+        public ushort AddressValue = 0;
+#else
+        public byte AddressValue = 0;
+#endif
+    }
+
     /// <summary>
     /// Interface for CPU opcodes.
     /// </summary>
@@ -45,9 +63,8 @@
     internal interface IOpcode
     {
         /// <summary>
-        /// Executes the opcode with the given arguments.
+        /// Executes the opcode.
         /// </summary>
-        /// <param name="args">Parsed opcode arguments (registers, immediate, address)</param>
-        void Execute(OpcodeArgs args);
+        void Execute();
     }
 }

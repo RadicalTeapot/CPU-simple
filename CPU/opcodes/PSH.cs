@@ -3,12 +3,12 @@
 namespace CPU.opcodes
 {
     [Opcode(OpcodeBaseCode.PSH, OpcodeGroupBaseCode.STORE, RegisterArgsCount.One, OperandType.None)]
-    internal class PSH(State cpuState, Memory memory, Stack stack) : BaseOpcode(cpuState, memory, stack)
+    internal class PSH(State cpuState, Memory memory, Stack stack, OpcodeArgs args) : IOpcode
     {
-        public override void Execute(OpcodeArgs args)
+        public void Execute()
         {
-            var value = CpuState.GetRegister(args.LowRegisterIdx);
-            Stack.PushByte(value);
+            var value = cpuState.GetRegister(args.LowRegisterIdx);
+            stack.PushByte(value);
         }
     }
 }

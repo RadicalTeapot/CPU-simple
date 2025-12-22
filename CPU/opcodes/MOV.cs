@@ -3,12 +3,12 @@
 namespace CPU.opcodes
 {
     [Opcode(OpcodeBaseCode.MOV, OpcodeGroupBaseCode.MOVE, RegisterArgsCount.Two, OperandType.None)]
-    internal class MOV(State cpuState, Memory memory, Stack stack) : BaseOpcode(cpuState, memory, stack)
+    internal class MOV(State cpuState, Memory memory, Stack stack, OpcodeArgs args) : IOpcode
     {
-        public override void Execute(OpcodeArgs args)
+        public void Execute()
         {
-            var value = CpuState.GetRegister(args.HighRegisterIdx);
-            CpuState.SetRegister(args.LowRegisterIdx, value);
+            var value = cpuState.GetRegister(args.HighRegisterIdx);
+            cpuState.SetRegister(args.LowRegisterIdx, value);
         }
     }
 }

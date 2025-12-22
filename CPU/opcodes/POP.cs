@@ -3,12 +3,12 @@
 namespace CPU.opcodes
 {
     [Opcode(OpcodeBaseCode.POP, OpcodeGroupBaseCode.LOAD, RegisterArgsCount.One, OperandType.None)]
-    internal class POP(State cpuState, Memory memory, Stack stack) : BaseOpcode(cpuState, memory, stack)
+    internal class POP(State cpuState, Memory memory, Stack stack, OpcodeArgs args) : IOpcode
     {
-        public override void Execute(OpcodeArgs args)
+        public void Execute()
         {
-            var value = Stack.PopByte();
-            CpuState.SetRegister(args.LowRegisterIdx, value);
+            var value = stack.PopByte();
+            cpuState.SetRegister(args.LowRegisterIdx, value);
         }
     }
 }

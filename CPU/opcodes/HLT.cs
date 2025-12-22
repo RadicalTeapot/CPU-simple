@@ -3,9 +3,9 @@
 namespace CPU.opcodes
 {
     [Opcode(OpcodeBaseCode.HLT, OpcodeGroupBaseCode.SYSTEM_AND_JUMP, RegisterArgsCount.Zero, OperandType.None)]
-    internal class HLT(State cpuState, Memory memory, Stack stack) : BaseOpcode(cpuState, memory, stack)
+    internal class HLT(State cpuState, Memory memory, Stack stack, OpcodeArgs args) : IOpcode
     {
-        public override void Execute(OpcodeArgs args)
+        public void Execute()
         {
             throw new OpcodeException.HaltException();
         }

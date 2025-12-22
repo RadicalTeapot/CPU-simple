@@ -3,13 +3,13 @@
 namespace CPU.opcodes
 {
     [Opcode(OpcodeBaseCode.RRT, OpcodeGroupBaseCode.BITS_MANIPULATION, RegisterArgsCount.One, OperandType.None)]
-    internal class RRT(State cpuState, Memory memory, Stack stack) : BaseOpcode(cpuState, memory, stack)
+    internal class RRT(State cpuState, Memory memory, Stack stack, OpcodeArgs args) : IOpcode
     {
-        public override void Execute(OpcodeArgs args)
+        public void Execute()
         {
-            var value = CpuState.GetRegister(args.LowRegisterIdx);
+            var value = cpuState.GetRegister(args.LowRegisterIdx);
             var lsb = (byte)(value & 0x01);
-            CpuState.SetRegister(args.LowRegisterIdx, (byte)((value >> 1) | (lsb << 7)));
+            cpuState.SetRegister(args.LowRegisterIdx, (byte)((value >> 1) | (lsb << 7)));
         }
     }
 }

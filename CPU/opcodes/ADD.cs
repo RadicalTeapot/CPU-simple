@@ -3,16 +3,16 @@
 namespace CPU.opcodes
 {
     [Opcode(OpcodeBaseCode.ADD, OpcodeGroupBaseCode.ADD, RegisterArgsCount.Two, OperandType.None)]
-    internal class ADD(State cpuState, Memory memory, Stack stack) : BaseOpcode(cpuState, memory, stack)
+    internal class ADD(State cpuState, Memory memory, Stack stack, OpcodeArgs args) : IOpcode
     {
-        public override void Execute(OpcodeArgs args)
+        public void Execute()
         {
-            var firstValue = CpuState.GetRegister(args.HighRegisterIdx);
-            var secondValue = CpuState.GetRegister(args.LowRegisterIdx);
-            var result = firstValue + secondValue + CpuState.GetCarryFlagAsInt();
-            CpuState.SetRegister(args.LowRegisterIdx, (byte)result); // Wrap around on overflow
-            CpuState.SetCarryFlag(result > 0xFF);
-            CpuState.SetZeroFlag(result == 0);
+            var firstValue = cpuState.GetRegister(args.HighRegisterIdx);
+            var secondValue = cpuState.GetRegister(args.LowRegisterIdx);
+            var result = firstValue + secondValue + cpuState.GetCarryFlagAsInt();
+            cpuState.SetRegister(args.LowRegisterIdx, (byte)result); // Wrap around on overflow
+            cpuState.SetCarryFlag(result > 0xFF);
+            cpuState.SetZeroFlag(result == 0);
         }
     }
 }

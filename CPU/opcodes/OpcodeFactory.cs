@@ -122,9 +122,9 @@ namespace CPU.opcodes
             {
                 var attribute = type.GetCustomAttribute<OpcodeAttribute>()!;
 
-                // Standard constructor signature: (State, Memory, Stack)
-                var constructor = type.GetConstructor([typeof(State), typeof(Memory), typeof(Stack)]) 
-                    ?? throw new InvalidOperationException($"Opcode {type.Name} must have a constructor with signature (State, Memory, Stack)");
+                // Standard constructor signature: (State, Memory, Stack, OpcodeArgs)
+                var constructor = type.GetConstructor([typeof(State), typeof(Memory), typeof(Stack), typeof(OpcodeArgs)]) 
+                    ?? throw new InvalidOperationException($"Opcode {type.Name} must have a constructor with signature (State, Memory, Stack, OpcodeArgs)");
 
                 var metadata = new OpcodeMetadata(
                     constructor,

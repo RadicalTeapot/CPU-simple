@@ -3,12 +3,12 @@
 namespace CPU.opcodes
 {
     [Opcode(OpcodeBaseCode.PEK, OpcodeGroupBaseCode.LOAD, RegisterArgsCount.One, OperandType.None)]
-    internal class PEK(State cpuState, Memory memory, Stack stack) : BaseOpcode(cpuState, memory, stack)
+    internal class PEK(State cpuState, Memory memory, Stack stack, OpcodeArgs args) : IOpcode
     {
-        public override void Execute(OpcodeArgs args)
+        public void Execute()
         {
-            var value = Stack.PeekByte();
-            CpuState.SetRegister(args.LowRegisterIdx, value);
+            var value = stack.PeekByte();
+            cpuState.SetRegister(args.LowRegisterIdx, value);
         }
     }
 }

@@ -3,11 +3,11 @@
 namespace CPU.opcodes
 {
     [Opcode(OpcodeBaseCode.SEZ, OpcodeGroupBaseCode.SYSTEM_AND_JUMP, RegisterArgsCount.Zero, OperandType.None)]
-    internal class SEZ(State cpuState, Memory memory, Stack stack) : BaseOpcode(cpuState, memory, stack)
+    internal class SEZ(State cpuState, Memory memory, Stack stack, OpcodeArgs args) : IOpcode
     {
-        public override void Execute(OpcodeArgs args)
+        public void Execute()
         {
-            CpuState.SetZeroFlag(true);
+            cpuState.SetZeroFlag(true);
         }
     }
 }

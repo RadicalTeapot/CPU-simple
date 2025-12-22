@@ -3,12 +3,12 @@
 namespace CPU.opcodes
 {
     [Opcode(OpcodeBaseCode.RET, OpcodeGroupBaseCode.SYSTEM_AND_JUMP, RegisterArgsCount.Zero, OperandType.None)]
-    internal class RET(State cpuState, Memory memory, Stack stack) : BaseOpcode(cpuState, memory, stack)
+    internal class RET(State cpuState, Memory memory, Stack stack, OpcodeArgs args) : IOpcode
     {
-        public override void Execute(OpcodeArgs args)
+        public void Execute()
         {
-            var returnAddress = Stack.PopAddress();
-            CpuState.SetPC(returnAddress);
+            var returnAddress = stack.PopAddress();
+            cpuState.SetPC(returnAddress);
         }
     }
 }

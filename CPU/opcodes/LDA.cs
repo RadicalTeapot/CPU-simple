@@ -3,11 +3,11 @@
 namespace CPU.opcodes
 {
     [Opcode(OpcodeBaseCode.LDA, OpcodeGroupBaseCode.LOAD, RegisterArgsCount.One, OperandType.Address)]
-    internal class LDA(State cpuState, Memory memory, Stack stack) : BaseOpcode(cpuState, memory, stack)
+    internal class LDA(State cpuState, Memory memory, Stack stack, OpcodeArgs args) : IOpcode
     {
-        public override void Execute(OpcodeArgs args)
+        public void Execute()
         {
-            CpuState.SetRegister(args.LowRegisterIdx, Memory.ReadByte(args.AddressValue));
+            cpuState.SetRegister(args.LowRegisterIdx, memory.ReadByte(args.AddressValue));
         }
     }
 }
