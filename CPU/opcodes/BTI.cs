@@ -10,7 +10,7 @@ namespace CPU.opcodes
             var currentValue = cpuState.GetRegister(args.LowRegisterIdx);
             var immediateValue = args.ImmediateValue;
             var test = (byte)(currentValue & immediateValue);
-            cpuState.SetZeroFlag(test != 0);
+            cpuState.SetZeroFlag(test != 0); // Test if any bit matches and value is not zero
         }
     }
 }

@@ -1486,4 +1486,778 @@ namespace CPU.Tests
             Assert.That(state.C, Is.False, "Carry flag should remain unaffected.");
         }
     }
+
+    [TestFixture]
+    public class CPI_tests
+    {
+        [Test]
+        public void CPI_R0_SetsZeroFlagWhenEqual()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.CPI | 0b0000, 0x01], // CPI R0, 0x42
+                out var state,
+                out _,
+                out _);
+            state.SetRegister(0, 0x01);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.Z, Is.True, "Zero flag should be set when values are equal.");
+            Assert.That(state.C, Is.True, "Carry flag should be set when R0 >= immediate.");
+        }
+
+        [Test]
+        public void CPI_R0_SetsCarryFlagWhenGreater()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.CPI | 0b0000, 0x01], // CPI R0, 0x01
+                out var state,
+                out _,
+                out _);
+            state.SetRegister(0, 0x02);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.Z, Is.False, "Zero flag should be clear when values are not equal.");
+            Assert.That(state.C, Is.True, "Carry flag should be set when R0 >= immediate.");
+        }
+
+        [Test]
+        public void CPI_R0_ClearsCarryFlagWhenLess()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.CPI | 0b0000, 0x02], // CPI R0, 0x02
+                out var state,
+                out _,
+                out _);
+            state.SetRegister(0, 0x01);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.Z, Is.False, "Zero flag should be clear when values are not equal.");
+            Assert.That(state.C, Is.False, "Carry flag should be clear when R0 < immediate.");
+        }
+    }
+
+    [TestFixture]
+    public class CPA_tests
+    {
+        [Test]
+        public void CPA_R0_SetsZeroFlagWhenEqual()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.CPA | 0b0000, .. OpcodeTestHelpers.GetAddress(0x10)], // CPA R0, [0x10]
+                out var state,
+                out _,
+                out var memory);
+            state.SetRegister(0, 0x01);
+            memory.WriteByte(0x10, 0x01);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.Z, Is.True, "Zero flag should be set when values are equal.");
+            Assert.That(state.C, Is.True, "Carry flag should be set when R0 >= memory value.");
+        }
+
+        [Test]
+        public void CPA_R0_SetsCarryFlagWhenGreater()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.CPA | 0b0000, .. OpcodeTestHelpers.GetAddress(0x10)], // CPA R0, [0x10]
+                out var state,
+                out _,
+                out var memory);
+            state.SetRegister(0, 0x02);
+            memory.WriteByte(0x10, 0x01);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.Z, Is.False, "Zero flag should be clear when values are not equal.");
+            Assert.That(state.C, Is.True, "Carry flag should be set when R0 >= memory value.");
+        }
+
+        [Test]
+        public void CPA_R0_ClearsCarryFlagWhenLess()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.CPA | 0b0000, .. OpcodeTestHelpers.GetAddress(0x10)], // CPA R0, [0x10]
+                out var state,
+                out _,
+                out var memory);
+            state.SetRegister(0, 0x01);
+            memory.WriteByte(0x10, 0x02);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.Z, Is.False, "Zero flag should be clear when values are not equal.");
+            Assert.That(state.C, Is.False, "Carry flag should be clear when R0 < memory value.");
+        }
+    }
+
+    [TestFixture]
+    public class INC_tests
+    {
+        [Test]
+        public void INC_R0_IncrementsRegister()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.INC | 0b0000], // INC R0
+                out var state,
+                out _,
+                out _);
+            state.SetRegister(0, 0x00);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.GetRegister(0), Is.EqualTo(0x01), "R0 should be incremented by 1.");
+            Assert.That(state.Z, Is.False, "Zero flag should be clear when result is not zero.");
+        }
+
+        [Test]
+        public void INC_R0_SetsZeroFlagOnOverflow()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.INC | 0b0000], // INC R0
+                out var state,
+                out _,
+                out _);
+            state.SetRegister(0, 0xFF);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.GetRegister(0), Is.EqualTo(0x00), "R0 should wrap to 0 on overflow.");
+            Assert.That(state.Z, Is.True, "Zero flag should be set when result is zero.");
+        }
+    }
+
+    [TestFixture]
+    public class DEC_tests
+    {
+        [Test]
+        public void DEC_R0_DecrementsRegister()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.DEC | 0b0000], // DEC R0
+                out var state,
+                out _,
+                out _);
+            state.SetRegister(0, 0x02);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.GetRegister(0), Is.EqualTo(0x01), "R0 should be decremented by 1.");
+            Assert.That(state.Z, Is.False, "Zero flag should be clear when result is not zero.");
+        }
+
+        [Test]
+        public void DEC_R0_SetsZeroFlagWhenResultIsZero()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.DEC | 0b0000], // DEC R0
+                out var state,
+                out _,
+                out _);
+            state.SetRegister(0, 0x01);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.GetRegister(0), Is.EqualTo(0x00), "R0 should be 0.");
+            Assert.That(state.Z, Is.True, "Zero flag should be set when result is zero.");
+        }
+
+        [Test]
+        public void DEC_R0_WrapsOnUnderflow()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.DEC | 0b0000], // DEC R0
+                out var state,
+                out _,
+                out _);
+            state.SetRegister(0, 0x00);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.GetRegister(0), Is.EqualTo(0xFF), "R0 should wrap to 0xFF on underflow.");
+            Assert.That(state.Z, Is.False, "Zero flag should be clear when result is not zero.");
+        }
+    }
+
+    [TestFixture]
+    public class AND_tests
+    {
+        [Test]
+        public void AND_R0_R1_PerformsBitwiseAnd()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.AND | 0b0001], // AND R0, R1
+                out var state,
+                out _,
+                out _);
+            state.SetRegister(0, 0b1111_0000);
+            state.SetRegister(1, 0b1010_1010);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.GetRegister(1), Is.EqualTo(0b1010_0000), "R1 should contain R0 AND R1.");
+            Assert.That(state.Z, Is.False, "Zero flag should be clear when result is not zero.");
+        }
+
+        [Test]
+        public void AND_R0_R1_SetsZeroFlagWhenResultIsZero()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.AND | 0b0001], // AND R0, R1
+                out var state,
+                out _,
+                out _);
+            state.SetRegister(0, 0b1111_0000);
+            state.SetRegister(1, 0b0000_1111);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.GetRegister(1), Is.EqualTo(0x00), "R1 should be 0.");
+            Assert.That(state.Z, Is.True, "Zero flag should be set when result is zero.");
+        }
+    }
+
+    [TestFixture]
+    public class ANI_tests
+    {
+        [Test]
+        public void ANI_R0_PerformsBitwiseAndWithImmediate()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.ANI | 0b0000, 0b1010_1010], // ANI R0, 0xAA
+                out var state,
+                out _,
+                out _);
+            state.SetRegister(0, 0b1111_0000);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.GetRegister(0), Is.EqualTo(0b1010_0000), "R0 should contain R0 AND immediate.");
+            Assert.That(state.Z, Is.False, "Zero flag should be clear when result is not zero.");
+        }
+
+        [Test]
+        public void ANI_R0_SetsZeroFlagWhenResultIsZero()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.ANI | 0b0000, 0b0000_1111], // ANI R0, 0x0F
+                out var state,
+                out _,
+                out _);
+            state.SetRegister(0, 0b1111_0000);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.GetRegister(0), Is.EqualTo(0x00), "R0 should be 0.");
+            Assert.That(state.Z, Is.True, "Zero flag should be set when result is zero.");
+        }
+    }
+
+    [TestFixture]
+    public class ANA_tests
+    {
+        [Test]
+        public void ANA_R0_PerformsBitwiseAndWithMemory()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.ANA | 0b0000, .. OpcodeTestHelpers.GetAddress(0x10)], // ANA R0, [0x10]
+                out var state,
+                out _,
+                out var memory);
+            state.SetRegister(0, 0b1111_0000);
+            memory.WriteByte(0x10, 0b1010_1010);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.GetRegister(0), Is.EqualTo(0b1010_0000), "R0 should contain R0 AND memory value.");
+            Assert.That(state.Z, Is.False, "Zero flag should be clear when result is not zero.");
+        }
+
+        [Test]
+        public void ANA_R0_SetsZeroFlagWhenResultIsZero()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.ANA | 0b0000, .. OpcodeTestHelpers.GetAddress(0x10)], // ANA R0, [0x10]
+                out var state,
+                out _,
+                out var memory);
+            state.SetRegister(0, 0b1111_0000);
+            memory.WriteByte(0x10, 0b0000_1111);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.GetRegister(0), Is.EqualTo(0x00), "R0 should be 0.");
+            Assert.That(state.Z, Is.True, "Zero flag should be set when result is zero.");
+        }
+    }
+
+    [TestFixture]
+    public class OR_tests
+    {
+        [Test]
+        public void OR_R0_R1_PerformsBitwiseOr()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.OR | 0b0001], // OR R0, R1
+                out var state,
+                out _,
+                out _);
+            state.SetRegister(0, 0b1111_0000);
+            state.SetRegister(1, 0b0000_1111);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.GetRegister(1), Is.EqualTo(0b1111_1111), "R1 should contain R0 OR R1.");
+            Assert.That(state.Z, Is.False, "Zero flag should be clear when result is not zero.");
+        }
+
+        [Test]
+        public void OR_R0_R1_SetsZeroFlagWhenResultIsZero()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.OR | 0b0001], // OR R0, R1
+                out var state,
+                out _,
+                out _);
+            state.SetRegister(0, 0x00);
+            state.SetRegister(1, 0x00);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.GetRegister(1), Is.EqualTo(0x00), "R1 should be 0.");
+            Assert.That(state.Z, Is.True, "Zero flag should be set when result is zero.");
+        }
+    }
+
+    [TestFixture]
+    public class ORI_tests
+    {
+        [Test]
+        public void ORI_R0_PerformsBitwiseOrWithImmediate()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.ORI | 0b0000, 0b0000_1111], // ORI R0, 0x0F
+                out var state,
+                out _,
+                out _);
+            state.SetRegister(0, 0b1111_0000);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.GetRegister(0), Is.EqualTo(0b1111_1111), "R0 should contain R0 OR immediate.");
+            Assert.That(state.Z, Is.False, "Zero flag should be clear when result is not zero.");
+        }
+
+        [Test]
+        public void ORI_R0_SetsZeroFlagWhenResultIsZero()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.ORI | 0b0000, 0x00], // ORI R0, 0x00
+                out var state,
+                out _,
+                out _);
+            state.SetRegister(0, 0x00);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.GetRegister(0), Is.EqualTo(0x00), "R0 should be 0.");
+            Assert.That(state.Z, Is.True, "Zero flag should be set when result is zero.");
+        }
+    }
+
+    [TestFixture]
+    public class ORA_tests
+    {
+        [Test]
+        public void ORA_R0_PerformsBitwiseOrWithMemory()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.ORA | 0b0000, .. OpcodeTestHelpers.GetAddress(0x10)], // ORA R0, [0x10]
+                out var state,
+                out _,
+                out var memory);
+            state.SetRegister(0, 0b1111_0000);
+            memory.WriteByte(0x10, 0b0000_1111);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.GetRegister(0), Is.EqualTo(0b1111_1111), "R0 should contain R0 OR memory value.");
+            Assert.That(state.Z, Is.False, "Zero flag should be clear when result is not zero.");
+        }
+
+        [Test]
+        public void ORA_R0_SetsZeroFlagWhenResultIsZero()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.ORA | 0b0000, .. OpcodeTestHelpers.GetAddress(0x10)], // ORA R0, [0x10]
+                out var state,
+                out _,
+                out var memory);
+            state.SetRegister(0, 0x00);
+            memory.WriteByte(0x10, 0x00);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.GetRegister(0), Is.EqualTo(0x00), "R0 should be 0.");
+            Assert.That(state.Z, Is.True, "Zero flag should be set when result is zero.");
+        }
+    }
+
+    [TestFixture]
+    public class XOR_tests
+    {
+        [Test]
+        public void XOR_R0_R1_PerformsBitwiseXor()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.XOR | 0b0001], // XOR R0, R1
+                out var state,
+                out _,
+                out _);
+            state.SetRegister(0, 0b1111_0000);
+            state.SetRegister(1, 0b1010_1010);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.GetRegister(1), Is.EqualTo(0b0101_1010), "R1 should contain R0 XOR R1.");
+            Assert.That(state.Z, Is.False, "Zero flag should be clear when result is not zero.");
+        }
+
+        [Test]
+        public void XOR_R0_R1_SetsZeroFlagWhenResultIsZero()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.XOR | 0b0001], // XOR R0, R1
+                out var state,
+                out _,
+                out _);
+            state.SetRegister(0, 0b1010_1010);
+            state.SetRegister(1, 0b1010_1010);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.GetRegister(1), Is.EqualTo(0x00), "R1 should be 0 when XORing same values.");
+            Assert.That(state.Z, Is.True, "Zero flag should be set when result is zero.");
+        }
+    }
+
+    [TestFixture]
+    public class XRI_tests
+    {
+        [Test]
+        public void XRI_R0_PerformsBitwiseXorWithImmediate()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.XRI | 0b0000, 0b1010_1010], // XRI R0, 0xAA
+                out var state,
+                out _,
+                out _);
+            state.SetRegister(0, 0b1111_0000);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.GetRegister(0), Is.EqualTo(0b0101_1010), "R0 should contain R0 XOR immediate.");
+            Assert.That(state.Z, Is.False, "Zero flag should be clear when result is not zero.");
+        }
+
+        [Test]
+        public void XRI_R0_SetsZeroFlagWhenResultIsZero()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.XRI | 0b0000, 0b1010_1010], // XRI R0, 0xAA
+                out var state,
+                out _,
+                out _);
+            state.SetRegister(0, 0b1010_1010);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.GetRegister(0), Is.EqualTo(0x00), "R0 should be 0.");
+            Assert.That(state.Z, Is.True, "Zero flag should be set when result is zero.");
+        }
+    }
+
+    [TestFixture]
+    public class XRA_tests
+    {
+        [Test]
+        public void XRA_R0_PerformsBitwiseXorWithMemory()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.XRA | 0b0000, .. OpcodeTestHelpers.GetAddress(0x10)], // XRA R0, [0x10]
+                out var state,
+                out _,
+                out var memory);
+            state.SetRegister(0, 0b1111_0000);
+            memory.WriteByte(0x10, 0b1010_1010);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.GetRegister(0), Is.EqualTo(0b0101_1010), "R0 should contain R0 XOR memory value.");
+            Assert.That(state.Z, Is.False, "Zero flag should be clear when result is not zero.");
+        }
+
+        [Test]
+        public void XRA_R0_SetsZeroFlagWhenResultIsZero()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.XRA | 0b0000, .. OpcodeTestHelpers.GetAddress(0x10)], // XRA R0, [0x10]
+                out var state,
+                out _,
+                out var memory);
+            state.SetRegister(0, 0b1010_1010);
+            memory.WriteByte(0x10, 0b1010_1010);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.GetRegister(0), Is.EqualTo(0x00), "R0 should be 0.");
+            Assert.That(state.Z, Is.True, "Zero flag should be set when result is zero.");
+        }
+    }
+
+    [TestFixture]
+    public class BTI_tests
+    {
+        [Test]
+        public void BTI_R0_SetsZeroFlagWhenBitsMatch()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.BTI | 0b0000, 0b0000_1000], // BTI R0, 0x08
+                out var state,
+                out _,
+                out _);
+            state.SetRegister(0, 0b1111_1111);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.Z, Is.True, "Zero flag should be set when bits match (result is not zero).");
+        }
+
+        [Test]
+        public void BTI_R0_ClearsZeroFlagWhenBitsDoNotMatch()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.BTI | 0b0000, 0b0000_1000], // BTI R0, 0x08
+                out var state,
+                out _,
+                out _);
+            state.SetRegister(0, 0b1111_0000);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.Z, Is.False, "Zero flag should be clear when bits do not match (result is zero).");
+        }
+
+        [Test]
+        public void BTI_R0_ClearsZeroFlagWhenBothZero()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.BTI | 0b0000, 0b0000_0000], // BTI R0, 0x00
+                out var state,
+                out _,
+                out _);
+            state.SetRegister(0, 0b0000_0000);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.Z, Is.False, "Zero flag should be clear when bits match and are zero.");
+        }
+
+        [Test]
+        public void BTI_R0_DoesNotModifyRegister()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.BTI | 0b0000, 0b1010_1010], // BTI R0, 0xAA
+                out var state,
+                out _,
+                out _);
+            state.SetRegister(0, 0b1111_0000);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.GetRegister(0), Is.EqualTo(0b1111_0000), "R0 should not be modified by BTI.");
+        }
+    }
+
+    [TestFixture]
+    public class BTA_tests
+    {
+        [Test]
+        public void BTA_R0_SetsZeroFlagWhenBitsMatch()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.BTA | 0b0000, .. OpcodeTestHelpers.GetAddress(0x10)], // BTA R0, [0x10]
+                out var state,
+                out _,
+                out var memory);
+            state.SetRegister(0, 0b1111_1111);
+            memory.WriteByte(0x10, 0b0000_1000);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.Z, Is.True, "Zero flag should be set when bits match (result is not zero).");
+        }
+
+        [Test]
+        public void BTA_R0_ClearsZeroFlagWhenBitsDoNotMatch()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.BTA | 0b0000, .. OpcodeTestHelpers.GetAddress(0x10)], // BTA R0, [0x10]
+                out var state,
+                out _,
+                out var memory);
+            state.SetRegister(0, 0b1111_0000);
+            memory.WriteByte(0x10, 0b0000_1111);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.Z, Is.False, "Zero flag should be clear when bits do not match (result is zero).");
+        }
+
+        [Test]
+        public void BTA_R0_ClearsZeroFlagWhenBothZero()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.BTA | 0b0000, .. OpcodeTestHelpers.GetAddress(0x10)], // BTA R0, [0x10]
+                out var state,
+                out _,
+                out var memory);
+            state.SetRegister(0, 0b0000_0000);
+            memory.WriteByte(0x10, 0b0000_0000);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.Z, Is.False, "Zero flag should be clear when bits match and are zero.");
+        }
+
+        [Test]
+        public void BTA_R0_DoesNotModifyRegister()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.BTA | 0b0000, .. OpcodeTestHelpers.GetAddress(0x10)], // BTA R0, [0x10]
+                out var state,
+                out _,
+                out var memory);
+            state.SetRegister(0, 0b1111_0000);
+            memory.WriteByte(0x10, 0b1010_1010);
+
+            // Act
+            cpu.Step(traceEnabled: false);
+
+            // Assert
+            Assert.That(state.GetRegister(0), Is.EqualTo(0b1111_0000), "R0 should not be modified by BTA.");
+        }
+    }
 }

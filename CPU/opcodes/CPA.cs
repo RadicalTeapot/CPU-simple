@@ -2,7 +2,7 @@
 
 namespace CPU.opcodes
 {
-    [Opcode(OpcodeBaseCode.ADA, OpcodeGroupBaseCode.SingleRegisterALU, RegisterArgsCount.One, OperandType.Address)]
+    [Opcode(OpcodeBaseCode.CPA, OpcodeGroupBaseCode.SingleRegisterALU, RegisterArgsCount.One, OperandType.Address)]
     internal class CPA(State cpuState, Memory memory, Stack stack, OpcodeArgs args) : IOpcode
     {
         public void Execute()
