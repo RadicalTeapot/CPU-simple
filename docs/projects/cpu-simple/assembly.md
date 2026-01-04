@@ -9,19 +9,19 @@ alpha = ? [a-zA-Z] ?;
 all-chars = ? all visible characters ?; (* Only ASCII characters, tab character included *)
 
 hex-alphanum = ( num | hex-alpha ), { num | hex-alpha };
-hex = '#', hex-alphanum;
+hex-literal = '#', hex-alphanum;
 reg = 'r', num, { num };
 identifier = ( '_' | alpha ), { num | alpha | '_' };
-memory-identifier = hex | identifier | ( identifier, ( + | - ), hex );
+memory-identifier = hex-literal | identifier | ( identifier, ( + | - ), hex-literal );
 memory = '[', memory-identifier, ']';
-argument = reg | hex | identifier | memory;
+argument = reg | hex-literal | identifier | memory;
 
 label = identifier, ':';
-directive = '.', identifier, [ hex, [ ',', hex ] ];
+directive = '.', identifier, [ hex-literal, [ ',', hex-literal ] ];
 instruction = identifier, [ argument, [ ',', argument ] ];
 comment = ';', { all-chars };
 
-statement = [ identifier ], [ directive | instruction ], [ comment ];
+statement = [ label ], [ directive | instruction ], [ comment ];
 ```
 
 ## Language specification
@@ -63,3 +63,7 @@ The following directives are syntactically valid anywhere, but semantically rest
 - Allocating to already written addresses (e.g., by jumping backwards) using `.org` will result in an error at compile time
 - While it is syntactically allowed to use a label to set `.org` arguments, it is semantically restricted to only byte literals 
 - Signed numbers are not supported yet
+- Whitespace are allowed between symbols and identifiers / numbers, e.g,
+    - `# 05` is a valid hex literal
+    - `abc :` is a valid label
+    - `. text` is a valid directive
