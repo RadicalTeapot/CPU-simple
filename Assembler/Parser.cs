@@ -3,21 +3,35 @@ using System.Diagnostics;
 
 namespace Assembler
 {
+    public class ParserException : Exception
+    {
+        public int Line { get; }
+        public int Column { get; }
+        public ParserException(string message, int line, int column)
+            : base($"{message} at line {line}, column {column}")
+        {
+            Line = line;
+            Column = column;
+        }
+    }
+
     public class ProgramNode(IList<StatementNode> statements)
     {
         public IList<StatementNode> Statements { get; } = statements;
     }
 
-    public readonly struct NodeSpan(int start, int end)
+    public readonly struct NodeSpan(int start, int end, int line)
     {
         public int Start { get; } = start;
         public int End { get; } = end;
+        public int Line { get; } = line;
     }
 
-    public class StatementNode(LabelNode? label, DirectiveNode? directive, InstructionNode? instruction, NodeSpan nodeSpan)
+    public class StatementNode(DirectiveNode? headerDirective, LabelNode? label, DirectiveNode? postDirective, InstructionNode? instruction, NodeSpan nodeSpan)
     {
+        public DirectiveNode? HeaderDirective { get; } = headerDirective;
         public LabelNode? Label { get; } = label;
-        public DirectiveNode? Directive { get; } = directive;
+        public DirectiveNode? PostDirective { get; } = postDirective;
         public InstructionNode? Instruction { get; } = instruction;
         public NodeSpan Span { get; } = nodeSpan;
     }
@@ -50,9 +64,10 @@ namespace Assembler
         MemoryAddress
     }
 
-    public class OperandNode(string operand, OperandType type, NodeSpan span)
+    public class OperandNode(string operand, OperandType type, NodeSpan span, string? offset = null)
     {
         public string Operand { get; } = operand;
+        public string? Offset { get; } = offset; // Only valid for memory operands
         public OperandType Type { get; } = type;
         public NodeSpan Span { get; } = span;
     }
@@ -92,7 +107,7 @@ namespace Assembler
 
             if (tokens[currentTokenIndex].Type != TokenType.EndOfFile)
             {
-                parsingErrors.Add(new Exception("Expected end of file token.")); // TODO Custom exception
+                parsingErrors.Add(new ParserException("Expected end of file token.", tokens[currentTokenIndex].Line, tokens[currentTokenIndex].Column));
             }
 
             if (parsingErrors.Count > 0)
@@ -106,64 +121,85 @@ namespace Assembler
         private static StatementNode ParseStatement(IList<Token> tokens, ref int currentTokenIndex)
         {
             var startIndex = currentTokenIndex;
-            var _ = TryParseLabel(tokens, ref currentTokenIndex, out var labelNode);
-            var hasDirective = TryParseDirective(tokens, ref currentTokenIndex, out var directiveNode);
+            var _ = TryParseDirective(tokens, ref currentTokenIndex, out var headerDirective);
+            _ = TryParseLabel(tokens, ref currentTokenIndex, out var labelNode);
+            var hasDirective = TryParseDirective(tokens, ref currentTokenIndex, out var postDirective);
             var hasInstruction = TryParseInstruction(tokens, ref currentTokenIndex, out var instructionNode);
 
             if (hasDirective && hasInstruction)
             {
-                throw new Exception("Statement cannot contain both a directive and an instruction."); // TODO Custom exception
+                throw new ParserException("Statement cannot contain both a post-directive and an instruction.", tokens[startIndex].Line, tokens[startIndex].Column);
             }
 
             if (tokens[currentTokenIndex].Type != TokenType.EndOfLine)
             {
-                throw new Exception("Expected end of statement (newline)."); // TODO Custom exception
+                throw new ParserException("Expected end of statement (newline).", tokens[currentTokenIndex].Line, tokens[currentTokenIndex].Column);
             }
 
-            return new StatementNode(labelNode, directiveNode, instructionNode, new NodeSpan(startIndex, currentTokenIndex));
+            return new StatementNode(headerDirective, labelNode, postDirective, instructionNode, new NodeSpan(
+                tokens[startIndex].Column, tokens[currentTokenIndex].Column, tokens[startIndex].Line));
         }
 
         private static bool TryParseLabel(IList<Token> tokens, ref int currentTokenIndex, out LabelNode? labelNode)
         {
-            var startIndex = currentTokenIndex;
-            if (tokens[currentTokenIndex].Type == TokenType.Identifier)
+            if (IsValidLabelAtIndex(tokens, currentTokenIndex))
             {
+                var startIndex = currentTokenIndex;
                 var identifierToken = tokens[currentTokenIndex];
-                currentTokenIndex++;
-                if (currentTokenIndex < tokens.Count && tokens[currentTokenIndex].Type == TokenType.Colon)
-                {
-                    currentTokenIndex++;
-                    labelNode = new LabelNode(identifierToken.Lexeme, new NodeSpan(startIndex, currentTokenIndex));
-                    return true;
-                }
+                currentTokenIndex += 2;
+                labelNode = new LabelNode(identifierToken.Lexeme, new NodeSpan(
+                    tokens[startIndex].Column, tokens[currentTokenIndex].Column, tokens[startIndex].Line));
+                return true;
             }
 
-            // If parsing failed, reset the index
-            currentTokenIndex = startIndex;
             labelNode = default;
             return false;
         }
 
-        private static bool TryParseDirective(IList<Token> tokens, ref int currentTokenIndex, out DirectiveNode? directiveNode)
+        private static bool IsValidLabelAtIndex(IList<Token> tokens, int index)
         {
-            var startIndex = currentTokenIndex;
-            if (tokens[currentTokenIndex].Type == TokenType.Dot)
+            if (tokens.Count > index + 1 
+                && tokens[index].Type != TokenType.Identifier 
+                && tokens[index + 1].Type == TokenType.Colon)
             {
-                currentTokenIndex++;
-                if (currentTokenIndex < tokens.Count && tokens[currentTokenIndex].Type == TokenType.Identifier)
-                {
-                    var directiveToken = tokens[currentTokenIndex];
-                    currentTokenIndex++;
-                    // TODO Further parsing of directive arguments can be done here based on directiveToken.Lexeme
-                    directiveNode = new DirectiveNode(directiveToken.Lexeme, [], new NodeSpan(startIndex, currentTokenIndex));
-                    return true;
-                }
+                throw new ParserException("Invalid label syntax.", tokens[index].Line, tokens[index].Column);
             }
 
-            // If parsing failed, reset the index
-            currentTokenIndex = startIndex;
+            return tokens.Count > index + 1
+                && tokens[index].Type == TokenType.Identifier
+                && tokens[index + 1].Type == TokenType.Colon; 
+        }
+
+        private static bool TryParseDirective(IList<Token> tokens, ref int currentTokenIndex, out DirectiveNode? directiveNode)
+        {
+            if (IsValidDirectiveAtIndex(tokens, currentTokenIndex))
+            {
+                var startIndex = currentTokenIndex;
+                var directiveToken = tokens[currentTokenIndex+1];
+                currentTokenIndex += 2;
+                // TODO Further parsing of directive arguments can be done here based on directiveToken.Lexeme
+                directiveNode = new DirectiveNode(directiveToken.Lexeme, [], new NodeSpan(
+                    tokens[startIndex].Column, tokens[currentTokenIndex].Column, tokens[startIndex].Line));
+                return true;
+            }
+
             directiveNode = default;
             return false;
+        }
+
+        private static bool IsValidDirectiveAtIndex(IList<Token> tokens, int index)
+        {
+            if (tokens[index].Type == TokenType.Dot 
+                && (index + 1 >= tokens.Count ||
+                tokens[index + 1].Type != TokenType.Identifier)
+            )
+            {
+                throw new ParserException("Invalid directive syntax.", tokens[index].Line, tokens[index].Column);
+            }
+
+            return tokens.Count > index + 1
+                && tokens[index].Type == TokenType.Dot
+                && tokens[index + 1].Type == TokenType.Identifier;
         }
 
         private static bool TryParseInstruction(IList<Token> tokens, ref int currentTokenIndex, out InstructionNode? instructionNode)
@@ -190,11 +226,12 @@ namespace Assembler
                         }
                         else
                         {
-                            throw new Exception("Expected second operand after comma."); // TODO Custom exception
+                            throw new ParserException("Expected second operand after comma.", tokens[currentTokenIndex].Line, tokens[currentTokenIndex].Column);
                         }
                     }
                 }
-                instructionNode = new InstructionNode(mnemonicToken.Lexeme, operands, new NodeSpan(startIndex, currentTokenIndex));
+                instructionNode = new InstructionNode(mnemonicToken.Lexeme, operands, new NodeSpan(
+                    tokens[startIndex].Column, tokens[currentTokenIndex].Column, tokens[startIndex].Line));
                 return true;
             }
 
@@ -206,52 +243,139 @@ namespace Assembler
 
         private static bool TryParseOperand(IList<Token> tokens, ref int currentTokenIndex, out OperandNode? operandToken)
         {
-            // Either register, immediate value, label ref or memory address
-            var startIndex = currentTokenIndex;
+            if (TryParseRegister(tokens, ref currentTokenIndex, out operandToken))
+            {
+                return true;
+            }
+            else if (TryParseImmediateValue(tokens, ref currentTokenIndex, out operandToken))
+            {
+                return true;
+            }
+            else if (TryParseLabelReference(tokens, ref currentTokenIndex, out operandToken))
+            {
+                return true;
+            }
+            else if (TryParseMemoryOperand(tokens, ref currentTokenIndex, out operandToken))
+            {
+                return true;
+            }
+            
+            operandToken = default;
+            return false;
+        }
+
+        private static bool TryParseRegister(IList<Token> tokens, ref int currentTokenIndex, out OperandNode? operandToken)
+        {
             if (tokens[currentTokenIndex].Type == TokenType.Register)
             {
+                var startIndex = currentTokenIndex;
                 var registerToken = tokens[currentTokenIndex];
                 currentTokenIndex++;
-                operandToken = new OperandNode(registerToken.Lexeme, OperandType.Register, new NodeSpan(startIndex, currentTokenIndex));
+                operandToken = new OperandNode(registerToken.Lexeme, OperandType.Register, new NodeSpan(
+                    tokens[startIndex].Column, tokens[currentTokenIndex].Column, tokens[startIndex].Line));
                 return true;
             }
-            else if (tokens[currentTokenIndex].Type == TokenType.Hash)
+
+            operandToken = default;
+            return false;
+        }
+
+        private static bool TryParseImmediateValue(IList<Token> tokens, ref int currentTokenIndex, out OperandNode? operandToken)
+        {
+            if (IsValidHexNumberAtIndex(tokens, currentTokenIndex))
+            {
+                var startIndex = currentTokenIndex;
+                var immediateToken = tokens[currentTokenIndex + 1];
+                currentTokenIndex += 2;
+                operandToken = new OperandNode(immediateToken.Lexeme, OperandType.Immediate, new NodeSpan(
+                    tokens[startIndex].Column, tokens[currentTokenIndex].Column, tokens[startIndex].Line));
+                return true;
+            }
+
+            operandToken = default;
+            return false;
+        }
+
+        private static bool IsValidHexNumberAtIndex(IList<Token> tokens, int index)
+        {
+            if (tokens[index].Type == TokenType.Hash 
+                && (index + 1 >= tokens.Count ||
+                tokens[index + 1].Type != TokenType.HexNumber)
+            )
+            {
+                throw new ParserException("Invalid immediate value syntax.", tokens[index].Line, tokens[index].Column);
+            }
+
+            return tokens.Count > index + 1
+                && tokens[index].Type == TokenType.Hash
+                && tokens[index + 1].Type == TokenType.HexNumber;
+        }
+
+        private static bool TryParseLabelReference(IList<Token> tokens, ref int currentTokenIndex, out OperandNode? operandToken)
+        {
+            if (tokens[currentTokenIndex].Type == TokenType.Identifier)
+            {
+                var startIndex = currentTokenIndex;
+                var identifierToken = tokens[currentTokenIndex];
+                currentTokenIndex++;
+                operandToken = new OperandNode(identifierToken.Lexeme, OperandType.LabelReference, new NodeSpan(
+                    tokens[startIndex].Column, tokens[currentTokenIndex].Column, tokens[startIndex].Line));
+                return true;
+            }
+            operandToken = default;
+            return false;
+        }
+
+        private static bool TryParseMemoryOperand(IList<Token> tokens, ref int currentTokenIndex, out OperandNode? operandToken)
+        {
+            if (tokens[currentTokenIndex].Type == TokenType.LeftSquareBracket)
             {
                 currentTokenIndex++;
-                if (currentTokenIndex >= tokens.Count || tokens[currentTokenIndex].Type != TokenType.HexNumber)
+                if (IsValidHexNumberAtIndex(tokens, currentTokenIndex))
                 {
-                    throw new Exception("Expected immediate value after '#' symbol."); // TODO Custom exception
+                    var startIndex = currentTokenIndex;
+                    var immediateToken = tokens[currentTokenIndex + 1];
+                    currentTokenIndex += 2;
+                    operandToken = new OperandNode(string.Empty, OperandType.MemoryAddress, new NodeSpan(
+                        tokens[startIndex].Column, tokens[currentTokenIndex].Column, tokens[startIndex].Line), immediateToken.Lexeme);
                 }
-                var immediateToken = tokens[currentTokenIndex];
-                currentTokenIndex++;
-                operandToken = new OperandNode(immediateToken.Lexeme, OperandType.Immediate, new NodeSpan(startIndex, currentTokenIndex));
-                return true;
-            }
-            else if (tokens[currentTokenIndex].Type == TokenType.Identifier)
-            {
-                var labelRefToken = tokens[currentTokenIndex];
-                currentTokenIndex++;
-                operandToken = new OperandNode(labelRefToken.Lexeme, OperandType.LabelReference, new NodeSpan(startIndex, currentTokenIndex));
-                return true;
-            }
-            else if (tokens[currentTokenIndex].Type == TokenType.LeftSquareBracket)
-            {
-                currentTokenIndex++;
-                if (currentTokenIndex < tokens.Count && tokens[currentTokenIndex].Type == TokenType.Identifier)
+                else if (tokens[currentTokenIndex].Type == TokenType.Identifier)
                 {
-                    var addressToken = tokens[currentTokenIndex];
+                    var startIndex = currentTokenIndex;
+                    var identifierToken = tokens[currentTokenIndex];
                     currentTokenIndex++;
-                    if (currentTokenIndex < tokens.Count && tokens[currentTokenIndex].Type == TokenType.RightSquareBracket)
+                    if (tokens[currentTokenIndex].Type == TokenType.Plus || tokens[currentTokenIndex].Type == TokenType.Minus)
                     {
-                        // TODO Offset parsing can be added here
                         currentTokenIndex++;
-                        operandToken = new OperandNode(addressToken.Lexeme, OperandType.MemoryAddress, new NodeSpan(startIndex, currentTokenIndex));
-                        return true;
+                        if (IsValidHexNumberAtIndex(tokens, currentTokenIndex))
+                        {
+                            var immediateToken = tokens[currentTokenIndex + 1];
+                            currentTokenIndex += 2;
+                            operandToken = new OperandNode(identifierToken.Lexeme, OperandType.MemoryAddress, new NodeSpan(
+                                tokens[startIndex].Column, tokens[currentTokenIndex].Column, tokens[startIndex].Line), immediateToken.Lexeme);
+                        }
+                        else
+                        {
+                            throw new ParserException($"Expected token {tokens[currentTokenIndex]} for offset value", tokens[currentTokenIndex].Line, tokens[currentTokenIndex].Column);
+                        }
+                    }
+                    else
+                    {
+                        operandToken = new OperandNode(identifierToken.Lexeme, OperandType.MemoryAddress, new NodeSpan(
+                            tokens[startIndex].Column, tokens[currentTokenIndex].Column, tokens[startIndex].Line));
                     }
                 }
+                else
+                {
+                    throw new ParserException($"Unexpected token {tokens[currentTokenIndex]} for memory address", tokens[currentTokenIndex].Line, tokens[currentTokenIndex].Column);
+                }
+
+                if (tokens[currentTokenIndex].Type == TokenType.RightSquareBracket)
+                {
+                    return true;
+                }
             }
-            // If parsing failed, reset the index
-            currentTokenIndex = startIndex;
+
             operandToken = default;
             return false;
         }

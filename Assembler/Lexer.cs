@@ -8,7 +8,6 @@ using System.Threading.Tasks;
 
 namespace Assembler
 {
-
     public class LexerException : Exception
     {
         public int Line { get; }

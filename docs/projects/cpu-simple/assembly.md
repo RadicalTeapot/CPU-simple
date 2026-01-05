@@ -21,7 +21,7 @@ directive = '.', identifier, [ hex-literal, [ ',', hex-literal ] ];
 instruction = identifier, [ argument, [ ',', argument ] ];
 comment = ';', { all-chars };
 
-statement = [ label ], [ directive | instruction ], [ comment ];
+statement = [ directive ], [ label ], [ directive | instruction ], [ comment ];
 ```
 
 ## Language specification

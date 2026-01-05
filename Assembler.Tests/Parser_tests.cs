@@ -40,8 +40,8 @@ namespace Assembler.Tests
             var tokens = Helpers.LexProgram(".DATA");
             var program = Parser.ParseProgram(tokens);
             Assert.That(program.Statements, Has.Count.EqualTo(1));
-            Assert.That(program.Statements[0].Directive, Is.Not.Null);
-            var directive = program.Statements[0].Directive;
+            Assert.That(program.Statements[0].PostDirective, Is.Not.Null);
+            var directive = program.Statements[0].PostDirective;
             Assert.That(directive.Directive, Is.EqualTo("data"));
         }
 
@@ -88,5 +88,7 @@ namespace Assembler.Tests
 
         // TODO
         // Test skip to end of line on error
+        // Test directive with operands (single, multiple and string)
+        // Test instruction with operands (single and multiple)
     }
 }

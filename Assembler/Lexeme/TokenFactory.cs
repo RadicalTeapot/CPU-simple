@@ -2,18 +2,17 @@
 
 namespace Assembler.Lexeme
 {
-    public readonly struct Token(TokenType type, string lexeme, int line, int column, string? value = null)
+    public readonly struct Token(TokenType type, string lexeme, int line, int column)
     {
         public TokenType Type { get; } = type;
         public string Lexeme { get; } = lexeme;
-        public string? Value { get; } = value ?? lexeme;
         public int Line { get; } = line;
         public int Column { get; } = column;
         public int Length => Lexeme.Length;
 
         public override string ToString()
         {
-            return $"{Type} lexeme: '{Lexeme}', value: '{Value}' at ({Line}, {Column})";
+            return $"{Type} '{Lexeme}' at ({Line}, {Column})";
         }
     }
 
