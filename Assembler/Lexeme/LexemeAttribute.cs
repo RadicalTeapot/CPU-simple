@@ -1,4 +1,6 @@
-﻿namespace Assembler.Lexeme
+﻿using System.Runtime.InteropServices;
+
+namespace Assembler.Lexeme
 {
     public enum TokenType
     {
@@ -6,19 +8,8 @@
         LeftSquareBracket, RightSquareBracket, Comma, Dot, Colon, Plus, Minus, Hash,
         // Multi-character tokens
         HexNumber, Identifier, Register, String,
-    }
-
-    public readonly struct Token(TokenType type, string lexeme, int line, int column)
-    {
-        public TokenType Type { get; init; } = type;
-        public string Lexeme { get; init; } = lexeme;
-        public int Line { get; init; } = line;
-        public int Column { get; init; } = column;
-
-        public override string ToString()
-        {
-            return $"{Type} '{Lexeme}' at ({Line}, {Column})";
-        }
+        // Special tokens
+        EndOfLine, EndOfFile
     }
 
     /// <summary>
