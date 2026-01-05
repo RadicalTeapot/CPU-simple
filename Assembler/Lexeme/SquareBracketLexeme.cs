@@ -1,6 +1,6 @@
 ﻿namespace Assembler.Lexeme
 {
-    [Lexeme(TokenType.LeftSquareBracket, true)]
+    [Lexeme(TokenType.LeftSquareBracket, shouldFailIfAtEndOfLine: true)]
     internal class LeftSquareBracketLexeme : ILexeme
     {
         public bool TryMatch(string line, int column, out string matchedText)
@@ -16,7 +16,7 @@
         }
     }
 
-    [Lexeme(TokenType.RightSquareBracket, false)]
+    [Lexeme(TokenType.RightSquareBracket)]
     internal class RightSquareBracketLexeme : ILexeme
     {
         public bool TryMatch(string line, int column, out string matchedText)

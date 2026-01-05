@@ -1,6 +1,6 @@
 ﻿namespace Assembler.Lexeme
 {
-    [Lexeme(TokenType.Hash, true)]
+    [Lexeme(TokenType.Hash, shouldFailIfAtEndOfLine: true)]
     internal class HashLexeme : ILexeme
     {
         public bool TryMatch(string source, int column, out string matchedText)

@@ -1,6 +1,6 @@
 ﻿namespace Assembler.Lexeme
 {
-    [Lexeme(TokenType.Dot, true)]
+    [Lexeme(TokenType.Dot, shouldFailIfAtEndOfLine: true)]
     internal class DotLexeme : ILexeme
     {
         public bool TryMatch(string line, int column, out string matchedText)

@@ -1,6 +1,6 @@
 ﻿namespace Assembler.Lexeme
 {
-    [Lexeme(TokenType.HexNumber, false)]
+    [Lexeme(TokenType.HexNumber)]
     internal class HexNumberLexeme: ILexeme
     {
         public bool TryMatch(string source, int column, out string matchedText)

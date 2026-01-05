@@ -34,7 +34,7 @@ namespace Assembler
             var row = 0;
             var column = 0;
 
-            foreach (var line in GetLinesFromSource(source))
+            foreach (var line in GetCleanedLinesFromSource(source))
             {
                 column = 0;
                 while (column < line.Length)
@@ -62,17 +62,18 @@ namespace Assembler
         }
 
         /// <summary>
-        /// Splits the source code into individual lines.
+        /// Splits the source code into individual lines and clean them.
         /// </summary>
         /// <param name="source">Original source code</param>
         /// <returns>Enumerable collection of cleaned lines</returns>
-        /// <remarks>Empty lines are removed and comments are trimmed.</remarks>
-        private static IEnumerable<string> GetLinesFromSource(string source)
+        /// <remarks>Empty lines are removed, comments are trimmed and lines are cast to lowercase.</remarks>
+        private static IEnumerable<string> GetCleanedLinesFromSource(string source)
         {
             return source
                 .Split(NewLineChars, StringSplitOptions.None)
                 .Select(line => line.Split(CommentDelimiter)[0])    // Remove comments (everything after ';')
                 .Select(line => line.Trim())                        // Trim whitespace on both ends
+                .Select(line => line.ToLower())                     // Convert to lowercase
                 .Where(line => !string.IsNullOrWhiteSpace(line));   // Remove empty lines
         }
 

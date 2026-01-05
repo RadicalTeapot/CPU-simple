@@ -1,0 +1,27 @@
+﻿namespace Assembler.Lexeme
+{
+    [Lexeme(TokenType.String)]
+    internal class StringLexeme : ILexeme
+    {
+        public bool TryMatch(string line, int column, out string matchedText)
+        {
+            int startColumn = column;
+            if (column < line.Length && line[column] == '"')
+            {
+                column++;
+                while (column < line.Length)
+                {
+                    if (line[column] == '"')
+                    {
+                        column++; // Include the closing quote
+                        matchedText = line[startColumn..column];
+                        return true;
+                    }
+                    column++;
+                }
+            }
+            matchedText = string.Empty;
+            return false;
+        }
+    }
+}

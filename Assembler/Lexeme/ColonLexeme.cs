@@ -1,6 +1,6 @@
 ﻿namespace Assembler.Lexeme
 {
-    [Lexeme(TokenType.Colon, false)]
+    [Lexeme(TokenType.Colon)]
     internal class ColonLexeme : ILexeme
     {
         public bool TryMatch(string source, int column, out string matchedText)

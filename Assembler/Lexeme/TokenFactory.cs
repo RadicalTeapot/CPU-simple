@@ -32,11 +32,13 @@ namespace Assembler.Lexeme
             return false;
         }
 
-        private class LexemeMetadata(ILexeme lexeme, TokenType type, bool shouldFailIfAtEndOfLine)
+        private class LexemeMetadata(ILexeme lexeme, TokenType type, bool shouldFailIfAtEndOfLine, int priority)
         {
             public ILexeme Lexeme { get; init; } = lexeme;
             public TokenType Type { get; init; } = type;
             public bool ShouldFailIfAtEndOfLine { get; init; } = shouldFailIfAtEndOfLine;
+            public int Priority { get; init; } = priority;
+
         }
 
         private static List<LexemeMetadata> DiscoverLexemes()
@@ -54,11 +56,12 @@ namespace Assembler.Lexeme
                     lexemes.Add(new LexemeMetadata(
                         lexemeInstance,
                         attribute.Type,
-                        attribute.ShouldFailIfAtEndOfLine));
+                        attribute.ShouldFailIfAtEndOfLine,
+                        attribute.Priority));
                 }
             }
 
-            return lexemes;
+            return [.. lexemes.OrderByDescending(t => t.Priority)];
         }
 
         private readonly List<LexemeMetadata> lexemes;
