@@ -1,6 +1,6 @@
 ﻿namespace Assembler.Lexeme
 {
-    [Lexeme(TokenType.Register, priority: 1)] // Registers have higher priority than identifiers
+    [Lexeme(TokenType.Register, priority: 2)] // Registers have higher priority than identifiers
     internal class RegisterLexeme : ILexeme
     {
         public bool TryMatch(string line, int column, out string matchedText)

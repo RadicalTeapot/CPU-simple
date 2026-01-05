@@ -8,8 +8,8 @@ namespace Assembler.Tests
         [Test]
         public void HashLexeme_CorrectlyIdentifiesHashSymbol()
         {
-            var lexeme = new Lexer();
-            var result = lexeme.Tokenize("#02");
+            var lexer = new Lexer();
+            var result = lexer.Tokenize("#02");
             Assert.That(result, Is.Not.Empty);
             Assert.Multiple(() =>
             {
@@ -23,8 +23,8 @@ namespace Assembler.Tests
         [Test]
         public void HashAtEndOfLine_ThrowsLexerException()
         {
-            var lexeme = new Lexer();
-            var ex = Assert.Throws<LexerException>(() => lexeme.Tokenize("#"));
+            var lexer = new Lexer();
+            var ex = Assert.Throws<LexerException>(() => lexer.Tokenize("#"));
             Assert.Multiple(() =>
             {
                 Assert.That(ex.Line, Is.EqualTo(0));
@@ -39,8 +39,8 @@ namespace Assembler.Tests
         [Test]
         public void HexNumberLexeme_CorrectlyIdentifiesHexNumber()
         {
-            var lexeme = new Lexer();
-            var result = lexeme.Tokenize("0a3f");
+            var lexer = new Lexer();
+            var result = lexer.Tokenize("0a3f");
             Assert.That(result, Is.Not.Empty);
             Assert.Multiple(() =>
             {
