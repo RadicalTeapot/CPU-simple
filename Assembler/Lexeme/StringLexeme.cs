@@ -9,7 +9,7 @@
             if (column < line.Length && line[column] == '"')
             {
                 column++;
-                while (column < line.Length)
+                while (column < line.Length) // TODO : Change this to handle only ASCII characters and escape sequences \0 and \"
                 {
                     if (line[column] == '"')
                     {
