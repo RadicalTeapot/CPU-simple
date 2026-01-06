@@ -1,10 +1,4 @@
 ﻿using Assembler.Lexeme;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection.Metadata.Ecma335;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Assembler
 {
@@ -30,13 +24,17 @@ namespace Assembler
         public List<Token> Tokenize(string source)
         {
             var tokens = new List<Token>();
-            var row = 0;
-            foreach (var line in GetCleanedLinesFromSource(source))
+            var lastLineNumber = 0;
+            foreach (var (line, originalLineNumber) in GetCleanedLinesFromSource(source))
             {
-                tokens.AddRange(TokenizeLine(line, row));
-                row++;
+                if (string.IsNullOrWhiteSpace(line))
+                {
+                    continue; // Skip empty lines but preserve original line numbers
+                }
+                tokens.AddRange(TokenizeLine(line, originalLineNumber));
+                lastLineNumber = originalLineNumber;
             }
-            tokens.Add(new Token(TokenType.EndOfFile, string.Empty, row, 0));
+            tokens.Add(new Token(TokenType.EndOfFile, string.Empty, lastLineNumber + 1, 0));
             return tokens;
         }
 
@@ -82,16 +80,16 @@ namespace Assembler
         /// Splits the source code into individual lines and clean them.
         /// </summary>
         /// <param name="source">Original source code</param>
-        /// <returns>Enumerable collection of cleaned lines</returns>
-        /// <remarks>Empty lines are removed, comments are trimmed and lines are cast to lowercase.</remarks>
-        private static IEnumerable<string> GetCleanedLinesFromSource(string source)
+        /// <returns>Enumerable collection of tuples containing cleaned lines and their original line numbers</returns>
+        /// <remarks>Comments are trimmed and lines are cast to lowercase. Original line numbers are preserved.</remarks>
+        private static IEnumerable<(string Line, int OriginalLineNumber)> GetCleanedLinesFromSource(string source)
         {
             return source
                 .Split(NewLineChars, StringSplitOptions.None)
-                .Select(line => line.Split(CommentDelimiter)[0])    // Remove comments (everything after ';')
-                .Select(line => line.Trim())                        // Trim whitespace on both ends
-                .Select(line => line.ToLower())                     // Convert to lowercase
-                .Where(line => !string.IsNullOrWhiteSpace(line));   // Remove empty lines
+                .Select((line, index) => (Line: line.Split(CommentDelimiter)[0], OriginalLineNumber: index))    // Remove comments
+                .Select(item => (Line: item.Line.Trim(), item.OriginalLineNumber))                              // Trim whitespace on both ends
+                .Where(item => !string.IsNullOrWhiteSpace(item.Line))                                           // Remove empty lines
+                .Select(item => (Line: item.Line.ToLower(), item.OriginalLineNumber));                          // Convert to lowercase
         }
 
         private static bool IsWhiteSpace(char c) => c == ' ' || c == '\t';

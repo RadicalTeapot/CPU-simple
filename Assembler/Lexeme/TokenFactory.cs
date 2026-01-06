@@ -1,4 +1,5 @@
-﻿using System.Reflection;
+﻿using System.Diagnostics;
+using System.Reflection;
 
 namespace Assembler.Lexeme
 {
@@ -25,6 +26,7 @@ namespace Assembler.Lexeme
 
         public bool TryCreateToken(string source, int line, int column, out Token token, out int newColumn)
         {
+            Debug.Assert(column >= 0 && column < source.Length);
             foreach (var lexeme in lexemes)
             {
                 if (lexeme.Lexeme.TryMatch(source, column, out var matchedText))

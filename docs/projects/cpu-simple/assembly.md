@@ -9,17 +9,17 @@ alpha = ? [a-zA-Z] ?;
 all-chars = ? all visible characters ?; (* Only ASCII characters, tab character included *)
 string-chars = ? all visible characters with escaped chars ?; (* Only ASCII, tab character included, double quote and backward-slash characters escaped with backwards-slash *)
 
-hex-alphanum = ( num | hex-alpha ), { num | hex-alpha };
-hex-literal = '#', hex-alphanum;
+hex-alphanum = '0x', ( num | hex-alpha ), { num | hex-alpha };
+num-literal = '#', hex-alphanum;
 reg = 'r', num, { num };
 identifier = ( '_' | alpha ), { num | alpha | '_' };
-memory-identifier = hex-literal | identifier | ( identifier, ( + | - ), hex-literal );
+memory-identifier = num-literal | identifier | ( identifier, ( + | - ), num-literal );
 memory = '[', memory-identifier, ']';
-argument = reg | hex-literal | identifier | memory;
+argument = reg | num-literal | identifier | memory;
 string-literal = '"', { string-chars }, '"';
 
 label = identifier, ':';
-directive = '.', identifier, [ ( hex-literal, [ ',', hex-literal ] ) | string-literal ];
+directive = '.', identifier, [ ( num-literal, [ ',', num-literal ] ) | string-literal ];
 instruction = identifier, [ argument, [ ',', argument ] ];
 comment = ';', { all-chars };
 
@@ -31,15 +31,18 @@ statement = [ directive ], [ label ], [ directive | instruction ], [ comment ];
 - Language is case insensitive
 - Comments are supported using the `;` character
 - Labels are formed by specifying the label name followed by a colon syntax (e.g., `label:`)
-- Immediate values are prefixed with a `#` (e.g., `adi r0, #05`), their values are always expressed in hexadecimal format
+- Immediate values are prefixed with a `#` (e.g., `adi r0, #0x05`)
 - Labels can be on their own line or inlined with directives / instructions.
+- For now only hexadecimal numbers are supported (prefixed with `0x` to distinguish them from identifiers)
+- Valid first character for identifiers are `[a-zA-Z]` and `_`
 
 ### Memory
 
-Memory addresses are surrounded by square brackets (e.g., `ada r0, [#0c]`), supported addresses are:
-- Direct values in hexadecimal notation, prefixed with `#` (`ada r0, [#0c]`)
+Memory addresses are surrounded by square brackets (e.g., `ada r0, [#0x0C]`), supported addresses are:
+
+- Direct values in hexadecimal notation, prefixed with `#` (`ada r0, [#0x0C]`)
 - Using labels (`ada r0, [label]`)
-- Offset values using the `+` or `-` symbol (`ada r0, [label+#05]`)
+- Offset values using the `+` or `-` symbol (`ada r0, [label+#0x05]`)
 
 ### Directives
 

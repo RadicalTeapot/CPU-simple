@@ -9,7 +9,7 @@ namespace Assembler.Tests
         public void HashLexeme_CorrectlyIdentifiesHashSymbol()
         {
             var lexer = new Lexer();
-            var result = lexer.Tokenize("#02");
+            var result = lexer.Tokenize("#0x02");
             Assert.That(result, Is.Not.Empty);
             Assert.Multiple(() =>
             {
@@ -40,13 +40,34 @@ namespace Assembler.Tests
         public void HexNumberLexeme_CorrectlyIdentifiesHexNumber()
         {
             var lexer = new Lexer();
-            var result = lexer.Tokenize("0a3f");
+            var result = lexer.Tokenize("0x0a3f");
             Assert.That(result, Is.Not.Empty);
             Assert.Multiple(() =>
             {
                 Assert.That(result[0].Type, Is.EqualTo(TokenType.HexNumber));
-                Assert.That(result[0].Lexeme, Is.EqualTo("0a3f"));
+                Assert.That(result[0].Lexeme, Is.EqualTo("0x0a3f"));
             });
+        }
+
+        [Test]
+        public void HexNumberLexeme_RequiresPrefix()
+        {
+            var lexer = new Lexer();
+
+            var result = lexer.Tokenize("a3");
+            Assert.That(result, Is.Not.Empty);
+            // If number is also a valid identifier (starts with a letter) it should be parsed as an identifier
+            Assert.That(result[0].Type, Is.EqualTo(TokenType.Identifier));
+
+            // If number is not a valid identifier, it should throw
+            Assert.Throws<LexerException>(() => lexer.Tokenize("03"));
+        }
+
+        [Test]
+        public void HexNumberLexeme_RequiresAtLeastOneDigitAfterPrefix()
+        {
+            var lexer = new Lexer();
+            Assert.Throws<LexerException>(() => lexer.Tokenize("0x"));
         }
     }
 
@@ -74,7 +95,7 @@ namespace Assembler.Tests
         public void CommaLexeme_CorrectlyIdentifiesComma()
         {
             var lexer = new Lexer();
-            var result = lexer.Tokenize(", #01");
+            var result = lexer.Tokenize(", #0x01");
             Assert.That(result, Is.Not.Empty);
             Assert.Multiple(() =>
             {
@@ -132,7 +153,7 @@ namespace Assembler.Tests
         public void PositiveOffsetLexeme_CorrectlyIdentifiesPlus()
         {
             var lexer = new Lexer();
-            var result = lexer.Tokenize("+ #01");
+            var result = lexer.Tokenize("+ #0x01");
             Assert.That(result, Is.Not.Empty);
             Assert.Multiple(() =>
             {
@@ -157,7 +178,7 @@ namespace Assembler.Tests
         public void NegativeOffsetLexeme_CorrectlyIdentifiesMinus()
         {
             var lexer = new Lexer();
-            var result = lexer.Tokenize("- #01");
+            var result = lexer.Tokenize("- #0x01");
             Assert.That(result, Is.Not.Empty);
             Assert.Multiple(() =>
             {
@@ -251,6 +272,32 @@ namespace Assembler.Tests
             {
                 Assert.That(result[0].Type, Is.EqualTo(TokenType.String));
                 Assert.That(result[0].Lexeme, Is.EqualTo("\"hello\""));
+            });
+        }
+
+        [Test]
+        public void StringLexeme_HandlesEscapedQuote()
+        {
+            var lexer = new Lexer();
+            var result = lexer.Tokenize("\"hello\\\"world\"");
+            Assert.That(result, Is.Not.Empty);
+            Assert.Multiple(() =>
+            {
+                Assert.That(result[0].Type, Is.EqualTo(TokenType.String));
+                Assert.That(result[0].Lexeme, Is.EqualTo("\"hello\\\"world\""));
+            });
+        }
+
+        [Test]
+        public void StringLexeme_HandlesEscapedBackslash()
+        {
+            var lexer = new Lexer();
+            var result = lexer.Tokenize("\"path\\\\file\"");
+            Assert.That(result, Is.Not.Empty);
+            Assert.Multiple(() =>
+            {
+                Assert.That(result[0].Type, Is.EqualTo(TokenType.String));
+                Assert.That(result[0].Lexeme, Is.EqualTo("\"path\\\\file\""));
             });
         }
     }

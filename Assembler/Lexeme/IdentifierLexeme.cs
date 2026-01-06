@@ -1,6 +1,6 @@
 ﻿namespace Assembler.Lexeme
 {
-    [Lexeme(TokenType.Identifier, priority: 1)] // Identifiers have higher priority than hex numbers
+    [Lexeme(TokenType.Identifier)]
     internal class IdentifierLexeme : ILexeme
     {
         public bool TryMatch(string line, int column, out string matchedText)

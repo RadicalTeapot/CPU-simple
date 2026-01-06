@@ -9,8 +9,19 @@
             if (column < line.Length && line[column] == '"')
             {
                 column++;
-                while (column < line.Length) // TODO : Change this to handle only ASCII characters and escape sequences \\ and \"
+                while (column < line.Length)
                 {
+                    // Handle escape sequences: \\ and \"
+                    if (line[column] == '\\' && column + 1 < line.Length)
+                    {
+                        var nextChar = line[column + 1];
+                        if (nextChar == '\\' || nextChar == '"')
+                        {
+                            column += 2; // Skip the escape sequence
+                            continue;
+                        }
+                    }
+
                     if (line[column] == '"')
                     {
                         column++; // Include the closing quote

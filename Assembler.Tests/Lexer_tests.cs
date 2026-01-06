@@ -34,15 +34,6 @@ namespace Assembler.Tests
         }
 
         [Test]
-        public void IdentifierIsHigherPriorityThanHexNumber()
-        {
-            var lexer = new Lexer();
-            var result = lexer.Tokenize("add");
-            Assert.That(result, Is.Not.Empty);
-            Assert.That(result[0].Type, Is.EqualTo(TokenType.Identifier));
-        }
-
-        [Test]
         public void CommentsAreRemoved()
         {
             var lexer = new Lexer();
@@ -66,7 +57,7 @@ namespace Assembler.Tests
         public void WhitespaceBetweenTokensIsIgnored()
         {
             var lexer = new Lexer();
-            var result = lexer.Tokenize("# 01");
+            var result = lexer.Tokenize("# 0x01");
             Assert.Multiple(() =>
             {
                 Assert.That(result[0].Type, Is.EqualTo(TokenType.Hash));
@@ -75,14 +66,14 @@ namespace Assembler.Tests
         }
 
         [Test]
-        public void EmptyLinesAreIgnored()
+        public void EmptyLinesPreserveOriginalLineNumbers()
         {
             var lexer = new Lexer();
             var result = lexer.Tokenize("nop\n\nnop");
             Assert.Multiple(() =>
             {
-                Assert.That(result[0].Line, Is.EqualTo(0)); // first nop
-                Assert.That(result[2].Line, Is.EqualTo(1)); // second nop (result[1] is EndOfLine)
+                Assert.That(result[0].Line, Is.EqualTo(0)); // first nop on line 0
+                Assert.That(result[2].Line, Is.EqualTo(2)); // second nop on line 2 (line 1 is empty)
             });
         }
 
@@ -101,7 +92,7 @@ namespace Assembler.Tests
         public void IntegrationTest()
         {
             var lexer = new Lexer();
-            var result = lexer.Tokenize("MOV R1, R2 ; This is a comment\nADDI R1, #01");
+            var result = lexer.Tokenize("MOV R1, R2 ; This is a comment\nADDI R1, #0x01");
             Assert.That(result, Has.Count.EqualTo(12));
             Assert.Multiple(() =>
             {

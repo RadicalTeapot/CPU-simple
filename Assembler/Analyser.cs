@@ -1,5 +1,4 @@
 ﻿using CPU.opcodes;
-using System.Diagnostics;
 
 namespace Assembler
 {
@@ -260,7 +259,7 @@ namespace Assembler
                             throw new AnalyserException("'byte' directive requires a single numeric operand",
                                 statement.PostDirective.Span.Line, statement.PostDirective.Span.Start);
                         }
-                        currentSection.EmitNodes.Add(new DataEmitNode([Convert.ToByte(operands[0].Operand)]));
+                        currentSection.EmitNodes.Add(new DataEmitNode([ParseHexByte(operands[0].Operand)]));
                         break;
                     case "short":
                         if (operands.Count != 1 || operands[0].Type != OperandType.Immediate)
@@ -268,7 +267,7 @@ namespace Assembler
                             throw new AnalyserException("'byte' directive requires a single numeric operand",
                                 statement.PostDirective.Span.Line, statement.PostDirective.Span.Start);
                         }
-                        currentSection.EmitNodes.Add(new DataEmitNode(BitConverter.GetBytes(Convert.ToUInt16(operands[0].Operand))));
+                        currentSection.EmitNodes.Add(new DataEmitNode(BitConverter.GetBytes(ParseHexUShort(operands[0].Operand)))); // Little-endian
                         break;
                     case "zero":
                         if (operands.Count != 1 || operands[0].Type != OperandType.Immediate)
@@ -276,7 +275,7 @@ namespace Assembler
                             throw new AnalyserException("'zero' directive requires a single numeric operand",
                                 statement.PostDirective.Span.Line, statement.PostDirective.Span.Start);
                         }
-                        var zeroCount = Convert.ToInt32(operands[0].Operand);
+                        var zeroCount = ParseHexNumber(operands[0].Operand);
                         currentSection.EmitNodes.Add(new FillEmitNode(zeroCount, 0x00));
                         break;
                     case "string":
@@ -285,9 +284,9 @@ namespace Assembler
                             throw new AnalyserException("'string' directive requires a single string literal operand",
                                 statement.PostDirective.Span.Line, statement.PostDirective.Span.Start);
                         }
-                        var trimmedStr = operands[0].Operand.Trim('"'); // Remove surrounding quotes
-                        var strBytes = System.Text.Encoding.ASCII.GetBytes(trimmedStr);
-                        currentSection.EmitNodes.Add(new DataEmitNode([..strBytes, 0])); // Null-terminated
+                        var processedStr = ProcessString(operands[0].Operand);
+                        var strBytes = System.Text.Encoding.ASCII.GetBytes(processedStr);
+                        currentSection.EmitNodes.Add(new DataEmitNode([..strBytes, 0x00])); // Null-terminated
                         break;
                     case "org":
                         HandleOrgDirective(statement.PostDirective);
@@ -303,7 +302,7 @@ namespace Assembler
     
         private static int GetValidatedAddressValue(OperandNode operand)
         {
-            var address = Convert.ToInt32(operand.Operand);
+            var address = ParseHexNumber(operand.Operand);
 #if x16
             if (address < 0 || address > 0xFFFF)
             {
@@ -348,7 +347,7 @@ namespace Assembler
                     addressOperand.Span.Line, addressOperand.Span.Start);
             }
 
-            var fillValue = fillValueOperand != null ? Convert.ToByte(fillValueOperand.Operand) : (byte)0x00;
+            var fillValue = fillValueOperand != null ? ParseHexByte(fillValueOperand.Operand) : (byte)0x00;
             var bytesToFill = address - currentSection.LocationCounter;
             currentSection.EmitNodes.Add(new FillEmitNode(bytesToFill, fillValue));
         }
@@ -412,7 +411,7 @@ namespace Assembler
                     }
                     else
                     {
-                        var immediateValue = Convert.ToByte(operands[1].Operand);
+                        var immediateValue = ParseHexByte(operands[1].Operand);
                         currentSection.EmitNodes.Add(new DataEmitNode([adiOpcodeValue, immediateValue]));
                     }
                     break;
@@ -421,6 +420,69 @@ namespace Assembler
                     throw new AnalyserException($"Opcode handling not implemented for: {mnemonic}",
                         instruction.Span.Line, instruction.Span.Start);
             }
+        }
+
+        /// <summary>
+        /// Processes string literals.
+        /// </summary>
+        /// <param name="input">The raw string content (without surrounding quotes)</param>
+        /// <returns>The processed string with surrounding quotes removed and escape sequences replaced</returns>
+        /// <remarks>Supports \\ (backslash) and \" (double quote) escape sequences.</remarks>
+        private static string ProcessString(string input)
+        {
+            var trimmedInput = input.Trim('"');
+            var result = new System.Text.StringBuilder(trimmedInput.Length);
+            for (int i = 0; i < trimmedInput.Length; i++)
+            {
+                if (trimmedInput[i] == '\\' && i + 1 < trimmedInput.Length)
+                {
+                    var nextChar = trimmedInput[i + 1];
+                    if (nextChar == '\\')
+                    {
+                        result.Append('\\');
+                        i++; // Skip next character
+                        continue;
+                    }
+                    else if (nextChar == '"')
+                    {
+                        result.Append('"');
+                        i++; // Skip next character
+                        continue;
+                    }
+                }
+                result.Append(trimmedInput[i]);
+            }
+            return result.ToString();
+        }
+
+        /// <summary>
+        /// Parses a hex number string that has a 0x prefix.
+        /// </summary>
+        /// <param name="hexString">The hex string</param>
+        /// <returns>The parsed integer value</returns>
+        private static int ParseHexNumber(string hexString)
+        {
+            return Convert.ToInt32(hexString[2..], 16);
+        }
+
+        /// <summary>
+        /// Parses a hex number string to a byte that has a 0x prefix.
+        /// </summary>
+        /// <param name="hexString">The hex string</param>
+        /// <returns>The parsed byte value</returns>
+        private static byte ParseHexByte(string hexString)
+        {
+            return Convert.ToByte(hexString[2..], 16);
+        }
+
+        /// <summary>
+        /// Parses a hex number string to a ushort that has a 0x prefix.
+        /// </summary>
+        /// <param name="hexString">The hex string</param>
+        /// <returns>The parsed ushort value</returns>
+        private static ushort ParseHexUShort(string hexString)
+        {
+            return Convert.ToUInt16(hexString[2..], 16);
         }
     }
 }
