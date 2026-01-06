@@ -2,7 +2,7 @@
 
 namespace Assembler.Tests
 {
-    internal static class Helpers
+    internal static class ParserTestsHelper
     {
         public static IList<Token> LexProgram(string program)
         {
@@ -17,7 +17,7 @@ namespace Assembler.Tests
         [Test]
         public void EmptyProgram_ReturnsEmptyProgramNode()
         {
-            var tokens = Helpers.LexProgram("");
+            var tokens = ParserTestsHelper.LexProgram("");
             var program = Parser.ParseProgram(tokens);
             Assert.That(program.Statements, Is.Empty);
         }
@@ -25,7 +25,7 @@ namespace Assembler.Tests
         [Test]
         public void SingleLabelOnly_ReturnsProgramNodeWithLabelStatement()
         {
-            var tokens = Helpers.LexProgram("START:");
+            var tokens = ParserTestsHelper.LexProgram("START:");
             var program = Parser.ParseProgram(tokens);
             Assert.That(program.Statements, Has.Count.EqualTo(1));
             Assert.That(program.Statements[0].Label, Is.Not.Null);
@@ -35,20 +35,20 @@ namespace Assembler.Tests
         }
 
         [Test]
-        public void SingleDirectiveInstruction_ReturnsProgramNodeWithDirectiveStatement()
+        public void HeaderDirectiveInstruction_ReturnsProgramNodeWithHeaderDirectiveStatement()
         {
-            var tokens = Helpers.LexProgram(".DATA");
+            var tokens = ParserTestsHelper.LexProgram(".DATA");
             var program = Parser.ParseProgram(tokens);
             Assert.That(program.Statements, Has.Count.EqualTo(1));
-            Assert.That(program.Statements[0].PostDirective, Is.Not.Null);
-            var directive = program.Statements[0].PostDirective;
+            Assert.That(program.Statements[0].HeaderDirective, Is.Not.Null);
+            var directive = program.Statements[0].HeaderDirective;
             Assert.That(directive.Directive, Is.EqualTo("data"));
         }
 
         [Test]
         public void SingleNopInstruction_ReturnsProgramNodeWithNopStatement()
         {
-            var tokens = Helpers.LexProgram("NOP");
+            var tokens = ParserTestsHelper.LexProgram("NOP");
             var program = Parser.ParseProgram(tokens);
             Assert.That(program.Statements, Has.Count.EqualTo(1));
             Assert.That(program.Statements[0].Instruction, Is.Not.Null);
@@ -64,7 +64,7 @@ namespace Assembler.Tests
         [Test]
         public void LabelAndNopInstruction_ReturnsProgramNodeWithLabelAndInstruction()
         {
-            var tokens = Helpers.LexProgram("START: NOP");
+            var tokens = ParserTestsHelper.LexProgram("START: NOP");
             var program = Parser.ParseProgram(tokens);
             Assert.That(program.Statements, Has.Count.EqualTo(1));
 
@@ -87,6 +87,7 @@ namespace Assembler.Tests
         }
 
         // TODO
+        // Test label followed by directive
         // Test skip to end of line on error
         // Test directive with operands (single, multiple and string)
         // Test instruction with operands (single and multiple)

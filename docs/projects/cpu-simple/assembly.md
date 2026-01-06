@@ -7,6 +7,7 @@ num = ? [0-9] ?;
 hex-alpha = ? [A-Fa-f] ?;
 alpha = ? [a-zA-Z] ?;
 all-chars = ? all visible characters ?; (* Only ASCII characters, tab character included *)
+string-chars = ? all visible characters with escaped chars ?; (* Only ASCII, tab character included, double quote and backward-slash characters escaped with backwards-slash *)
 
 hex-alphanum = ( num | hex-alpha ), { num | hex-alpha };
 hex-literal = '#', hex-alphanum;
@@ -15,9 +16,10 @@ identifier = ( '_' | alpha ), { num | alpha | '_' };
 memory-identifier = hex-literal | identifier | ( identifier, ( + | - ), hex-literal );
 memory = '[', memory-identifier, ']';
 argument = reg | hex-literal | identifier | memory;
+string-literal = '"', { string-chars }, '"';
 
 label = identifier, ':';
-directive = '.', identifier, [ hex-literal, [ ',', hex-literal ] ];
+directive = '.', identifier, [ ( hex-literal, [ ',', hex-literal ] ) | string-literal ];
 instruction = identifier, [ argument, [ ',', argument ] ];
 comment = ';', { all-chars };
 
@@ -41,16 +43,17 @@ Memory addresses are surrounded by square brackets (e.g., `ada r0, [#0c]`), supp
 
 ### Directives
 
-Supported directives:
-- `.text` defines the program section (only one such section is supported) (always set to address `0x00`)
-- `.data` defines the data declaration section (placed in the same order as declared in program, right after `.text` section)
+Section directives are only semantically valid as the first directive of a statement. There are currently two section directives:
 
-The following directives are syntactically valid anywhere, but semantically restricted to `.data`:
+- `.text` defines the program section, only one such section is supported. It always starts to address `0x00`.
+- `.data` defines the data declaration section, typically only one such section is declared. Those are emitted in the same order as declared in program, starting right after `.text` section ends.
+
+The following directives are syntactically valid anywhere, but semantically restricted to data section:
 - `.org <addr>, <fill>` move the location counter to `<addr>` and fill the gaps with `<fill>` (If `<fill>` is omitted, the assembler fills gaps with `#00`). Both `addr` and `fill` are byte literals.
 - `.byte` indicates a single byte
 - `.short` indicates a 2 bytes value
 - `.zero` indicates a number of bytes set to zero (e.g., `.zero #0A` will create 10 null bytes)
-- `.string` declares a sequence of bytes followed by a null byte (e.g. `.string "hello"` creates 6 bytes, one for each character and a zero byte), ASCII encoded. Supported escapes are `\"` and `\0`.
+- `.string` declares a sequence of bytes followed by a null byte (e.g. `.string "hello"` creates 6 bytes, one for each character and a zero byte), ASCII encoded. Supported escapes are `\"` and `\\`.
 
 ## General notes
 

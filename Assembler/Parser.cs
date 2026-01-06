@@ -61,7 +61,8 @@ namespace Assembler
         Register,
         Immediate,
         LabelReference,
-        MemoryAddress
+        MemoryAddress,
+        StringLiteral
     }
 
     public class OperandNode(string operand, OperandType type, NodeSpan span, string? offset = null)
@@ -177,7 +178,34 @@ namespace Assembler
                 var startIndex = currentTokenIndex;
                 var directiveToken = tokens[currentTokenIndex+1];
                 currentTokenIndex += 2;
-                // TODO Further parsing of directive arguments can be done here based on directiveToken.Lexeme
+
+                var operands = new List<OperandNode>();
+                if (TryParseImmediateValue(tokens, ref currentTokenIndex, out var firstOperandToken))
+                {
+                    Debug.Assert(firstOperandToken != null, "firstOperandToken should not be null here.");
+                    operands.Add(firstOperandToken);
+
+                    // Check for a comma, indicating a second operand
+                    if (tokens[currentTokenIndex].Type == TokenType.Comma)
+                    {
+                        currentTokenIndex++;
+                        if (TryParseImmediateValue(tokens, ref currentTokenIndex, out var secondOperandToken))
+                        {
+                            Debug.Assert(secondOperandToken != null, "secondOperandToken should not be null here.");
+                            operands.Add(secondOperandToken);
+                        }
+                        else
+                        {
+                            throw new ParserException("Expected second operand after comma.", tokens[currentTokenIndex].Line, tokens[currentTokenIndex].Column);
+                        }
+                    }
+                }
+                else if (TryParseStringLiteral(tokens, ref currentTokenIndex, out var stringOperandToken))
+                {
+                    Debug.Assert(stringOperandToken != null, "stringOperandToken should not be null here.");
+                    operands.Add(stringOperandToken);
+                }
+
                 directiveNode = new DirectiveNode(directiveToken.Lexeme, [], new NodeSpan(
                     tokens[startIndex].Column, tokens[currentTokenIndex].Column, tokens[startIndex].Line));
                 return true;
@@ -210,19 +238,19 @@ namespace Assembler
                 var mnemonicToken = tokens[currentTokenIndex];
                 var operands = new List<OperandNode>();
                 currentTokenIndex++;
-                if (TryParseOperand(tokens, ref currentTokenIndex, out var firstArgumentToken))
+                if (TryParseOperand(tokens, ref currentTokenIndex, out var firstOperandToken))
                 {
-                    Debug.Assert(firstArgumentToken != null, "firstArgumentToken should not be null here.");
-                    operands.Add(firstArgumentToken);
+                    Debug.Assert(firstOperandToken != null, "firstOperandToken should not be null here.");
+                    operands.Add(firstOperandToken);
 
                     // Check for a comma, indicating a second operand
                     if (tokens[currentTokenIndex].Type == TokenType.Comma)
                     {
                         currentTokenIndex++;
-                        if (TryParseOperand(tokens, ref currentTokenIndex, out var secondArgumentToken))
+                        if (TryParseOperand(tokens, ref currentTokenIndex, out var secondOperandToken))
                         {
-                            Debug.Assert(secondArgumentToken != null, "secondArgumentToken should not be null here.");
-                            operands.Add(secondArgumentToken);
+                            Debug.Assert(secondOperandToken != null, "secondOperandToken should not be null here.");
+                            operands.Add(secondOperandToken);
                         }
                         else
                         {
@@ -309,6 +337,21 @@ namespace Assembler
             return tokens.Count > index + 1
                 && tokens[index].Type == TokenType.Hash
                 && tokens[index + 1].Type == TokenType.HexNumber;
+        }
+
+        private static bool TryParseStringLiteral(IList<Token> tokens, ref int currentTokenIndex, out OperandNode? operandToken)
+        {
+            if (tokens[currentTokenIndex].Type == TokenType.String)
+            {
+                var startIndex = currentTokenIndex;
+                var stringToken = tokens[currentTokenIndex];
+                currentTokenIndex++;
+                operandToken = new OperandNode(stringToken.Lexeme, OperandType.StringLiteral, new NodeSpan(
+                    tokens[startIndex].Column, tokens[currentTokenIndex].Column, tokens[startIndex].Line));
+                return true;
+            }
+            operandToken = default;
+            return false;
         }
 
         private static bool TryParseLabelReference(IList<Token> tokens, ref int currentTokenIndex, out OperandNode? operandToken)

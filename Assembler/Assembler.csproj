@@ -8,4 +8,8 @@
     <Configurations>Debug;Release;DebugX16;ReleaseX16</Configurations>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\CPU\CPU.csproj" />
+  </ItemGroup>
+
 </Project>
