@@ -1,4 +1,5 @@
-﻿using CPU.opcodes;
+﻿using Assembler.AST;
+using CPU.opcodes;
 
 namespace Assembler
 {
@@ -41,7 +42,7 @@ namespace Assembler
             {
                 var firstEmitNode = EmitNodes[0];
                 throw new ParserException($"Label '{LabelName}' location counter has not been set.", 
-                    firstEmitNode.LabelOperand.Span.Line, firstEmitNode.LabelOperand.Span.Start); // Show location of first reference
+                    firstEmitNode.LabelRefNode.Span.Line, firstEmitNode.LabelRefNode.Span.StartColumn); // Show location of first reference
             }
 
             foreach (var emitNode in EmitNodes)
@@ -68,9 +69,9 @@ namespace Assembler
         public byte[] Emit() => [.. Enumerable.Repeat(FillValue, Count)];
     }
 
-    internal class LabelReferenceEmitNode(OperandNode labelOperand, byte offset = 0) : IEmitNode
+    internal class LabelReferenceEmitNode(LabelReferenceNode labelRefNode, byte offset = 0) : IEmitNode
     {
-        public OperandNode LabelOperand { get; } = labelOperand;
+        public LabelReferenceNode LabelRefNode { get; } = labelRefNode;
         public byte Offset { get; } = offset;
         public int Count { get; } = 1;
         public void Resolve(byte value)
@@ -83,7 +84,7 @@ namespace Assembler
         {
             if (!isResolved)
             {
-                throw new ParserException($"Label '{LabelOperand.Operand}' has not been resolved yet.", LabelOperand.Span.Line, LabelOperand.Span.Start);
+                throw new ParserException($"Label '{LabelRefNode.Label}' has not been resolved yet.", LabelRefNode.Span.Line, LabelRefNode.Span.StartColumn);
             }
             return [resolvedValue];
         }
@@ -126,7 +127,7 @@ namespace Assembler
             labels = [];
         }
 
-        public IList<IEmitNode> Run(ProgramNode program)
+        public IList<IEmitNode> Run(Parser.Program program)
         {
             TextSection = new Section();
             DataSections = [];
@@ -180,12 +181,13 @@ namespace Assembler
         {
             AnalyseHeaderDirective(statement);
 
-            if (statement.Label != null)
+            if (statement.HasLabel)
             {
-                if (!labels.TryGetValue(statement.Label.Label, out LabelReference? value))
+                var labelNode = statement.GetLabel();
+                if (!labels.TryGetValue(labelNode.Label, out LabelReference? value))
                 {
-                    value = new LabelReference(statement.Label.Label);
-                    labels[statement.Label.Label] = value;
+                    value = new LabelReference(labelNode.Label);
+                    labels[labelNode.Label] = value;
                 }
 
                 try
@@ -194,27 +196,29 @@ namespace Assembler
                 }
                 catch (InvalidOperationException ex)
                 {
-                    throw new AnalyserException(ex.Message, statement.Label.Span.Line, statement.Label.Span.Start);
+                    throw new AnalyserException(ex.Message, labelNode.Span.Line, labelNode.Span.StartColumn);
                 }
             }
 
             AnalysePostDirective(statement);
 
-            if (statement.Instruction != null)
+            if (statement.HasInstruction)
             {
+                var instruction = statement.GetInstruction();
                 if (currentSection != TextSection)
                 {
-                    throw new AnalyserException("Instructions are only allowed in the text section", statement.Instruction.Span.Line, statement.Instruction.Span.Start);
+                    throw new AnalyserException("Instructions are only allowed in the text section", instruction.Span.Line, instruction.Span.StartColumn);
                 }
-                HandleInstruction(statement.Instruction);
+                HandleInstruction(instruction);
             }
         }
         
         private void AnalyseHeaderDirective(StatementNode statement)
         {
-            if (statement.HeaderDirective != null)
+            if (statement.HasHeaderDirective)
             {
-                switch (statement.HeaderDirective.Directive)
+                var headerDirective = statement.GetHeaderDirective();
+                switch (headerDirective.Directive)
                 {
                     case "data":
                         var section = new Section();
@@ -225,93 +229,97 @@ namespace Assembler
                         if (textSectionCounter > 0)
                         {
                             throw new AnalyserException("Multiple text section directives are not allowed",
-                                statement.HeaderDirective.Span.Line, statement.HeaderDirective.Span.Start);
+                                headerDirective.Span.Line, headerDirective.Span.StartColumn);
                         }
                         currentSection = TextSection;
                         textSectionCounter++;
                         break;
                     case "org":
-                        HandleOrgDirective(statement.HeaderDirective);
+                        HandleOrgDirective(headerDirective);
                         break;
                     default:
-                        throw new AnalyserException($"Invalid header directive: {statement.HeaderDirective.Directive}",
-                                statement.HeaderDirective.Span.Line, statement.HeaderDirective.Span.Start);
+                        throw new AnalyserException($"Invalid header directive: {headerDirective.Directive}",
+                                headerDirective.Span.Line, headerDirective.Span.StartColumn);
                 }
             }
         }
 
         private void AnalysePostDirective(StatementNode statement)
         {
-            if (statement.PostDirective != null)
+            if (statement.HasPostDirective)
             {
+                var postDirective = statement.GetPostDirective();
                 if (currentSection == TextSection)
                 {
                     throw new AnalyserException("Post directives are not allowed in the text section",
-                        statement.PostDirective.Span.Line, statement.PostDirective.Span.Start);
+                        postDirective.Span.Line, postDirective.Span.StartColumn);
                 }
 
-                var operands = statement.PostDirective.OperandNodes;
-                switch (statement.PostDirective.Directive)
+                switch (postDirective.Directive)
                 {
                     case "byte":
-                        if (operands.Count != 1 || operands[0].Type != OperandType.Immediate)
+                        if (!postDirective.HasSignature([OperandType.Immediate]))
                         {
                             throw new AnalyserException("'byte' directive requires a single numeric operand",
-                                statement.PostDirective.Span.Line, statement.PostDirective.Span.Start);
+                                postDirective.Span.Line, postDirective.Span.StartColumn);
                         }
-                        currentSection.EmitNodes.Add(new DataEmitNode([ParseHexByte(operands[0].Operand)]));
+                        postDirective.GetOperands(out HexNumberNode byteOperand);
+                        currentSection.EmitNodes.Add(new DataEmitNode([ParseHexByte(byteOperand.Value)]));
                         break;
                     case "short":
-                        if (operands.Count != 1 || operands[0].Type != OperandType.Immediate)
+                        if (!postDirective.HasSignature([OperandType.Immediate]))
                         {
                             throw new AnalyserException("'byte' directive requires a single numeric operand",
-                                statement.PostDirective.Span.Line, statement.PostDirective.Span.Start);
+                                postDirective.Span.Line, postDirective.Span.StartColumn);
                         }
-                        currentSection.EmitNodes.Add(new DataEmitNode(BitConverter.GetBytes(ParseHexUShort(operands[0].Operand)))); // Little-endian
+                        postDirective.GetOperands(out HexNumberNode shortOperand);
+                        currentSection.EmitNodes.Add(new DataEmitNode(BitConverter.GetBytes(ParseHexUShort(shortOperand.Value)))); // Little-endian
                         break;
                     case "zero":
-                        if (operands.Count != 1 || operands[0].Type != OperandType.Immediate)
+                        if (!postDirective.HasSignature([OperandType.Immediate]))
                         {
                             throw new AnalyserException("'zero' directive requires a single numeric operand",
-                                statement.PostDirective.Span.Line, statement.PostDirective.Span.Start);
+                                postDirective.Span.Line, postDirective.Span.StartColumn);
                         }
-                        var zeroCount = ParseHexNumber(operands[0].Operand);
+                        postDirective.GetOperands(out HexNumberNode zeroCountOperand);
+                        var zeroCount = ParseHexNumber(zeroCountOperand.Value);
                         currentSection.EmitNodes.Add(new FillEmitNode(zeroCount, 0x00));
                         break;
                     case "string":
-                        if (operands.Count != 1 || operands[0].Type != OperandType.StringLiteral)
+                        if (!postDirective.HasSignature([OperandType.StringLiteral]))
                         {
                             throw new AnalyserException("'string' directive requires a single string literal operand",
-                                statement.PostDirective.Span.Line, statement.PostDirective.Span.Start);
+                                postDirective.Span.Line, postDirective.Span.StartColumn);
                         }
-                        var processedStr = ProcessString(operands[0].Operand);
+                        postDirective.GetOperands(out StringLiteralNode stringLiteral);
+                        var processedStr = ProcessString(stringLiteral.Value);
                         var strBytes = System.Text.Encoding.ASCII.GetBytes(processedStr);
                         currentSection.EmitNodes.Add(new DataEmitNode([..strBytes, 0x00])); // Null-terminated
                         break;
                     case "org":
-                        HandleOrgDirective(statement.PostDirective);
+                        HandleOrgDirective(postDirective);
                         break;
                     case "data":
                     case "text":
                     default:
-                        throw new AnalyserException($"Invalid post-directive: {statement.PostDirective.Directive}",
-                           statement.PostDirective.Span.Line, statement.PostDirective.Span.Start);
+                        throw new AnalyserException($"Invalid post-directive: {postDirective.Directive}",
+                           postDirective.Span.Line, postDirective.Span.StartColumn);
                 }
             }
         }
     
-        private static int GetValidatedAddressValue(OperandNode operand)
+        private static int GetValidatedAddressValue(HexNumberNode hexNumber)
         {
-            var address = ParseHexNumber(operand.Operand);
+            var address = ParseHexNumber(hexNumber.Value);
 #if x16
             if (address < 0 || address > 0xFFFF)
             {
-                throw new AnalyserException("Address value out of range for 16-bit architecture", operand.Span.Line, operand.Span.Start);
+                throw new AnalyserException("Address value out of range for 16-bit architecture", hexNumber.Span.Line, hexNumber.Span.StartColumn);
             }
 #else
             if (address < 0 || address > 0xFF)
             {
-                throw new AnalyserException("Address value out of range for 8-bit architecture", operand.Span.Line, operand.Span.Start);
+                throw new AnalyserException("Address value out of range for 8-bit architecture", hexNumber.Span.Line, hexNumber.Span.StartColumn);
             }
 #endif
             return address;
@@ -319,91 +327,91 @@ namespace Assembler
 
         private void HandleOrgDirective(DirectiveNode directiveNode)
         {
-            var operands = directiveNode.OperandNodes;
-            if (operands.Count == 0)
+            byte fillValue;
+            int address;
+            if (directiveNode.HasSignature([OperandType.Immediate]))
+            {
+                directiveNode.GetOperands(out HexNumberNode addressOperand);
+                address = GetValidatedAddressValue(addressOperand);
+                fillValue = 0x00;
+            }
+            else if (directiveNode.HasSignature([OperandType.Immediate, OperandType.Immediate]))
+            {
+                directiveNode.GetOperands(out HexNumberNode addressOperand, out HexNumberNode fillValueOperand);
+                address = GetValidatedAddressValue(addressOperand);
+                fillValue = ParseHexByte(fillValueOperand.Value);
+            }
+            else
             {
                 throw new AnalyserException("'org' directive requires an address operand",
-                    directiveNode.Span.Line, directiveNode.Span.Start);
+                    directiveNode.Span.Line, directiveNode.Span.StartColumn);
             }
 
-            var addressOperand = operands.First();
-            if (addressOperand.Type != OperandType.Immediate)
-            {
-                throw new AnalyserException("'org' directive requires a numeric address operand",
-                    addressOperand.Span.Line, addressOperand.Span.Start);
-            }
-
-            var fillValueOperand = operands.Skip(1).FirstOrDefault();
-            if (fillValueOperand != null && fillValueOperand.Type != OperandType.Immediate)
-            {
-                throw new AnalyserException("Optional fill value operand for 'org' directive must be a numeric immediate",
-                    fillValueOperand.Span.Line, fillValueOperand.Span.Start);
-            }
-
-            var address = GetValidatedAddressValue(addressOperand);
-            if (address < currentSection.LocationCounter)
-            {
-                throw new AnalyserException("'org' address cannot be less than the current location counter",
-                    addressOperand.Span.Line, addressOperand.Span.Start);
-            }
-
-            var fillValue = fillValueOperand != null ? ParseHexByte(fillValueOperand.Operand) : (byte)0x00;
             var bytesToFill = address - currentSection.LocationCounter;
             currentSection.EmitNodes.Add(new FillEmitNode(bytesToFill, fillValue));
         }
 
         private void HandleInstruction(InstructionNode instruction)
         {
-            // Implementation for instruction handling goes here
             var mnemonic = instruction.Mnemonic;
             if (!Enum.TryParse<OpcodeBaseCode>(mnemonic, true, out var opcode))
             {
                 throw new AnalyserException($"Invalid instruction mnemonic: {mnemonic}",
-                    instruction.Span.Line, instruction.Span.Start);
+                    instruction.Span.Line, instruction.Span.StartColumn);
             }
 
-            var operands = instruction.OperandNodes;
             switch (opcode)
             {
                 case OpcodeBaseCode.NOP:
+                    if (!instruction.HasSignature([]))
+                    {
+                        throw new AnalyserException("'NOP' instruction does not take any operands",
+                            instruction.Span.Line, instruction.Span.StartColumn);
+                    }
                     currentSection.EmitNodes.Add(new DataEmitNode([(byte)OpcodeBaseCode.NOP]));
                     break;
                 case OpcodeBaseCode.HLT:
+                    if (!instruction.HasSignature([]))
+                    {
+                        throw new AnalyserException("'HLT' instruction does not take any operands",
+                            instruction.Span.Line, instruction.Span.StartColumn);
+                    }
                     currentSection.EmitNodes.Add(new DataEmitNode([(byte)OpcodeBaseCode.HLT]));
                     break;
                 case OpcodeBaseCode.ADD:
-                    if (operands.Count != 2 ||
-                        operands[0].Type != OperandType.Register ||
-                        operands[1].Type != OperandType.Register)
+                    if (!instruction.HasSignature([OperandType.Register, OperandType.Register]))
                     {
                         throw new AnalyserException("'ADD' instruction requires two register operands",
-                            instruction.Span.Line, instruction.Span.Start);
+                            instruction.Span.Line, instruction.Span.StartColumn);
                     }
-                    var destReg = Convert.ToByte(operands[0].Operand) & 0x03;
-                    var srcReg = Convert.ToByte(operands[1].Operand) & 0x03;
+                    instruction.GetOperands(out RegisterNode firstOperand, out RegisterNode secondOperand);
+                    var destReg = Convert.ToByte(firstOperand.RegisterName) & 0x03;
+                    var srcReg = Convert.ToByte(secondOperand.RegisterName) & 0x03;
                     var opcodeValue = (byte)((byte)OpcodeBaseCode.ADD | (srcReg << 2) | destReg);
                     currentSection.EmitNodes.Add(new DataEmitNode([opcodeValue]));
                     break;
                 case OpcodeBaseCode.ADI:
-                    if (operands.Count != 2 ||
-                        operands[0].Type != OperandType.Register ||
-                        (operands[1].Type != OperandType.Immediate || operands[1].Type != OperandType.LabelReference))
+                    if (instruction.HasSignature([OperandType.Register, OperandType.Immediate])) 
                     {
-                        throw new AnalyserException("'ADI' instruction requires a register and either an immediate or label operand",
-                            instruction.Span.Line, instruction.Span.Start);
+                        instruction.GetOperands(out RegisterNode registerOperand, out HexNumberNode immediateOperand);
+                        var regIdx = Convert.ToByte(registerOperand.RegisterName) & 0x03;
+                        var adiOpcodeValue = (byte)((byte)OpcodeBaseCode.ADI | regIdx);
+                        var immediateValue = ParseHexByte(immediateOperand.Value);
+                        currentSection.EmitNodes.Add(new DataEmitNode([adiOpcodeValue, immediateValue]));
                     }
-                    var regIdx = Convert.ToByte(operands[0].Operand) & 0x03;
-                    var adiOpcodeValue = (byte)((byte)OpcodeBaseCode.ADI | regIdx);
-                    if (operands[1].Type == OperandType.LabelReference)
+                    else if (instruction.HasSignature([OperandType.Register, OperandType.LabelReference])) 
                     {
-                        var labelName = operands[1].Operand;
+                        instruction.GetOperands(out RegisterNode registerOperand, out LabelReferenceNode labelReferenceOperand);
+                        var regIdx = Convert.ToByte(registerOperand.RegisterName) & 0x03;
+                        var adiOpcodeValue = (byte)((byte)OpcodeBaseCode.ADI | regIdx);
+                        var labelName = labelReferenceOperand.Label;
                         if (!labels.TryGetValue(labelName, out LabelReference? labelRef))
                         {
                             labelRef = new LabelReference(labelName);
                             labels[labelName] = labelRef;
                         }
 
-                        var labelRefNode = new LabelReferenceEmitNode(operands[1]);
+                        var labelRefNode = new LabelReferenceEmitNode(labelReferenceOperand);
                         labelRef.EmitNodes.Add(labelRefNode);
 
                         currentSection.EmitNodes.Add(new DataEmitNode([adiOpcodeValue]));
@@ -411,14 +419,14 @@ namespace Assembler
                     }
                     else
                     {
-                        var immediateValue = ParseHexByte(operands[1].Operand);
-                        currentSection.EmitNodes.Add(new DataEmitNode([adiOpcodeValue, immediateValue]));
+                        throw new AnalyserException("'ADI' instruction requires a register and either an immediate or label operand",
+                            instruction.Span.Line, instruction.Span.StartColumn);
                     }
                     break;
                 // Handle other opcodes similarly
                 default:
                     throw new AnalyserException($"Opcode handling not implemented for: {mnemonic}",
-                        instruction.Span.Line, instruction.Span.Start);
+                        instruction.Span.Line, instruction.Span.StartColumn);
             }
         }
 

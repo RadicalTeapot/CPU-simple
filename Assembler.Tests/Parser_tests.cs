@@ -28,9 +28,9 @@ namespace Assembler.Tests
             var tokens = ParserTestsHelper.LexProgram("START:");
             var program = Parser.ParseProgram(tokens);
             Assert.That(program.Statements, Has.Count.EqualTo(1));
-            Assert.That(program.Statements[0].Label, Is.Not.Null);
+            Assert.That(program.Statements[0].GetLabel(), Is.Not.Null);
 
-            var label = program.Statements[0].Label;
+            var label = program.Statements[0].GetLabel();
             Assert.That(label.Label, Is.EqualTo("start"));
         }
 
@@ -40,8 +40,8 @@ namespace Assembler.Tests
             var tokens = ParserTestsHelper.LexProgram(".DATA");
             var program = Parser.ParseProgram(tokens);
             Assert.That(program.Statements, Has.Count.EqualTo(1));
-            Assert.That(program.Statements[0].HeaderDirective, Is.Not.Null);
-            var directive = program.Statements[0].HeaderDirective;
+            Assert.That(program.Statements[0].GetHeaderDirective(), Is.Not.Null);
+            var directive = program.Statements[0].GetHeaderDirective();
             Assert.That(directive.Directive, Is.EqualTo("data"));
         }
 
@@ -51,13 +51,13 @@ namespace Assembler.Tests
             var tokens = ParserTestsHelper.LexProgram("NOP");
             var program = Parser.ParseProgram(tokens);
             Assert.That(program.Statements, Has.Count.EqualTo(1));
-            Assert.That(program.Statements[0].Instruction, Is.Not.Null);
+            Assert.That(program.Statements[0].GetInstruction(), Is.Not.Null);
 
-            var instruction = program.Statements[0].Instruction;
+            var instruction = program.Statements[0].GetInstruction();
             Assert.Multiple(() =>
             {
                 Assert.That(instruction.Mnemonic, Is.EqualTo("nop"));
-                Assert.That(instruction.OperandNodes, Is.Empty);
+                Assert.That(instruction.HasSignature([]), Is.True);
             });
         }
 
@@ -71,18 +71,18 @@ namespace Assembler.Tests
             var statement = program.Statements[0];
             Assert.Multiple(() =>
             {
-                Assert.That(statement.Label, Is.Not.Null);
-                Assert.That(statement.Instruction, Is.Not.Null);
+                Assert.That(statement.GetLabel(), Is.Not.Null);
+                Assert.That(statement.GetInstruction(), Is.Not.Null);
             });
 
-            var label = statement.Label;
+            var label = statement.GetLabel();
             Assert.That(label.Label, Is.EqualTo("start"));
 
-            var instruction = statement.Instruction;
+            var instruction = statement.GetInstruction();
             Assert.Multiple(() =>
             {
                 Assert.That(instruction.Mnemonic, Is.EqualTo("nop"));
-                Assert.That(instruction.OperandNodes, Is.Empty);
+                Assert.That(instruction.HasSignature([]), Is.True);
             });
         }
 

@@ -2,7 +2,7 @@
 {
     internal static class AnalyserTestsHelper
     {
-        public static ProgramNode ParseProgram(string program)
+        public static Parser.Program ParseProgram(string program)
         {
             var tokens = new Lexer().Tokenize(program);
             return Parser.ParseProgram(tokens);
