@@ -127,7 +127,7 @@ namespace Assembler
             labels = [];
         }
 
-        public IList<IEmitNode> Run(Parser.Program program)
+        public IList<IEmitNode> Run(Parser.ProgramNode program)
         {
             TextSection = new Section();
             DataSections = [];

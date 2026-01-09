@@ -2,26 +2,48 @@
 
 namespace Assembler.AST
 {
-    public enum AddressOffsetType
+    public enum AddressType
     {
-        None,
-        Positive,
-        Negative
+        Label,
+        Immediate,
+        PositiveOffset,
+        NegativeOffset
     }
 
     public class MemoryAddressNode(int tokenCount, NodeSpan span)
         : BaseNode(span)
     {
-        // Memory address can be of the form:
-        // [label]
-        // [label (+/-) offset]
-        // [immediate]
-
         public int TokenCount { get; } = tokenCount;
 
-        public AddressOffsetType AddressOffsetType { get; private set; } = AddressOffsetType.None;
+        public AddressType AddressOffsetType { get; private set; } = AddressType.Label;
 
-        public bool UsesOffset { get; private set; } = false;
+        public void GetAddress(out HexNumberNode hexNumberNode)
+        {
+            if (AddressOffsetType != AddressType.Immediate || _immediateAddress == null) 
+            {
+                throw new ParserException("Memory address has no immediate value", Span.Line, Span.StartColumn);
+            }
+            hexNumberNode = _immediateAddress;
+        }
+
+        public void GetAddress(out LabelReferenceNode labelRefNode)
+        {
+            if (AddressOffsetType != AddressType.Label || _labelAddress == null)
+            {
+                throw new ParserException("Memory address has no label reference", Span.Line, Span.StartColumn);
+            }
+            labelRefNode = _labelAddress;
+        }
+
+        public void GetAddress(out LabelReferenceNode labelRefNode, out HexNumberNode offsetNode)
+        {
+            if ((AddressOffsetType != AddressType.PositiveOffset || AddressOffsetType != AddressType.NegativeOffset) || _labelAddress == null || _offset == null)
+            {
+                throw new ParserException("Memory address has no label reference with offset", Span.Line, Span.StartColumn);
+            }
+            labelRefNode = _labelAddress;
+            offsetNode = _offset;
+        }
 
         public static bool IsValidMemoryAddressAtIndex(IList<Lexeme.Token> tokens, int index)
         {
@@ -54,30 +76,34 @@ namespace Assembler.AST
             HexNumberNode? immediateAddress = null;
             LabelReferenceNode? labelAddress = null;
             HexNumberNode? offset = null;
-            AddressOffsetType offsetType = AddressOffsetType.None;
+            AddressType addressType;
 
             if (HexNumberNode.IsValidHexNodeAtIndex(tokens, index))
             {
+                addressType = AddressType.Immediate;
                 immediateAddress = HexNumberNode.CreateFromTokens(tokens, index);
                 tokenCount += HexNumberNode.TokenCount;
+                index += HexNumberNode.TokenCount;
             }
             else if (LabelReferenceNode.IsValidLabelReferenceAtIndex(tokens, index))
             {
+                addressType = AddressType.Label;
                 labelAddress = LabelReferenceNode.CreateFromTokens(tokens, index);
                 index += LabelReferenceNode.TokenCount;
 
                 var offsetToken = tokens[index];
                 if (offsetToken.Type == TokenType.Plus || offsetToken.Type == TokenType.Minus)
                 {
-                    offsetType = offsetToken.Type == TokenType.Plus
-                        ? AddressOffsetType.Positive
-                        : AddressOffsetType.Negative;
-                    index++;
+                    addressType = offsetToken.Type == TokenType.Plus
+                        ? AddressType.PositiveOffset
+                        : AddressType.NegativeOffset;
+                    index++; // Skip the offset sign
 
                     if (HexNumberNode.IsValidHexNodeAtIndex(tokens, index))
                     {
                         offset = HexNumberNode.CreateFromTokens(tokens, index);
                         tokenCount += HexNumberNode.TokenCount;
+                        index += HexNumberNode.TokenCount;
                     }
                     else
                     {
@@ -87,7 +113,7 @@ namespace Assembler.AST
             }
             else
             {
-                throw new ParserException($"Unexpected token {tokens[index].ToString()} for memory address", tokens[index].Line, tokens[index].Column);
+                throw new ParserException($"Unexpected token {tokens[index]} for memory address", tokens[index].Line, tokens[index].Column);
             }
 
             if (tokens[index].Type != TokenType.RightSquareBracket)
@@ -101,8 +127,7 @@ namespace Assembler.AST
                 _immediateAddress = immediateAddress,
                 _labelAddress = labelAddress,
                 _offset = offset,
-                AddressOffsetType = offsetType,
-                UsesOffset = offsetType != AddressOffsetType.None
+                AddressOffsetType = addressType,
             };
         }
 

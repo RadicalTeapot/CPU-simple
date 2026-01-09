@@ -1,4 +1,5 @@
 ﻿using Assembler.Lexeme;
+using System.Diagnostics;
 
 namespace Assembler.AST
 {
@@ -9,40 +10,44 @@ namespace Assembler.AST
         public bool HasHeaderDirective { get => _headerDirective != null; }
         public DirectiveNode GetHeaderDirective()
         {
-            if (!HasHeaderDirective || _headerDirective == null)
+            if (!HasHeaderDirective)
             {
-                throw new ParserException("Statement has not header directive.", Span.Line, Span.StartColumn);
+                throw new ParserException("Statement has no header directive.", Span.Line, Span.StartColumn);
             }
+            Debug.Assert(_headerDirective != null);
             return _headerDirective;
         }
 
         public bool HasLabel { get => _label != null; }
         public LabelNode GetLabel()
         {
-            if (!HasLabel || _label == null)
+            if (!HasLabel)
             {
                 throw new ParserException("Statement has no label.", Span.Line, Span.StartColumn);
             }
+            Debug.Assert(_label != null);
             return _label;
         }
 
         public bool HasPostDirective { get => _postDirective != null; }
         public DirectiveNode GetPostDirective()
         {
-            if (!HasPostDirective || _postDirective == null)
+            if (!HasPostDirective)
             {
                 throw new ParserException("Statement has no post directive.", Span.Line, Span.StartColumn);
             }
+            Debug.Assert(_postDirective != null);
             return _postDirective;
         }
 
         public bool HasInstruction { get => _instruction != null; }
         public InstructionNode GetInstruction()
         {
-            if (!HasInstruction || _instruction == null)
+            if (!HasInstruction)
             {
-                throw new ParserException("Statement has not instruction.", Span.Line, Span.StartColumn);
+                throw new ParserException("Statement has no instruction.", Span.Line, Span.StartColumn);
             }
+            Debug.Assert(_instruction != null);
             return _instruction;
         }
 
@@ -95,6 +100,7 @@ namespace Assembler.AST
             }
 
             var statementSpan = new NodeSpan(startColumn, tokens[index].Column, tokens[index].Line);
+            tokenCount += 1; // for the EndOfLine token
             return new StatementNode(tokenCount, statementSpan)
             {
                 _headerDirective = headerDirective,

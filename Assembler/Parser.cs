@@ -17,12 +17,12 @@ namespace Assembler
 
     public class Parser
     {
-        public class Program(IList<StatementNode> statements)
+        public class ProgramNode(IList<StatementNode> statements)
         {
             public IList<StatementNode> Statements { get; } = statements;
         }
 
-        public static Program ParseProgram(IList<Token> tokens)
+        public static ProgramNode ParseProgram(IList<Token> tokens)
         {
             var currentTokenIndex = 0;
             var statements = new List<StatementNode>();
@@ -55,9 +55,10 @@ namespace Assembler
                 }
             }
 
-            if (tokens[currentTokenIndex].Type != TokenType.EndOfFile)
+            if (currentTokenIndex >= tokens.Count || tokens[currentTokenIndex].Type != TokenType.EndOfFile)
             {
-                parsingErrors.Add(new ParserException("Expected end of file token.", tokens[currentTokenIndex].Line, tokens[currentTokenIndex].Column));
+                var lastToken = tokens[Math.Min(currentTokenIndex, tokens.Count - 1)];
+                parsingErrors.Add(new ParserException("Expected end of file token.", lastToken.Line, lastToken.Column));
             }
 
             if (parsingErrors.Count > 0)
@@ -65,7 +66,7 @@ namespace Assembler
                 throw new AggregateException("Parsing failed with errors.", parsingErrors);
             }
 
-            return new Program(statements);
+            return new ProgramNode(statements);
         }
     }
 }

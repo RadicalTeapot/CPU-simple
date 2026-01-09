@@ -5,10 +5,10 @@ namespace Assembler.AST
     public class DirectiveNode(string directive, int tokenCount, NodeSpan span) : BaseNode(span)
     {
         public string Directive { get; } = directive;
-        public int TokenCount { get; set; } = tokenCount;
+        public int TokenCount { get; } = tokenCount;
 
         public bool HasSignature(params OperandType[] operandTypes)
-            => operandTypes.Length == _signature.Length && !_signature.Except(operandTypes).Any();
+            => operandTypes.Length == _signature.Length && !_signature.SequenceEqual(operandTypes); // SequenceEqual also check for correct order
 
         public void GetOperands(out StringLiteralNode stringOperand)
         {

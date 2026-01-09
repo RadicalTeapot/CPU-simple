@@ -17,7 +17,7 @@ namespace Assembler.AST
         public int TokenCount { get; private set; } = tokenCount;
 
         public bool HasSignature(params OperandType[] operandTypes)
-            => operandTypes.Length == _signature.Length && !_signature.Except(operandTypes).Any();
+            => operandTypes.Length == _signature.Length && !_signature.SequenceEqual(operandTypes); // SequenceEqual also check for correct order
 
         public void GetOperands(out MemoryAddressNode memoryAddressOperand)
         {
@@ -147,11 +147,6 @@ namespace Assembler.AST
                     tokenCount += RegisterNode.TokenCount;
                     index += RegisterNode.TokenCount;
                     signature.Add(OperandType.Register);
-                }
-
-                if (!(tokens[index].Type == TokenType.RightSquareBracket))
-                {
-                    throw new ParserException("Unexpected token after register operand(s).", tokens[index].Line, tokens[index].Column);
                 }
 
                 var span = new NodeSpan(instructionToken.Column, tokens[index].Column + tokens[index].Lexeme.Length, instructionToken.Line);
