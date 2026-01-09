@@ -1,4 +1,5 @@
 ﻿using Assembler.Lexeme;
+using System.Diagnostics;
 
 namespace Assembler.AST
 {
@@ -21,22 +22,13 @@ namespace Assembler.AST
             {
                 case []: return new DirectiveOperandSet.None();
                 case [OperandType.StringLiteral]:
-                    if (_stringOperand == null)
-                    {
-                        throw new ParserException("Directive has no single string operand", Span.Line, Span.StartColumn);
-                    }
+                    Debug.Assert(_stringOperand != null, "Directive has no single string operand");
                     return new DirectiveOperandSet.SingleStringOperand(_stringOperand);
                 case [OperandType.Immediate]:
-                    if (_hexNumberOperands == null || _hexNumberOperands.Count != 1)
-                    {
-                        throw new ParserException("Directive has no single immediate operand", Span.Line, Span.StartColumn);
-                    }
+                    Debug.Assert(_hexNumberOperands != null && _hexNumberOperands.Count == 1, "Directive has no single immediate operand");
                     return new DirectiveOperandSet.SingleHexNumberOperand(_hexNumberOperands[0]);
                 case [OperandType.Immediate, OperandType.Immediate]:
-                    if (_hexNumberOperands == null || _hexNumberOperands.Count != 2)
-                    {
-                        throw new ParserException("Directive does not have two immediate operands", Span.Line, Span.StartColumn);
-                    }
+                    Debug.Assert(_hexNumberOperands != null && _hexNumberOperands.Count == 2, "Directive does not have two immediate operands");
                     return new DirectiveOperandSet.TwoHexNumberOperands(_hexNumberOperands[0], _hexNumberOperands[1]);
                 default:
                     throw new ParserException("Unkown signature for directive operands", Span.Line, Span.StartColumn);

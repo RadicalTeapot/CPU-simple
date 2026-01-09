@@ -1,4 +1,5 @@
 ﻿using Assembler.Lexeme;
+using System.Diagnostics;
 
 namespace Assembler.AST
 {
@@ -33,40 +34,23 @@ namespace Assembler.AST
             {
                 case []: return new InstructionOperandSet.None();
                 case [OperandType.MemoryAddress]:
-                    if (_memoryAddressOperand == null)
-                    {
-                        throw new ParserException("Instruction has no single string operand", Span.Line, Span.StartColumn);
-                    }
+                    Debug.Assert(_memoryAddressOperand != null, "Instruction has no single memory address operand");
                     return new InstructionOperandSet.SingleMemoryAddressOperand(_memoryAddressOperand);
                 case [OperandType.Register]:
                     if (_registerOperands == null || _registerOperands.Count != 1)
-                    {
-                        throw new ParserException("Instruction has no single register operand", Span.Line, Span.StartColumn);
-                    }
+                    Debug.Assert(_registerOperands != null && _registerOperands.Count == 1, "Instruction has no single register operand");
                     return new InstructionOperandSet.SingleRegisterOperand(_registerOperands[0]);
                 case [OperandType.Register, OperandType.Immediate]:
-                    if (_registerOperands == null || _registerOperands.Count != 1 || _immediateOperand == null)
-                    {
-                        throw new ParserException("Instruction has no register and immediate operand", Span.Line, Span.StartColumn);
-                    }
+                    Debug.Assert(_registerOperands != null && _registerOperands.Count == 1 && _immediateOperand != null, "Instruction has no register and immediate operand");
                     return new InstructionOperandSet.RegisterAndHexNumberOperand(_registerOperands[0], _immediateOperand);
                 case [OperandType.Register, OperandType.LabelReference]:
-                    if (_registerOperands == null || _registerOperands.Count != 1 || _labelReferenceOperand == null)
-                    {
-                        throw new ParserException("Instruction has no register and label reference operand", Span.Line, Span.StartColumn);
-                    }
+                    Debug.Assert(_registerOperands != null && _registerOperands.Count == 1 && _labelReferenceOperand != null, "Instruction has no register and label reference operand");
                     return new InstructionOperandSet.RegisterAndLabelOperand(_registerOperands[0], _labelReferenceOperand);
                 case [OperandType.Register, OperandType.MemoryAddress]:
-                    if (_registerOperands == null || _registerOperands.Count != 1 || _memoryAddressOperand == null)
-                    {
-                        throw new ParserException("Instruction has no register and memory address operand", Span.Line, Span.StartColumn);
-                    }
+                    Debug.Assert(_registerOperands != null && _registerOperands.Count == 1 && _memoryAddressOperand != null, "Instruction has no register and memory address operand");
                     return new InstructionOperandSet.RegisterAndMemoryAddressOperand(_registerOperands[0], _memoryAddressOperand);
                 case [OperandType.Register, OperandType.Register]:
-                    if (_registerOperands == null || _registerOperands.Count != 2)
-                    {
-                        throw new ParserException("Instruction does not have two register operands", Span.Line, Span.StartColumn);
-                    }
+                    Debug.Assert(_registerOperands != null && _registerOperands.Count == 2, "Instruction does not have two register operands");
                     return new InstructionOperandSet.TwoRegistersOperand(_registerOperands[0], _registerOperands[1]);
                 default:
                     throw new ParserException("Unkown signature for instruction operands", Span.Line, Span.StartColumn);

@@ -1,48 +1,48 @@
 ﻿using Assembler.Lexeme;
+using System.Diagnostics;
 
 namespace Assembler.AST
 {
-    public enum AddressType
+    public abstract record MemoryAddress
     {
-        Label,
-        Immediate,
-        PositiveOffset,
-        NegativeOffset
+        public record Immediate(HexNumberNode Address) : MemoryAddress;
+        public record Label(LabelReferenceNode LabelRef) : MemoryAddress;
+        public record LabelWithPositiveOffset(LabelReferenceNode LabelRef, HexNumberNode Offset) : MemoryAddress;
+        public record LabelWithNegativeOffset(LabelReferenceNode LabelRef, HexNumberNode Offset) : MemoryAddress;
     }
 
     public class MemoryAddressNode(int tokenCount, NodeSpan span)
         : BaseNode(span)
     {
+        private enum AddressType
+        {
+            Label,
+            Immediate,
+            PositiveOffset,
+            NegativeOffset
+        }
+
         public int TokenCount { get; } = tokenCount;
 
-        public AddressType AddressOffsetType { get; private set; } = AddressType.Label;
-
-        public void GetAddress(out HexNumberNode hexNumberNode)
+        public MemoryAddress GetAddress()
         {
-            if (AddressOffsetType != AddressType.Immediate || _immediateAddress == null) 
+            switch (_addressOffsetType)
             {
-                throw new ParserException("Memory address has no immediate value", Span.Line, Span.StartColumn);
-            }
-            hexNumberNode = _immediateAddress;
-        }
-
-        public void GetAddress(out LabelReferenceNode labelRefNode)
-        {
-            if (AddressOffsetType != AddressType.Label || _labelAddress == null)
-            {
-                throw new ParserException("Memory address has no label reference", Span.Line, Span.StartColumn);
-            }
-            labelRefNode = _labelAddress;
-        }
-
-        public void GetAddress(out LabelReferenceNode labelRefNode, out HexNumberNode offsetNode)
-        {
-            if ((AddressOffsetType != AddressType.PositiveOffset || AddressOffsetType != AddressType.NegativeOffset) || _labelAddress == null || _offset == null)
-            {
-                throw new ParserException("Memory address has no label reference with offset", Span.Line, Span.StartColumn);
-            }
-            labelRefNode = _labelAddress;
-            offsetNode = _offset;
+                case AddressType.Immediate:
+                    Debug.Assert(_immediateAddress != null, "Memory address has no immediate value");
+                    return new MemoryAddress.Immediate(_immediateAddress!);
+                case AddressType.Label:
+                    Debug.Assert(_labelAddress != null, "Memory address has no label reference");
+                    return new MemoryAddress.Label(_labelAddress!);
+                case AddressType.PositiveOffset:
+                    Debug.Assert(_labelAddress != null && _offset != null && _addressOffsetType == AddressType.PositiveOffset, "Memory address has no label reference with positive offset");
+                    return new MemoryAddress.LabelWithPositiveOffset(_labelAddress!, _offset!);
+                case AddressType.NegativeOffset:
+                    Debug.Assert(_labelAddress != null && _offset != null && _addressOffsetType == AddressType.NegativeOffset, "Memory address has no label reference with negative offset");
+                    return new MemoryAddress.LabelWithNegativeOffset(_labelAddress!, _offset!);
+                default:
+                    throw new ParserException("Unknown memory address type", Span.Line, Span.StartColumn);
+            };
         }
 
         public static bool IsValidMemoryAddressAtIndex(IList<Lexeme.Token> tokens, int index)
@@ -127,13 +127,14 @@ namespace Assembler.AST
                 _immediateAddress = immediateAddress,
                 _labelAddress = labelAddress,
                 _offset = offset,
-                AddressOffsetType = addressType,
+                _addressOffsetType = addressType,
             };
         }
 
         private HexNumberNode? _immediateAddress;
         private LabelReferenceNode? _labelAddress;
         private HexNumberNode? _offset;
+        private AddressType _addressOffsetType;
 
         private const int minTokenCount = 3; // [ label ]
     }
