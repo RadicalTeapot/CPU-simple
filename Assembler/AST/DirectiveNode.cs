@@ -2,40 +2,45 @@
 
 namespace Assembler.AST
 {
+    public abstract record DirectiveOperandSet
+    {
+        public record None : DirectiveOperandSet;
+        public record SingleStringOperand(StringLiteralNode Operand) : DirectiveOperandSet;
+        public record SingleHexNumberOperand(HexNumberNode Operand) : DirectiveOperandSet;
+        public record TwoHexNumberOperands(HexNumberNode FirstOperand, HexNumberNode SecondOperand) : DirectiveOperandSet;
+    }
+
     public class DirectiveNode(string directive, int tokenCount, NodeSpan span) : BaseNode(span)
     {
         public string Directive { get; } = directive;
         public int TokenCount { get; } = tokenCount;
 
-        public bool HasSignature(params OperandType[] operandTypes)
-            => operandTypes.Length == _signature.Length && !_signature.SequenceEqual(operandTypes); // SequenceEqual also check for correct order
-
-        public void GetOperands(out StringLiteralNode stringOperand)
+        public DirectiveOperandSet GetOperands()
         {
-            if (!HasSignature(OperandType.StringLiteral) || _stringOperand == null)
+            switch(_signature) 
             {
-                throw new ParserException("Directive does not have a string operand.", Span.Line, Span.StartColumn);
-            }
-            stringOperand = _stringOperand;
-        }
-
-        public void GetOperands(out HexNumberNode hexOperand)
-        {
-            if (!HasSignature(OperandType.Immediate) || _hexNumberOperands == null || _hexNumberOperands.Count != 1)
-            {
-                throw new ParserException("Directive does not have a single hex number operand.", Span.Line, Span.StartColumn);
-            }
-            hexOperand = _hexNumberOperands[0];
-        }
-
-        public void GetOperands(out HexNumberNode firstHexOperand, out HexNumberNode secondHexOperand)
-        {
-            if (!HasSignature(OperandType.Immediate, OperandType.Immediate) || _hexNumberOperands == null || _hexNumberOperands.Count != 2)
-            {
-                throw new ParserException("Directive does not have two hex number operands.", Span.Line, Span.StartColumn);
-            }
-            firstHexOperand = _hexNumberOperands[0];
-            secondHexOperand = _hexNumberOperands[1];
+                case []: return new DirectiveOperandSet.None();
+                case [OperandType.StringLiteral]:
+                    if (_stringOperand == null)
+                    {
+                        throw new ParserException("Directive has no single string operand", Span.Line, Span.StartColumn);
+                    }
+                    return new DirectiveOperandSet.SingleStringOperand(_stringOperand);
+                case [OperandType.Immediate]:
+                    if (_hexNumberOperands == null || _hexNumberOperands.Count != 1)
+                    {
+                        throw new ParserException("Directive has no single immediate operand", Span.Line, Span.StartColumn);
+                    }
+                    return new DirectiveOperandSet.SingleHexNumberOperand(_hexNumberOperands[0]);
+                case [OperandType.Immediate, OperandType.Immediate]:
+                    if (_hexNumberOperands == null || _hexNumberOperands.Count != 2)
+                    {
+                        throw new ParserException("Directive does not have two immediate operands", Span.Line, Span.StartColumn);
+                    }
+                    return new DirectiveOperandSet.TwoHexNumberOperands(_hexNumberOperands[0], _hexNumberOperands[1]);
+                default:
+                    throw new ParserException("Unkown signature for directive operands", Span.Line, Span.StartColumn);
+            };
         }
 
         public static bool IsValidDirectiveAtIndex(IList<Token> tokens, int index)

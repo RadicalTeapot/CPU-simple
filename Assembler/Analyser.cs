@@ -1,5 +1,6 @@
 ﻿using Assembler.AST;
 using CPU.opcodes;
+using System.Net.Http.Headers;
 
 namespace Assembler
 {
@@ -255,43 +256,40 @@ namespace Assembler
                         postDirective.Span.Line, postDirective.Span.StartColumn);
                 }
 
+                var operands = postDirective.GetOperands();
                 switch (postDirective.Directive)
                 {
                     case "byte":
-                        if (!postDirective.HasSignature([OperandType.Immediate]))
+                        if (operands is not DirectiveOperandSet.SingleHexNumberOperand(var byteOperand))
                         {
                             throw new AnalyserException("'byte' directive requires a single numeric operand",
                                 postDirective.Span.Line, postDirective.Span.StartColumn);
                         }
-                        postDirective.GetOperands(out HexNumberNode byteOperand);
                         currentSection.EmitNodes.Add(new DataEmitNode([ParseHexByte(byteOperand.Value)]));
                         break;
                     case "short":
-                        if (!postDirective.HasSignature([OperandType.Immediate]))
+                        if (operands is not DirectiveOperandSet.SingleHexNumberOperand(var shortOperand))
                         {
-                            throw new AnalyserException("'byte' directive requires a single numeric operand",
+                            throw new AnalyserException("'short' directive requires a single numeric operand",
                                 postDirective.Span.Line, postDirective.Span.StartColumn);
                         }
-                        postDirective.GetOperands(out HexNumberNode shortOperand);
                         currentSection.EmitNodes.Add(new DataEmitNode(BitConverter.GetBytes(ParseHexUShort(shortOperand.Value)))); // Little-endian
                         break;
                     case "zero":
-                        if (!postDirective.HasSignature([OperandType.Immediate]))
+                        if (operands is not DirectiveOperandSet.SingleHexNumberOperand(var zeroCountOperand))
                         {
                             throw new AnalyserException("'zero' directive requires a single numeric operand",
                                 postDirective.Span.Line, postDirective.Span.StartColumn);
                         }
-                        postDirective.GetOperands(out HexNumberNode zeroCountOperand);
                         var zeroCount = ParseHexNumber(zeroCountOperand.Value);
                         currentSection.EmitNodes.Add(new FillEmitNode(zeroCount, 0x00));
                         break;
                     case "string":
-                        if (!postDirective.HasSignature([OperandType.StringLiteral]))
+                        if (operands is not DirectiveOperandSet.SingleStringOperand(var stringLiteral))
                         {
                             throw new AnalyserException("'string' directive requires a single string literal operand",
                                 postDirective.Span.Line, postDirective.Span.StartColumn);
                         }
-                        postDirective.GetOperands(out StringLiteralNode stringLiteral);
                         var processedStr = ProcessString(stringLiteral.Value);
                         var strBytes = System.Text.Encoding.ASCII.GetBytes(processedStr);
                         currentSection.EmitNodes.Add(new DataEmitNode([..strBytes, 0x00])); // Null-terminated
@@ -329,21 +327,19 @@ namespace Assembler
         {
             byte fillValue;
             int address;
-            if (directiveNode.HasSignature([OperandType.Immediate]))
+            var operands = directiveNode.GetOperands();
+            switch (operands)
             {
-                directiveNode.GetOperands(out HexNumberNode addressOperand);
-                address = GetValidatedAddressValue(addressOperand);
-                fillValue = 0x00;
-            }
-            else if (directiveNode.HasSignature([OperandType.Immediate, OperandType.Immediate]))
-            {
-                directiveNode.GetOperands(out HexNumberNode addressOperand, out HexNumberNode fillValueOperand);
-                address = GetValidatedAddressValue(addressOperand);
-                fillValue = ParseHexByte(fillValueOperand.Value);
-            }
-            else
-            {
-                throw new AnalyserException("'org' directive requires an address operand",
+                case DirectiveOperandSet.SingleHexNumberOperand(var addressOperand):
+                    address = GetValidatedAddressValue(addressOperand);
+                    fillValue = 0x00;
+                    break;
+                case DirectiveOperandSet.TwoHexNumberOperands(var addressOperand, var fillValueOperand):
+                    address = GetValidatedAddressValue(addressOperand);
+                    fillValue = ParseHexByte(fillValueOperand.Value);
+                    break;
+                default:
+                    throw new AnalyserException("'org' directive requires an address operand",
                     directiveNode.Span.Line, directiveNode.Span.StartColumn);
             }
 
@@ -360,10 +356,11 @@ namespace Assembler
                     instruction.Span.Line, instruction.Span.StartColumn);
             }
 
+            var operands = instruction.GetOperands();
             switch (opcode)
             {
                 case OpcodeBaseCode.NOP:
-                    if (!instruction.HasSignature([]))
+                    if (operands is not InstructionOperandSet.None)
                     {
                         throw new AnalyserException("'NOP' instruction does not take any operands",
                             instruction.Span.Line, instruction.Span.StartColumn);
@@ -371,7 +368,7 @@ namespace Assembler
                     currentSection.EmitNodes.Add(new DataEmitNode([(byte)OpcodeBaseCode.NOP]));
                     break;
                 case OpcodeBaseCode.HLT:
-                    if (!instruction.HasSignature([]))
+                    if (operands is not InstructionOperandSet.None)
                     {
                         throw new AnalyserException("'HLT' instruction does not take any operands",
                             instruction.Span.Line, instruction.Span.StartColumn);
@@ -379,47 +376,45 @@ namespace Assembler
                     currentSection.EmitNodes.Add(new DataEmitNode([(byte)OpcodeBaseCode.HLT]));
                     break;
                 case OpcodeBaseCode.ADD:
-                    if (!instruction.HasSignature([OperandType.Register, OperandType.Register]))
+                    if (operands is not InstructionOperandSet.TwoRegistersOperand(var firstOperand, var secondOperand))
                     {
                         throw new AnalyserException("'ADD' instruction requires two register operands",
                             instruction.Span.Line, instruction.Span.StartColumn);
                     }
-                    instruction.GetOperands(out RegisterNode firstOperand, out RegisterNode secondOperand);
                     var destReg = Convert.ToByte(firstOperand.RegisterName) & 0x03;
                     var srcReg = Convert.ToByte(secondOperand.RegisterName) & 0x03;
                     var opcodeValue = (byte)((byte)OpcodeBaseCode.ADD | (srcReg << 2) | destReg);
                     currentSection.EmitNodes.Add(new DataEmitNode([opcodeValue]));
                     break;
                 case OpcodeBaseCode.ADI:
-                    if (instruction.HasSignature([OperandType.Register, OperandType.Immediate])) 
+                    int regIdx;
+                    byte adiOpcodeValue;
+                    switch (operands)
                     {
-                        instruction.GetOperands(out RegisterNode registerOperand, out HexNumberNode immediateOperand);
-                        var regIdx = Convert.ToByte(registerOperand.RegisterName) & 0x03;
-                        var adiOpcodeValue = (byte)((byte)OpcodeBaseCode.ADI | regIdx);
-                        var immediateValue = ParseHexByte(immediateOperand.Value);
-                        currentSection.EmitNodes.Add(new DataEmitNode([adiOpcodeValue, immediateValue]));
-                    }
-                    else if (instruction.HasSignature([OperandType.Register, OperandType.LabelReference])) 
-                    {
-                        instruction.GetOperands(out RegisterNode registerOperand, out LabelReferenceNode labelReferenceOperand);
-                        var regIdx = Convert.ToByte(registerOperand.RegisterName) & 0x03;
-                        var adiOpcodeValue = (byte)((byte)OpcodeBaseCode.ADI | regIdx);
-                        var labelName = labelReferenceOperand.Label;
-                        if (!labels.TryGetValue(labelName, out LabelReference? labelRef))
-                        {
-                            labelRef = new LabelReference(labelName);
-                            labels[labelName] = labelRef;
-                        }
+                        case InstructionOperandSet.RegisterAndHexNumberOperand(var registerOperand, var immediateOperand):
+                            regIdx = Convert.ToByte(registerOperand.RegisterName) & 0x03;
+                            adiOpcodeValue = (byte)((byte)OpcodeBaseCode.ADI | regIdx);
+                            var immediateValue = ParseHexByte(immediateOperand.Value);
+                            currentSection.EmitNodes.Add(new DataEmitNode([adiOpcodeValue, immediateValue]));
+                            break;
+                        case InstructionOperandSet.RegisterAndLabelOperand(var registerOperand, var labelReferenceOperand):
+                            regIdx = Convert.ToByte(registerOperand.RegisterName) & 0x03;
+                            adiOpcodeValue = (byte)((byte)OpcodeBaseCode.ADI | regIdx);
+                            var labelName = labelReferenceOperand.Label;
+                            if (!labels.TryGetValue(labelName, out LabelReference? labelRef))
+                            {
+                                labelRef = new LabelReference(labelName);
+                                labels[labelName] = labelRef;
+                            }
 
-                        var labelRefNode = new LabelReferenceEmitNode(labelReferenceOperand);
-                        labelRef.EmitNodes.Add(labelRefNode);
+                            var labelRefNode = new LabelReferenceEmitNode(labelReferenceOperand);
+                            labelRef.EmitNodes.Add(labelRefNode);
 
-                        currentSection.EmitNodes.Add(new DataEmitNode([adiOpcodeValue]));
-                        currentSection.EmitNodes.Add(labelRefNode);
-                    }
-                    else
-                    {
-                        throw new AnalyserException("'ADI' instruction requires a register and either an immediate or label operand",
+                            currentSection.EmitNodes.Add(new DataEmitNode([adiOpcodeValue]));
+                            currentSection.EmitNodes.Add(labelRefNode);
+                            break;
+                        default:
+                            throw new AnalyserException("'ADI' instruction requires a register and either an immediate or label operand",
                             instruction.Span.Line, instruction.Span.StartColumn);
                     }
                     break;

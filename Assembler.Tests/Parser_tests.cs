@@ -54,11 +54,7 @@ namespace Assembler.Tests
             Assert.That(program.Statements[0].GetInstruction(), Is.Not.Null);
 
             var instruction = program.Statements[0].GetInstruction();
-            Assert.Multiple(() =>
-            {
-                Assert.That(instruction.Mnemonic, Is.EqualTo("nop"));
-                Assert.That(instruction.HasSignature([]), Is.True);
-            });
+            Assert.That(instruction.Mnemonic, Is.EqualTo("nop"));
         }
 
         [Test]
@@ -79,11 +75,7 @@ namespace Assembler.Tests
             Assert.That(label.Label, Is.EqualTo("start"));
 
             var instruction = statement.GetInstruction();
-            Assert.Multiple(() =>
-            {
-                Assert.That(instruction.Mnemonic, Is.EqualTo("nop"));
-                Assert.That(instruction.HasSignature([]), Is.True);
-            });
+            Assert.That(instruction.Mnemonic, Is.EqualTo("nop"));
         }
 
         // TODO

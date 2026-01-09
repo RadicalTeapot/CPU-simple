@@ -11,70 +11,67 @@ namespace Assembler.AST
         StringLiteral
     }
 
+    public abstract record InstructionOperandSet
+    {
+        public record None : InstructionOperandSet;
+        public record SingleMemoryAddressOperand(MemoryAddressNode Operand) : InstructionOperandSet;
+        public record SingleRegisterOperand(RegisterNode Operand) : InstructionOperandSet;
+        public record RegisterAndHexNumberOperand(RegisterNode FirstOperand, HexNumberNode SecondOperand) : InstructionOperandSet;
+        public record RegisterAndLabelOperand(RegisterNode FirstOperand, LabelReferenceNode SecondOperand) : InstructionOperandSet;
+        public record RegisterAndMemoryAddressOperand(RegisterNode FirstOperand, MemoryAddressNode SecondOperand) : InstructionOperandSet;
+        public record TwoRegistersOperand(RegisterNode FirstOperand, RegisterNode SecondOperand) : InstructionOperandSet;
+    }
+
     public class InstructionNode(string mnemonic, int tokenCount, OperandType[] signature, NodeSpan span) : BaseNode(span)
     {
         public string Mnemonic { get; } = mnemonic;
         public int TokenCount { get; private set; } = tokenCount;
 
-        public bool HasSignature(params OperandType[] operandTypes)
-            => operandTypes.Length == _signature.Length && !_signature.SequenceEqual(operandTypes); // SequenceEqual also check for correct order
-
-        public void GetOperands(out MemoryAddressNode memoryAddressOperand)
+        public InstructionOperandSet GetOperands()
         {
-            if (!HasSignature(OperandType.MemoryAddress) || _memoryAddressOperand == null)
+            switch (_signature)
             {
-                throw new ParserException("Instruction does not have a memory address operand.", Span.Line, Span.StartColumn);
+                case []: return new InstructionOperandSet.None();
+                case [OperandType.MemoryAddress]:
+                    if (_memoryAddressOperand == null)
+                    {
+                        throw new ParserException("Instruction has no single string operand", Span.Line, Span.StartColumn);
+                    }
+                    return new InstructionOperandSet.SingleMemoryAddressOperand(_memoryAddressOperand);
+                case [OperandType.Register]:
+                    if (_registerOperands == null || _registerOperands.Count != 1)
+                    {
+                        throw new ParserException("Instruction has no single register operand", Span.Line, Span.StartColumn);
+                    }
+                    return new InstructionOperandSet.SingleRegisterOperand(_registerOperands[0]);
+                case [OperandType.Register, OperandType.Immediate]:
+                    if (_registerOperands == null || _registerOperands.Count != 1 || _immediateOperand == null)
+                    {
+                        throw new ParserException("Instruction has no register and immediate operand", Span.Line, Span.StartColumn);
+                    }
+                    return new InstructionOperandSet.RegisterAndHexNumberOperand(_registerOperands[0], _immediateOperand);
+                case [OperandType.Register, OperandType.LabelReference]:
+                    if (_registerOperands == null || _registerOperands.Count != 1 || _labelReferenceOperand == null)
+                    {
+                        throw new ParserException("Instruction has no register and label reference operand", Span.Line, Span.StartColumn);
+                    }
+                    return new InstructionOperandSet.RegisterAndLabelOperand(_registerOperands[0], _labelReferenceOperand);
+                case [OperandType.Register, OperandType.MemoryAddress]:
+                    if (_registerOperands == null || _registerOperands.Count != 1 || _memoryAddressOperand == null)
+                    {
+                        throw new ParserException("Instruction has no register and memory address operand", Span.Line, Span.StartColumn);
+                    }
+                    return new InstructionOperandSet.RegisterAndMemoryAddressOperand(_registerOperands[0], _memoryAddressOperand);
+                case [OperandType.Register, OperandType.Register]:
+                    if (_registerOperands == null || _registerOperands.Count != 2)
+                    {
+                        throw new ParserException("Instruction does not have two register operands", Span.Line, Span.StartColumn);
+                    }
+                    return new InstructionOperandSet.TwoRegistersOperand(_registerOperands[0], _registerOperands[1]);
+                default:
+                    throw new ParserException("Unkown signature for instruction operands", Span.Line, Span.StartColumn);
             }
-            memoryAddressOperand = _memoryAddressOperand;
-        }
-
-        public void GetOperands(out RegisterNode registerOperand)
-        {
-            if (!HasSignature(OperandType.Register) || _registerOperands == null || _registerOperands.Count != 1)
-            {
-                throw new ParserException("Instruction does not have a single register operand.", Span.Line, Span.StartColumn);
-            }
-            registerOperand = _registerOperands[0];
-        }
-
-        public void GetOperands(out RegisterNode firstRegisterOperand, out HexNumberNode immediateOperand)
-        {
-            if (!HasSignature(OperandType.Register, OperandType.Immediate) || _registerOperands == null || _registerOperands.Count != 1 || _immediateOperand == null)
-            {
-                throw new ParserException("Instruction does not have a register and an immediate operand.", Span.Line, Span.StartColumn);
-            }
-            firstRegisterOperand = _registerOperands[0];
-            immediateOperand = _immediateOperand;
-        }
-
-        public void GetOperands(out RegisterNode registerOperand, out LabelReferenceNode labelReferenceOperand)
-        {
-            if (!HasSignature(OperandType.Register, OperandType.LabelReference) || _registerOperands == null || _registerOperands.Count != 1 || _labelReferenceOperand == null)
-            {
-                throw new ParserException("Instruction does not have a register and a label reference operand.", Span.Line, Span.StartColumn);
-            }
-            registerOperand = _registerOperands[0];
-            labelReferenceOperand = _labelReferenceOperand;
-        }
-
-        public void GetOperands(out RegisterNode registerOperand, out MemoryAddressNode memoryAddressOperand)
-        {
-            if (!HasSignature(OperandType.Register, OperandType.MemoryAddress) || _registerOperands == null || _registerOperands.Count != 1 || _memoryAddressOperand == null)
-            {
-                throw new ParserException("Instruction does not have a register and a memory address operand.", Span.Line, Span.StartColumn);
-            }
-            registerOperand = _registerOperands[0];
-            memoryAddressOperand = _memoryAddressOperand;
-        }
-
-        public void GetOperands(out RegisterNode firstRegisterOperand, out RegisterNode secondRegisterOperand)
-        {
-            if (!HasSignature(OperandType.Register, OperandType.Register) || _registerOperands == null || _registerOperands.Count != 2)
-            {
-                throw new ParserException("Instruction does not have two register operands.", Span.Line, Span.StartColumn);
-            }
-            firstRegisterOperand = _registerOperands[0];
-            secondRegisterOperand = _registerOperands[1];
+            ;
         }
 
         public static bool IsValidInstructionAtIndex(IList<Token> tokens, int index)
