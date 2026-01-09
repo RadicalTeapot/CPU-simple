@@ -42,7 +42,7 @@
         ORA = 0xB4,
         XRI = 0xB8,
         XRA = 0xBC,
-        OR = 0xC0,
+        OR  = 0xC0,
         XOR = 0xD0,
         INC = 0xE0,
         DEC = 0xE4,

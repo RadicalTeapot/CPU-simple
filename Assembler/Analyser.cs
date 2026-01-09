@@ -1,6 +1,8 @@
-﻿using Assembler.AST;
+﻿using Assembler.Analysis;
+using Assembler.Analysis.Directives;
+using Assembler.Analysis.Instructions;
+using Assembler.AST;
 using CPU.opcodes;
-using System.Net.Http.Headers;
 
 namespace Assembler
 {
@@ -16,108 +18,13 @@ namespace Assembler
         }
     }
 
-    internal class LabelReference(string labelName)
-    {
-        public string LabelName { get; } = labelName;
-        public List<LabelReferenceEmitNode> EmitNodes { get; } = [];
-        public void Locate(Section section, int sectionLocationCounter)
-        {
-            if (isLocated)
-            {
-                throw new InvalidOperationException($"Label '{LabelName}' location counter has already been set.");
-            }
-
-            locationCounter = sectionLocationCounter;
-            this.section = section;
-            isLocated = true;
-        }
-
-        public void ResolveEmitNodes()
-        {
-            if (EmitNodes.Count == 0)
-            {
-                return; // No emit nodes to resolve
-            }
-
-            if (!isLocated)
-            {
-                var firstEmitNode = EmitNodes[0];
-                throw new ParserException($"Label '{LabelName}' location counter has not been set.", 
-                    firstEmitNode.LabelRefNode.Span.Line, firstEmitNode.LabelRefNode.Span.StartColumn); // Show location of first reference
-            }
-
-            foreach (var emitNode in EmitNodes)
-            {
-                emitNode.Resolve((byte)(locationCounter + section?.StartAddress ?? 0));
-            }
-        }
-
-        private int locationCounter;
-        private Section? section;
-        private bool isLocated = false;
-    }
-
-    public interface IEmitNode
-    {
-        int Count { get; }
-        byte[] Emit();
-    }
-
-    internal class FillEmitNode(int count, byte fillValue) : IEmitNode
-    {
-        public int Count { get; } = count;
-        public byte FillValue { get; } = fillValue;
-        public byte[] Emit() => [.. Enumerable.Repeat(FillValue, Count)];
-    }
-
-    internal class LabelReferenceEmitNode(LabelReferenceNode labelRefNode, byte offset = 0) : IEmitNode
-    {
-        public LabelReferenceNode LabelRefNode { get; } = labelRefNode;
-        public byte Offset { get; } = offset;
-        public int Count { get; } = 1;
-        public void Resolve(byte value)
-        {
-            resolvedValue = (byte)(value + Offset);
-            isResolved = true;
-        }
-
-        public byte[] Emit()
-        {
-            if (!isResolved)
-            {
-                throw new ParserException($"Label '{LabelRefNode.Label}' has not been resolved yet.", LabelRefNode.Span.Line, LabelRefNode.Span.StartColumn);
-            }
-            return [resolvedValue];
-        }
-
-        private bool isResolved = false;
-        private byte resolvedValue;
-    }
-
-    internal class DataEmitNode(byte[] data) : IEmitNode
-    {
-        public byte[] Data { get; } = data;
-        public int Count { get; } = data.Length;
-        public byte[] Emit() => Data;
-    }
-
-    internal class Section
-    {
-        public int LocationCounter => EmitNodes.Sum(node => node.Count);
-        public int StartAddress { get; set; } = 0;
-        public IList<IEmitNode> EmitNodes { get; } = [];
-    }
-
     public class Analyser
     {
         private Section TextSection;
         private List<Section> DataSections;
         private Section currentSection;
         private int textSectionCounter;
-        /// <summary>
-        /// A mapping of label names to their corresponding label references.
-        /// </summary>
-        private Dictionary<string, LabelReference> labels;
+        private LabelReferenceManager labelManager;
 
         public Analyser()
         {
@@ -125,16 +32,16 @@ namespace Assembler
             DataSections = [];
             currentSection = TextSection;
             textSectionCounter = 0;
-            labels = [];
+            labelManager = new LabelReferenceManager();
         }
 
-        public IList<IEmitNode> Run(Parser.ProgramNode program)
+        public IList<IAnalysisNode> Run(Parser.ProgramNode program)
         {
             TextSection = new Section();
             DataSections = [];
             currentSection = TextSection;
             textSectionCounter = 0;
-            labels = [];
+            labelManager = new LabelReferenceManager();
 
             // First pass: analyse statements
             var analysisExceptions = new List<AnalyserException>();
@@ -142,7 +49,7 @@ namespace Assembler
             {
                 try
                 {
-                    AnalyseStatement(statement);
+                    HandleStatement(statement);
                 }
                 catch (AnalyserException ex)
                 {
@@ -163,45 +70,28 @@ namespace Assembler
                 dataSection.StartAddress = sectionOffset;
                 sectionOffset += dataSection.LocationCounter;
             }
-            foreach (var labelRef in labels.Values)
-            {
-                labelRef.ResolveEmitNodes();
-            }
+            labelManager.ResolveLabels();
 
-            // Collect all emit nodes in order
-            var emitNodes = new List<IEmitNode>();
-            emitNodes.AddRange(TextSection.EmitNodes);
+            // Collect all nodes in order
+            var emitNodes = new List<IAnalysisNode>();
+            emitNodes.AddRange(TextSection.Nodes);
             foreach (var dataSection in DataSections)
             {
-                emitNodes.AddRange(dataSection.EmitNodes);
+                emitNodes.AddRange(dataSection.Nodes);
             }
             return emitNodes;
         }
 
-        private void AnalyseStatement(StatementNode statement)
+        private void HandleStatement(StatementNode statement)
         {
-            AnalyseHeaderDirective(statement);
+            HandleHeaderDirective(statement);
 
             if (statement.HasLabel)
             {
-                var labelNode = statement.GetLabel();
-                if (!labels.TryGetValue(labelNode.Label, out LabelReference? value))
-                {
-                    value = new LabelReference(labelNode.Label);
-                    labels[labelNode.Label] = value;
-                }
-
-                try
-                {
-                    value.Locate(currentSection, currentSection.LocationCounter);
-                }
-                catch (InvalidOperationException ex)
-                {
-                    throw new AnalyserException(ex.Message, labelNode.Span.Line, labelNode.Span.StartColumn);
-                }
+                labelManager.LocateLabel(statement.GetLabel(), currentSection);
             }
 
-            AnalysePostDirective(statement);
+            HandlePostDirective(statement);
 
             if (statement.HasInstruction)
             {
@@ -214,7 +104,7 @@ namespace Assembler
             }
         }
         
-        private void AnalyseHeaderDirective(StatementNode statement)
+        private void HandleHeaderDirective(StatementNode statement)
         {
             if (statement.HasHeaderDirective)
             {
@@ -236,7 +126,7 @@ namespace Assembler
                         textSectionCounter++;
                         break;
                     case "org":
-                        HandleOrgDirective(headerDirective);
+                        currentSection.Nodes.Add(new OrgNode(headerDirective, currentSection.LocationCounter));
                         break;
                     default:
                         throw new AnalyserException($"Invalid header directive: {headerDirective.Directive}",
@@ -245,7 +135,7 @@ namespace Assembler
             }
         }
 
-        private void AnalysePostDirective(StatementNode statement)
+        private void HandlePostDirective(StatementNode statement)
         {
             if (statement.HasPostDirective)
             {
@@ -256,95 +146,28 @@ namespace Assembler
                         postDirective.Span.Line, postDirective.Span.StartColumn);
                 }
 
-                var operands = postDirective.GetOperands();
                 switch (postDirective.Directive)
                 {
                     case "byte":
-                        if (operands is not DirectiveOperandSet.SingleHexNumberOperand(var byteOperand))
-                        {
-                            throw new AnalyserException("'byte' directive requires a single numeric operand",
-                                postDirective.Span.Line, postDirective.Span.StartColumn);
-                        }
-                        currentSection.EmitNodes.Add(new DataEmitNode([ParseHexByte(byteOperand.Value)]));
+                        currentSection.Nodes.Add(new ByteNode(postDirective));
                         break;
                     case "short":
-                        if (operands is not DirectiveOperandSet.SingleHexNumberOperand(var shortOperand))
-                        {
-                            throw new AnalyserException("'short' directive requires a single numeric operand",
-                                postDirective.Span.Line, postDirective.Span.StartColumn);
-                        }
-                        currentSection.EmitNodes.Add(new DataEmitNode(BitConverter.GetBytes(ParseHexUShort(shortOperand.Value)))); // Little-endian
+                        currentSection.Nodes.Add(new ShortNode(postDirective));
                         break;
                     case "zero":
-                        if (operands is not DirectiveOperandSet.SingleHexNumberOperand(var zeroCountOperand))
-                        {
-                            throw new AnalyserException("'zero' directive requires a single numeric operand",
-                                postDirective.Span.Line, postDirective.Span.StartColumn);
-                        }
-                        var zeroCount = ParseHexNumber(zeroCountOperand.Value);
-                        currentSection.EmitNodes.Add(new FillEmitNode(zeroCount, 0x00));
+                        currentSection.Nodes.Add(new ZeroNode(postDirective));
                         break;
                     case "string":
-                        if (operands is not DirectiveOperandSet.SingleStringOperand(var stringLiteral))
-                        {
-                            throw new AnalyserException("'string' directive requires a single string literal operand",
-                                postDirective.Span.Line, postDirective.Span.StartColumn);
-                        }
-                        var processedStr = ProcessString(stringLiteral.Value);
-                        var strBytes = System.Text.Encoding.ASCII.GetBytes(processedStr);
-                        currentSection.EmitNodes.Add(new DataEmitNode([..strBytes, 0x00])); // Null-terminated
+                        currentSection.Nodes.Add(new StringNode(postDirective));
                         break;
                     case "org":
-                        HandleOrgDirective(postDirective);
+                        currentSection.Nodes.Add(new OrgNode(postDirective, currentSection.LocationCounter));
                         break;
-                    case "data":
-                    case "text":
                     default:
                         throw new AnalyserException($"Invalid post-directive: {postDirective.Directive}",
                            postDirective.Span.Line, postDirective.Span.StartColumn);
                 }
             }
-        }
-    
-        private static int GetValidatedAddressValue(HexNumberNode hexNumber)
-        {
-            var address = ParseHexNumber(hexNumber.Value);
-#if x16
-            if (address < 0 || address > 0xFFFF)
-            {
-                throw new AnalyserException("Address value out of range for 16-bit architecture", hexNumber.Span.Line, hexNumber.Span.StartColumn);
-            }
-#else
-            if (address < 0 || address > 0xFF)
-            {
-                throw new AnalyserException("Address value out of range for 8-bit architecture", hexNumber.Span.Line, hexNumber.Span.StartColumn);
-            }
-#endif
-            return address;
-        }
-
-        private void HandleOrgDirective(DirectiveNode directiveNode)
-        {
-            byte fillValue;
-            int address;
-            var operands = directiveNode.GetOperands();
-            switch (operands)
-            {
-                case DirectiveOperandSet.SingleHexNumberOperand(var addressOperand):
-                    address = GetValidatedAddressValue(addressOperand);
-                    fillValue = 0x00;
-                    break;
-                case DirectiveOperandSet.TwoHexNumberOperands(var addressOperand, var fillValueOperand):
-                    address = GetValidatedAddressValue(addressOperand);
-                    fillValue = ParseHexByte(fillValueOperand.Value);
-                    break;
-                default:
-                    throw new AnalyserException("'org' directive requires an address operand",
-                    directiveNode.Span.Line, directiveNode.Span.StartColumn);
-            }
-
-            var bytesToFill = address - currentSection.LocationCounter;
-            currentSection.EmitNodes.Add(new FillEmitNode(bytesToFill, fillValue));
         }
 
         private void HandleInstruction(InstructionNode instruction)
@@ -356,136 +179,70 @@ namespace Assembler
                     instruction.Span.Line, instruction.Span.StartColumn);
             }
 
-            var operands = instruction.GetOperands();
             switch (opcode)
             {
                 case OpcodeBaseCode.NOP:
-                    if (operands is not InstructionOperandSet.None)
-                    {
-                        throw new AnalyserException("'NOP' instruction does not take any operands",
-                            instruction.Span.Line, instruction.Span.StartColumn);
-                    }
-                    currentSection.EmitNodes.Add(new DataEmitNode([(byte)OpcodeBaseCode.NOP]));
-                    break;
                 case OpcodeBaseCode.HLT:
-                    if (operands is not InstructionOperandSet.None)
-                    {
-                        throw new AnalyserException("'HLT' instruction does not take any operands",
-                            instruction.Span.Line, instruction.Span.StartColumn);
-                    }
-                    currentSection.EmitNodes.Add(new DataEmitNode([(byte)OpcodeBaseCode.HLT]));
+                case OpcodeBaseCode.CLC:
+                case OpcodeBaseCode.SEC:
+                case OpcodeBaseCode.CLZ:
+                case OpcodeBaseCode.SEZ:
+                case OpcodeBaseCode.RET:
+                    currentSection.Nodes.Add(new NoOperandInstruction(instruction, opcode));
                     break;
-                case OpcodeBaseCode.ADD:
-                    if (operands is not InstructionOperandSet.TwoRegistersOperand(var firstOperand, var secondOperand))
-                    {
-                        throw new AnalyserException("'ADD' instruction requires two register operands",
-                            instruction.Span.Line, instruction.Span.StartColumn);
-                    }
-                    var destReg = Convert.ToByte(firstOperand.RegisterName) & 0x03;
-                    var srcReg = Convert.ToByte(secondOperand.RegisterName) & 0x03;
-                    var opcodeValue = (byte)((byte)OpcodeBaseCode.ADD | (srcReg << 2) | destReg);
-                    currentSection.EmitNodes.Add(new DataEmitNode([opcodeValue]));
+                case OpcodeBaseCode.JMP:
+                case OpcodeBaseCode.JCC:
+                case OpcodeBaseCode.JCS:
+                case OpcodeBaseCode.JZC:
+                case OpcodeBaseCode.JZS:
+                case OpcodeBaseCode.CAL:
+                    currentSection.Nodes.Add(new SingleMemoryAddressInstruction(instruction, opcode, labelManager));
                     break;
+                case OpcodeBaseCode.POP:
+                case OpcodeBaseCode.PEK:
+                case OpcodeBaseCode.PSH:
+                case OpcodeBaseCode.LSH:
+                case OpcodeBaseCode.RSH:
+                case OpcodeBaseCode.LRT:
+                case OpcodeBaseCode.RRT:
+                case OpcodeBaseCode.INC:
+                case OpcodeBaseCode.DEC:
+                    currentSection.Nodes.Add(new SingleRegisterInstruction(instruction, opcode));
+                    break;
+                case OpcodeBaseCode.LDI:
                 case OpcodeBaseCode.ADI:
-                    int regIdx;
-                    byte adiOpcodeValue;
-                    switch (operands)
-                    {
-                        case InstructionOperandSet.RegisterAndHexNumberOperand(var registerOperand, var immediateOperand):
-                            regIdx = Convert.ToByte(registerOperand.RegisterName) & 0x03;
-                            adiOpcodeValue = (byte)((byte)OpcodeBaseCode.ADI | regIdx);
-                            var immediateValue = ParseHexByte(immediateOperand.Value);
-                            currentSection.EmitNodes.Add(new DataEmitNode([adiOpcodeValue, immediateValue]));
-                            break;
-                        case InstructionOperandSet.RegisterAndLabelOperand(var registerOperand, var labelReferenceOperand):
-                            regIdx = Convert.ToByte(registerOperand.RegisterName) & 0x03;
-                            adiOpcodeValue = (byte)((byte)OpcodeBaseCode.ADI | regIdx);
-                            var labelName = labelReferenceOperand.Label;
-                            if (!labels.TryGetValue(labelName, out LabelReference? labelRef))
-                            {
-                                labelRef = new LabelReference(labelName);
-                                labels[labelName] = labelRef;
-                            }
-
-                            var labelRefNode = new LabelReferenceEmitNode(labelReferenceOperand);
-                            labelRef.EmitNodes.Add(labelRefNode);
-
-                            currentSection.EmitNodes.Add(new DataEmitNode([adiOpcodeValue]));
-                            currentSection.EmitNodes.Add(labelRefNode);
-                            break;
-                        default:
-                            throw new AnalyserException("'ADI' instruction requires a register and either an immediate or label operand",
-                            instruction.Span.Line, instruction.Span.StartColumn);
-                    }
+                case OpcodeBaseCode.SBI:
+                case OpcodeBaseCode.CPI:
+                case OpcodeBaseCode.ANI:
+                case OpcodeBaseCode.ORI:
+                case OpcodeBaseCode.XRI:
+                case OpcodeBaseCode.BTI:
+                    currentSection.Nodes.Add(new RegisterAndImmediate(instruction, opcode, labelManager));
                     break;
-                // Handle other opcodes similarly
+                case OpcodeBaseCode.LDA:
+                case OpcodeBaseCode.STA:
+                case OpcodeBaseCode.ADA:
+                case OpcodeBaseCode.SBA:
+                case OpcodeBaseCode.CPA:
+                case OpcodeBaseCode.ANA:
+                case OpcodeBaseCode.ORA:
+                case OpcodeBaseCode.XRA:
+                case OpcodeBaseCode.BTA:
+                    currentSection.Nodes.Add(new RegisterAndMemoryAddressInstruction(instruction, opcode, labelManager));
+                    break;
+                case OpcodeBaseCode.MOV:
+                case OpcodeBaseCode.ADD:
+                case OpcodeBaseCode.SUB:
+                case OpcodeBaseCode.CMP:
+                case OpcodeBaseCode.AND:
+                case OpcodeBaseCode.OR:
+                case OpcodeBaseCode.XOR:
+                    currentSection.Nodes.Add(new TwoRegisterInstruction(instruction, opcode));
+                    break;
                 default:
                     throw new AnalyserException($"Opcode handling not implemented for: {mnemonic}",
                         instruction.Span.Line, instruction.Span.StartColumn);
             }
-        }
-
-        /// <summary>
-        /// Processes string literals.
-        /// </summary>
-        /// <param name="input">The raw string content (without surrounding quotes)</param>
-        /// <returns>The processed string with surrounding quotes removed and escape sequences replaced</returns>
-        /// <remarks>Supports \\ (backslash) and \" (double quote) escape sequences.</remarks>
-        private static string ProcessString(string input)
-        {
-            var trimmedInput = input.Trim('"');
-            var result = new System.Text.StringBuilder(trimmedInput.Length);
-            for (int i = 0; i < trimmedInput.Length; i++)
-            {
-                if (trimmedInput[i] == '\\' && i + 1 < trimmedInput.Length)
-                {
-                    var nextChar = trimmedInput[i + 1];
-                    if (nextChar == '\\')
-                    {
-                        result.Append('\\');
-                        i++; // Skip next character
-                        continue;
-                    }
-                    else if (nextChar == '"')
-                    {
-                        result.Append('"');
-                        i++; // Skip next character
-                        continue;
-                    }
-                }
-                result.Append(trimmedInput[i]);
-            }
-            return result.ToString();
-        }
-
-        /// <summary>
-        /// Parses a hex number string that has a 0x prefix.
-        /// </summary>
-        /// <param name="hexString">The hex string</param>
-        /// <returns>The parsed integer value</returns>
-        private static int ParseHexNumber(string hexString)
-        {
-            return Convert.ToInt32(hexString[2..], 16);
-        }
-
-        /// <summary>
-        /// Parses a hex number string to a byte that has a 0x prefix.
-        /// </summary>
-        /// <param name="hexString">The hex string</param>
-        /// <returns>The parsed byte value</returns>
-        private static byte ParseHexByte(string hexString)
-        {
-            return Convert.ToByte(hexString[2..], 16);
-        }
-
-        /// <summary>
-        /// Parses a hex number string to a ushort that has a 0x prefix.
-        /// </summary>
-        /// <param name="hexString">The hex string</param>
-        /// <returns>The parsed ushort value</returns>
-        private static ushort ParseHexUShort(string hexString)
-        {
-            return Convert.ToUInt16(hexString[2..], 16);
         }
     }
 }

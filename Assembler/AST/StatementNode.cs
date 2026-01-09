@@ -57,7 +57,7 @@ namespace Assembler.AST
             var tokenCount = 0;
 
             DirectiveNode? headerDirective = null;
-            if (DirectiveNode.IsValidDirectiveAtIndex(tokens, index))
+            if (tokens.Count > index && DirectiveNode.IsValidDirectiveAtIndex(tokens, index))
             {
                 headerDirective = DirectiveNode.CreateFromTokens(tokens, index);
                 index += headerDirective.TokenCount;
@@ -65,15 +65,15 @@ namespace Assembler.AST
             }
 
             LabelNode? label = null;
-            if (LabelNode.IsValidLabelAtIndex(tokens, index))
+            if (tokens.Count > index && LabelNode.IsValidLabelAtIndex(tokens, index))
             {
                 label = LabelNode.CreateFromTokens(tokens, index);
                 index += LabelNode.TokenCount;
                 tokenCount += LabelNode.TokenCount;
             }
 
-            var hasPostDirective = DirectiveNode.IsValidDirectiveAtIndex(tokens, index);
-            var hasInstruction = InstructionNode.IsValidInstructionAtIndex(tokens, index);
+            var hasPostDirective = tokens.Count > index && DirectiveNode.IsValidDirectiveAtIndex(tokens, index);
+            var hasInstruction = tokens.Count > index && InstructionNode.IsValidInstructionAtIndex(tokens, index);
             if (hasPostDirective && hasInstruction)
             {
                 throw new ParserException("Statement cannot contain both a post-directive and an instruction.", tokens[index].Line, startColumn);
@@ -94,9 +94,10 @@ namespace Assembler.AST
                 tokenCount += instruction.TokenCount;
             }
 
-            if (tokens[index].Type != TokenType.EndOfLine)
+            if (tokens.Count <= index || tokens[index].Type != TokenType.EndOfLine)
             {
-                throw new ParserException("Expected end of statement (newline).", tokens[index].Line, tokens[index].Column);
+                var lastToken = tokens[Math.Min(index, tokens.Count - 1)];
+                throw new ParserException("Expected end of statement (newline).", lastToken.Line, lastToken.Column);
             }
 
             var statementSpan = new NodeSpan(startColumn, tokens[index].Column, tokens[index].Line);

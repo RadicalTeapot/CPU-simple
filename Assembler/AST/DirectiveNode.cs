@@ -65,16 +65,16 @@ namespace Assembler.AST
             var currentTokenIndex = index + 2; // Move past .directive
 
             var immediateOperands = new List<HexNumberNode>();
-            if (HexNumberNode.IsValidHexNodeAtIndex(tokens, currentTokenIndex))
+            if (tokens.Count > currentTokenIndex && HexNumberNode.IsValidHexNodeAtIndex(tokens, currentTokenIndex))
             {
                 immediateOperands.Add(HexNumberNode.CreateFromTokens(tokens, currentTokenIndex));
                 currentTokenIndex += HexNumberNode.TokenCount;
 
                 // Check for a comma, indicating a second operand
-                if (tokens[currentTokenIndex].Type == TokenType.Comma)
+                if (tokens.Count > currentTokenIndex && tokens[currentTokenIndex].Type == TokenType.Comma)
                 {
                     currentTokenIndex++;
-                    if (HexNumberNode.IsValidHexNodeAtIndex(tokens, currentTokenIndex))
+                    if (tokens.Count > currentTokenIndex && HexNumberNode.IsValidHexNodeAtIndex(tokens, currentTokenIndex))
                     {
                         immediateOperands.Add(HexNumberNode.CreateFromTokens(tokens, currentTokenIndex));
                         currentTokenIndex += HexNumberNode.TokenCount;
@@ -102,7 +102,7 @@ namespace Assembler.AST
                     _signature = signature
                 };
             }
-            else if (StringLiteralNode.IsValidStringOperandNodeAtIndex(tokens, currentTokenIndex))
+            else if (tokens.Count > currentTokenIndex && StringLiteralNode.IsValidStringOperandNodeAtIndex(tokens, currentTokenIndex))
             {
                 var stringOperandToken = StringLiteralNode.CreateFromTokens(tokens, currentTokenIndex);
                 var nodeSpan = new NodeSpan(

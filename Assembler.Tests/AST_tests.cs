@@ -254,10 +254,640 @@ namespace Assembler.Tests
         }
     }
 
-    // TODO
-    // StringLiteralNode tests
-    // DirectiveNode tests
-    // InstructionNode tests
-    // StatementNode tests
-    // MemoryAddressNode tests
+    [TestFixture]
+    internal class StringLiteralNode_tests
+    {
+        [Test]
+        public void ValidString_IsValidStringOperandNodeAtIndex_ReturnsTrue()
+        {
+            var tokens = new[] { new Token(TokenType.String, "\"abc\"", 0, 0) };
+            var result = StringLiteralNode.IsValidStringOperandNodeAtIndex(tokens, 0);
+            Assert.That(result, Is.True, "String token should be a valid string operand");
+        }
+
+        [Test]
+        public void InvalidString_IsValidStringOperandNodeAtIndex_ReturnsFalse()
+        {
+            var tokens = new[] { new Token(TokenType.Identifier, "label", 0, 0) };
+            var result = StringLiteralNode.IsValidStringOperandNodeAtIndex(tokens, 0);
+            Assert.That(result, Is.False, "Identifier is not a valid string operand");
+
+            tokens = new[] { new Token(TokenType.HexNumber, "0x10", 0, 0) };
+            result = StringLiteralNode.IsValidStringOperandNodeAtIndex(tokens, 0);
+            Assert.That(result, Is.False, "Hex number is not a valid string operand");
+        }
+
+        [Test]
+        public void ValidString_CreateFromTokens_ReturnsExpectedStringLiteralNode()
+        {
+            var tokens = new[] { new Token(TokenType.String, "\"hello\"", 2, 5) };
+            var result = StringLiteralNode.CreateFromTokens(tokens, 0);
+            Assert.Multiple(() =>
+            {
+                Assert.That(StringLiteralNode.TokenCount, Is.EqualTo(1));
+                Assert.That(result.Value, Is.EqualTo("\"hello\""));
+                Assert.That(result.Span.Line, Is.EqualTo(2));
+                Assert.That(result.Span.StartColumn, Is.EqualTo(5));
+                Assert.That(result.Span.EndColumn, Is.EqualTo(5 + "\"hello\"".Length));
+            });
+        }
+
+        [Test]
+        public void InvalidString_CreateFromTokens_ThrowsParserException()
+        {
+            var tokens = new[] { new Token(TokenType.Identifier, "a", 0, 0) };
+            Assert.Throws<ParserException>(() => StringLiteralNode.CreateFromTokens(tokens, 0));
+        }
+    }
+
+    [TestFixture]
+    internal class MemoryAddressNode_tests
+    {
+        [Test]
+        public void ValidImmediate_IsValidMemoryAddressAtIndex_ReturnsTrue()
+        {
+            var tokens = new[]
+            {
+                new Token(TokenType.LeftSquareBracket, "[", 0, 0),
+                new Token(TokenType.Hash, "#", 0, 1),
+                new Token(TokenType.HexNumber, "0x1A", 0, 2),
+                new Token(TokenType.RightSquareBracket, "]", 0, 6)
+            };
+            var result = MemoryAddressNode.IsValidMemoryAddressAtIndex(tokens, 0);
+            Assert.That(result, Is.True, "[ # hex ] should be a valid memory address");
+        }
+
+        [Test]
+        public void NonBracketStart_IsValidMemoryAddressAtIndex_ReturnsFalse()
+        {
+            var tokens = new[] { new Token(TokenType.Identifier, "x", 0, 0) };
+            var result = MemoryAddressNode.IsValidMemoryAddressAtIndex(tokens, 0);
+            Assert.That(result, Is.False, "Without leading [, not a valid memory address");
+        }
+
+        [Test]
+        public void NotEnoughTokens_IsValidMemoryAddressAtIndex_ThrowsParserException()
+        {
+            var tokens = new[]
+            {
+                new Token(TokenType.LeftSquareBracket, "[", 0, 0),
+                new Token(TokenType.Identifier, "x", 0, 1)
+            };
+            Assert.Throws<ParserException>(() => MemoryAddressNode.IsValidMemoryAddressAtIndex(tokens, 0));
+        }
+
+        [Test]
+        public void ValidImmediate_CreateFromTokens_ReturnsExpectedMemoryAddressNode()
+        {
+            var tokens = new[]
+            {
+                new Token(TokenType.LeftSquareBracket, "[", 1, 10),
+                new Token(TokenType.Hash, "#", 1, 11),
+                new Token(TokenType.HexNumber, "0x1A", 1, 12),
+                new Token(TokenType.RightSquareBracket, "]", 1, 16)
+            };
+            var result = MemoryAddressNode.CreateFromTokens(tokens, 0);
+            Assert.Multiple(() =>
+            {
+                Assert.That(result.TokenCount, Is.EqualTo(2 + HexNumberNode.TokenCount));
+                Assert.That(result.Span.Line, Is.EqualTo(1));
+                Assert.That(result.Span.StartColumn, Is.EqualTo(10));
+                Assert.That(result.Span.EndColumn, Is.EqualTo(17), "End should include the right bracket");
+            });
+
+            var addr = result.GetAddress();
+            Assert.That(addr, Is.InstanceOf<MemoryAddress.Immediate>());
+            var imm = (MemoryAddress.Immediate)addr;
+            Assert.That(imm.Address.Value, Is.EqualTo("0x1A"));
+        }
+
+        [Test]
+        public void ValidLabel_CreateFromTokens_ReturnsExpectedMemoryAddressNode()
+        {
+            var tokens = new[]
+            {
+                new Token(TokenType.LeftSquareBracket, "[", 2, 0),
+                new Token(TokenType.Identifier, "label", 2, 1),
+                new Token(TokenType.RightSquareBracket, "]", 2, 6)
+            };
+            var result = MemoryAddressNode.CreateFromTokens(tokens, 0);
+            Assert.Multiple(() =>
+            {
+                Assert.That(result.TokenCount, Is.EqualTo(2 + LabelReferenceNode.TokenCount));
+                Assert.That(result.Span.Line, Is.EqualTo(2));
+                Assert.That(result.Span.StartColumn, Is.EqualTo(0));
+                Assert.That(result.Span.EndColumn, Is.EqualTo(7));
+            });
+
+            var addr = result.GetAddress();
+            Assert.That(addr, Is.InstanceOf<MemoryAddress.Label>());
+            var lbl = (MemoryAddress.Label)addr;
+            Assert.That(lbl.LabelRef.Label, Is.EqualTo("label"));
+        }
+
+        [Test]
+        public void ValidLabelWithPositiveOffset_CreateFromTokens_ReturnsExpectedMemoryAddressNode()
+        {
+            var tokens = new[]
+            {
+                new Token(TokenType.LeftSquareBracket, "[", 3, 0),
+                new Token(TokenType.Identifier, "buf", 3, 1),
+                new Token(TokenType.Plus, "+", 3, 4),
+                new Token(TokenType.Hash, "#", 3, 5),
+                new Token(TokenType.HexNumber, "0x10", 3, 6),
+                new Token(TokenType.RightSquareBracket, "]", 3, 10)
+            };
+            var result = MemoryAddressNode.CreateFromTokens(tokens, 0);
+            Assert.Multiple(() =>
+            {
+                Assert.That(result.TokenCount, Is.EqualTo(2 + LabelReferenceNode.TokenCount + 1 + HexNumberNode.TokenCount));
+                Assert.That(result.Span.Line, Is.EqualTo(3));
+                Assert.That(result.Span.StartColumn, Is.EqualTo(0));
+                Assert.That(result.Span.EndColumn, Is.EqualTo(11));
+            });
+
+            var addr = result.GetAddress();
+            Assert.That(addr, Is.InstanceOf<MemoryAddress.LabelWithPositiveOffset>());
+            var lblWithOffset = (MemoryAddress.LabelWithPositiveOffset)addr;
+            Assert.Multiple(() =>
+            {
+                Assert.That(lblWithOffset.LabelRef.Label, Is.EqualTo("buf"));
+                Assert.That(lblWithOffset.Offset.Value, Is.EqualTo("0x10"));
+            });
+        }
+
+        [Test]
+        public void ValidLabelWithNegativeOffset_CreateFromTokens_ReturnsExpectedMemoryAddressNode()
+        {
+            var tokens = new[]
+            {
+                new Token(TokenType.LeftSquareBracket, "[", 4, 0),
+                new Token(TokenType.Identifier, "buf", 4, 1),
+                new Token(TokenType.Minus, "-", 4, 4),
+                new Token(TokenType.Hash, "#", 4, 5),
+                new Token(TokenType.HexNumber, "0x10", 4, 6),
+                new Token(TokenType.RightSquareBracket, "]", 4, 10)
+            };
+            var result = MemoryAddressNode.CreateFromTokens(tokens, 0);
+            Assert.Multiple(() =>
+            {
+                Assert.That(result.TokenCount, Is.EqualTo(2 + LabelReferenceNode.TokenCount + 1 + HexNumberNode.TokenCount));
+                Assert.That(result.Span.Line, Is.EqualTo(4));
+                Assert.That(result.Span.StartColumn, Is.EqualTo(0));
+                Assert.That(result.Span.EndColumn, Is.EqualTo(11));
+            });
+
+            var addr = result.GetAddress();
+            Assert.That(addr, Is.InstanceOf<MemoryAddress.LabelWithNegativeOffset>());
+            var lblWithOffset = (MemoryAddress.LabelWithNegativeOffset)addr;
+            Assert.Multiple(() =>
+            {
+                Assert.That(lblWithOffset.LabelRef.Label, Is.EqualTo("buf"));
+                Assert.That(lblWithOffset.Offset.Value, Is.EqualTo("0x10"));
+            });
+        }
+
+        [Test]
+        public void InvalidOffsetToken_CreateFromTokens_ThrowsParserException()
+        {
+            var tokens = new[]
+            {
+                new Token(TokenType.LeftSquareBracket, "[", 5, 0),
+                new Token(TokenType.Identifier, "buf", 5, 1),
+                new Token(TokenType.Plus, "+", 5, 4),
+                new Token(TokenType.Identifier, "x", 5, 5)
+            };
+            Assert.Throws<ParserException>(() => MemoryAddressNode.CreateFromTokens(tokens, 0));
+        }
+
+        [Test]
+        public void MissingClosingBracket_CreateFromTokens_ThrowsParserException()
+        {
+            var tokens = new[]
+            {
+                new Token(TokenType.LeftSquareBracket, "[", 6, 0),
+                new Token(TokenType.Hash, "#", 6, 1),
+                new Token(TokenType.HexNumber, "0x10", 6, 2)
+            };
+            Assert.Throws<ParserException>(() => MemoryAddressNode.CreateFromTokens(tokens, 0));
+        }
+    }
+
+    [TestFixture]
+    internal class DirectiveNode_tests
+    {
+        [Test]
+        public void ValidDirective_NoOperand_CreateFromTokens_ReturnsExpected()
+        {
+            var tokens = new[]
+            {
+                new Token(TokenType.Dot, ".", 0, 0),
+                new Token(TokenType.Identifier, "text", 0, 1)
+            };
+            var result = DirectiveNode.CreateFromTokens(tokens, 0);
+            Assert.Multiple(() =>
+            {
+                Assert.That(result.Directive, Is.EqualTo("text"));
+                Assert.That(result.TokenCount, Is.EqualTo(2));
+                Assert.That(result.Span.Line, Is.EqualTo(0));
+                Assert.That(result.Span.StartColumn, Is.EqualTo(0));
+                Assert.That(result.Span.EndColumn, Is.EqualTo(1 + "text".Length));
+            });
+        }
+
+        [Test]
+        public void NonDotStart_IsValidDirectiveAtIndex_ReturnsFalse()
+        {
+            var tokens = new[] { new Token(TokenType.Identifier, "a", 0, 0) };
+            var result = DirectiveNode.IsValidDirectiveAtIndex(tokens, 0);
+            Assert.That(result, Is.False, "Without a leading dot, it is not a valid directive");
+        }
+
+        [Test]
+        public void DotWithoutValue_IsValidDirectiveAtIndex_ThrowsParserException()
+        {
+            var tokens = new[] { new Token(TokenType.Dot, ".", 0, 0) };
+            Assert.Throws<ParserException>(() => DirectiveNode.IsValidDirectiveAtIndex(tokens, 0),
+                "A dot without a following directive should throw");
+        }
+
+        [Test]
+        public void DotFollowedByNonIdentifier_IsValidDirectiveAtIndex_ThrowsParserException()
+        {
+            var tokens = new[]
+            {
+                new Token(TokenType.Dot, ".", 0, 0),
+                new Token(TokenType.HexNumber, "0x10", 0, 1)
+            };
+            Assert.Throws<ParserException>(() => DirectiveNode.IsValidDirectiveAtIndex(tokens, 0),
+                "A dot followed by a non-identifier token should throw");
+        }
+
+        [Test]
+        public void ValidDirective_SingleImmediate_CreateFromTokens_ReturnsExpected()
+        {
+            var tokens = new[]
+            {
+                new Token(TokenType.Dot, ".", 1, 0),
+                new Token(TokenType.Identifier, "org", 1, 1),
+                new Token(TokenType.Hash, "#", 1, 5),
+                new Token(TokenType.HexNumber, "0x10", 1, 6)
+            };
+            var result = DirectiveNode.CreateFromTokens(tokens, 0);
+            Assert.Multiple(() =>
+            {
+                Assert.That(result.Directive, Is.EqualTo("org"));
+                Assert.That(result.TokenCount, Is.EqualTo(2 + HexNumberNode.TokenCount));
+                Assert.That(result.Span.Line, Is.EqualTo(1));
+                Assert.That(result.Span.StartColumn, Is.EqualTo(0));
+                Assert.That(result.Span.EndColumn, Is.EqualTo(6 + "0x10".Length));
+            });
+        }
+
+        [Test]
+        public void ValidDirective_TwoImmediates_CreateFromTokens_ReturnsExpected()
+        {
+            var tokens = new[]
+            {
+                new Token(TokenType.Dot, ".", 2, 0),
+                new Token(TokenType.Identifier, "org", 2, 1),
+                new Token(TokenType.Hash, "#", 2, 5),
+                new Token(TokenType.HexNumber, "0x10", 2, 6),
+                new Token(TokenType.Comma, ",", 2, 10),
+                new Token(TokenType.Hash, "#", 2, 11),
+                new Token(TokenType.HexNumber, "0xFF", 2, 12)
+            };
+            var result = DirectiveNode.CreateFromTokens(tokens, 0);
+            Assert.Multiple(() =>
+            {
+                Assert.That(result.Directive, Is.EqualTo("org"));
+                Assert.That(result.TokenCount, Is.EqualTo(2 + HexNumberNode.TokenCount + 1 + HexNumberNode.TokenCount));
+                Assert.That(result.Span.Line, Is.EqualTo(2));
+                Assert.That(result.Span.StartColumn, Is.EqualTo(0));
+                Assert.That(result.Span.EndColumn, Is.EqualTo(12 + "0xFF".Length));
+            });
+        }
+
+        [Test]
+        public void ValidDirective_SingleString_CreateFromTokens_ReturnsExpected()
+        {
+            var tokens = new[]
+            {
+                new Token(TokenType.Dot, ".", 3, 0),
+                new Token(TokenType.Identifier, "string", 3, 1),
+                new Token(TokenType.String, "\"hello\"", 3, 8)
+            };
+            var result = DirectiveNode.CreateFromTokens(tokens, 0);
+            Assert.Multiple(() =>
+            {
+                Assert.That(result.Directive, Is.EqualTo("string"));
+                Assert.That(result.TokenCount, Is.EqualTo(2 + StringLiteralNode.TokenCount));
+                Assert.That(result.Span.Line, Is.EqualTo(3));
+                Assert.That(result.Span.StartColumn, Is.EqualTo(0));
+                Assert.That(result.Span.EndColumn, Is.EqualTo(8 + "\"hello\"".Length));
+            });
+        }
+
+        [Test]
+        public void InvalidDirective_CommaWithoutSecondOperand_CreateFromTokens_ThrowsParserException()
+        {
+            var tokens = new[]
+            {
+                new Token(TokenType.Dot, ".", 4, 0),
+                new Token(TokenType.Identifier, "org", 4, 1),
+                new Token(TokenType.Hash, "#", 4, 5),
+                new Token(TokenType.HexNumber, "0x10", 4, 6),
+                new Token(TokenType.Comma, ",", 4, 10),
+                new Token(TokenType.Identifier, "x", 4, 11)
+            };
+            Assert.Throws<ParserException>(() => DirectiveNode.CreateFromTokens(tokens, 0));
+        }
+    }
+
+    [TestFixture]
+    internal class InstructionNode_tests
+    {
+        [Test]
+        public void ValidMnemonicOnly_CreateFromTokens_ReturnsExpectedInstructionNode()
+        {
+            var tokens = new[] { new Token(TokenType.Identifier, "nop", 0, 0) };
+            var result = InstructionNode.CreateFromTokens(tokens, 0);
+            Assert.Multiple(() =>
+            {
+                Assert.That(result.Mnemonic, Is.EqualTo("nop"));
+                Assert.That(result.TokenCount, Is.EqualTo(1));
+                Assert.That(result.Span.Line, Is.EqualTo(0));
+                Assert.That(result.Span.StartColumn, Is.EqualTo(0));
+                Assert.That(result.Span.EndColumn, Is.EqualTo(3));
+            });
+
+            var operands = result.GetOperands();
+            Assert.That(operands, Is.InstanceOf<InstructionOperandSet.None>());
+        }
+
+        [Test]
+        public void ValidMemoryAddressOnly_CreateFromTokens_ReturnsExpectedInstructionNode()
+        {
+            var tokens = new[]
+            {
+                new Token(TokenType.Identifier, "jmp", 1, 0),
+                new Token(TokenType.LeftSquareBracket, "[", 1, 4),
+                new Token(TokenType.Hash, "#", 1, 5),
+                new Token(TokenType.HexNumber, "0x10", 1, 6),
+                new Token(TokenType.RightSquareBracket, "]", 1, 10),
+                new Token(TokenType.EndOfLine, string.Empty, 1, 11)
+            };
+            var result = InstructionNode.CreateFromTokens(tokens, 0);
+            Assert.Multiple(() =>
+            {
+                Assert.That(result.Mnemonic, Is.EqualTo("jmp"));
+                Assert.That(result.TokenCount, Is.EqualTo(1 + 4));
+                Assert.That(result.Span.Line, Is.EqualTo(1));
+                Assert.That(result.Span.StartColumn, Is.EqualTo(0));
+                Assert.That(result.Span.EndColumn, Is.EqualTo(11));
+            });
+
+            var operands = result.GetOperands();
+            Assert.That(operands, Is.InstanceOf<InstructionOperandSet.SingleMemoryAddressOperand>());
+            var singleMemOp = (InstructionOperandSet.SingleMemoryAddressOperand)operands;
+            var memoryAddr = singleMemOp.Operand.GetAddress();
+            Assert.That(memoryAddr, Is.InstanceOf<MemoryAddress.Immediate>());
+            var immAddr = (MemoryAddress.Immediate)memoryAddr;
+            Assert.That(immAddr.Address.Value, Is.EqualTo("0x10"));
+        }
+
+        [Test]
+        public void ValidRegisterOnly_CreateFromTokens_ReturnsExpectedInstructionNode()
+        {
+            var tokens = new[]
+            {
+                new Token(TokenType.Identifier, "ldi", 1, 0),
+                new Token(TokenType.Register, "r1", 1, 4),
+                new Token(TokenType.EndOfLine, string.Empty, 1, 6)
+            };
+            var result = InstructionNode.CreateFromTokens(tokens, 0);
+            Assert.Multiple(() =>
+            {
+                Assert.That(result.Mnemonic, Is.EqualTo("ldi"));
+                Assert.That(result.TokenCount, Is.EqualTo(1 + RegisterNode.TokenCount));
+                Assert.That(result.Span.Line, Is.EqualTo(1));
+                Assert.That(result.Span.StartColumn, Is.EqualTo(0));
+                Assert.That(result.Span.EndColumn, Is.EqualTo(6));
+            });
+            var operands = result.GetOperands();
+            Assert.That(operands, Is.InstanceOf<InstructionOperandSet.SingleRegisterOperand>());
+            var singleRegOp = (InstructionOperandSet.SingleRegisterOperand)operands;
+            Assert.That(singleRegOp.Operand.RegisterName, Is.EqualTo("r1"));
+        }
+
+        [Test]
+        public void ValidRegisterAndImmediate_CreateFromTokens_ReturnsExpectedInstructionNode()
+        {
+            var tokens = new[]
+            {
+                new Token(TokenType.Identifier, "adi", 2, 0),
+                new Token(TokenType.Register, "r1", 2, 4),
+                new Token(TokenType.Comma, ",", 2, 6),
+                new Token(TokenType.Hash, "#", 2, 8),
+                new Token(TokenType.HexNumber, "0x7f", 2, 9),
+                new Token(TokenType.EndOfLine, string.Empty, 2, 13)
+            };
+            var result = InstructionNode.CreateFromTokens(tokens, 0);
+            Assert.Multiple(() =>
+            {
+                Assert.That(result.Mnemonic, Is.EqualTo("adi"));
+                Assert.That(result.TokenCount, Is.EqualTo(1 + RegisterNode.TokenCount + 1 + HexNumberNode.TokenCount));
+                Assert.That(result.Span.Line, Is.EqualTo(2));
+                Assert.That(result.Span.StartColumn, Is.EqualTo(0));
+                Assert.That(result.Span.EndColumn, Is.EqualTo(13));
+            });
+            var operands = result.GetOperands();
+            Assert.That(operands, Is.InstanceOf<InstructionOperandSet.RegisterAndHexNumberOperand>());
+            var regAndHexOp = (InstructionOperandSet.RegisterAndHexNumberOperand)operands;
+            Assert.Multiple(() =>
+            {
+                Assert.That(regAndHexOp.FirstOperand.RegisterName, Is.EqualTo("r1"));
+                Assert.That(regAndHexOp.SecondOperand.Value, Is.EqualTo("0x7f"));
+            });
+        }
+
+        [Test]
+        public void ValidRegisterAndLabel_CreateFromTokens_ReturnsExpectedInstructionNode()
+        {
+            var tokens = new[]
+            {
+                new Token(TokenType.Identifier, "mov", 3, 0),
+                new Token(TokenType.Register, "r2", 3, 4),
+                new Token(TokenType.Comma, ",", 3, 6),
+                new Token(TokenType.Identifier, "label", 3, 8),
+                new Token(TokenType.EndOfLine, string.Empty, 3, 13)
+            };
+            var result = InstructionNode.CreateFromTokens(tokens, 0);
+            Assert.Multiple(() =>
+            {
+                Assert.That(result.Mnemonic, Is.EqualTo("mov"));
+                Assert.That(result.TokenCount, Is.EqualTo(1 + RegisterNode.TokenCount + 1 + LabelReferenceNode.TokenCount));
+                Assert.That(result.Span.Line, Is.EqualTo(3));
+                Assert.That(result.Span.StartColumn, Is.EqualTo(0));
+                Assert.That(result.Span.EndColumn, Is.EqualTo(13));
+            });
+            var operands = result.GetOperands();
+            Assert.That(operands, Is.InstanceOf<InstructionOperandSet.RegisterAndLabelOperand>());
+            var regAndLabelOp = (InstructionOperandSet.RegisterAndLabelOperand)operands;
+            Assert.Multiple(() =>
+            {
+                Assert.That(regAndLabelOp.FirstOperand.RegisterName, Is.EqualTo("r2"));
+                Assert.That(regAndLabelOp.SecondOperand.Label, Is.EqualTo("label"));
+            });
+        }
+
+        [Test]
+        public void ValidRegisterAndMemoryAddress_CreateFromTokens_ReturnsExpectedInstructionNode()
+        {
+            var tokens = new[]
+            {
+                new Token(TokenType.Identifier, "lda", 4, 0),
+                new Token(TokenType.Register, "r0", 4, 4),
+                new Token(TokenType.Comma, ",", 4, 6),
+                new Token(TokenType.LeftSquareBracket, "[", 4, 8),
+                new Token(TokenType.Hash, "#", 4, 9),
+                new Token(TokenType.HexNumber, "0x10", 4, 10),
+                new Token(TokenType.RightSquareBracket, "]", 4, 14),
+                new Token(TokenType.EndOfLine, string.Empty, 4, 15)
+            };
+            var result = InstructionNode.CreateFromTokens(tokens, 0);
+            Assert.Multiple(() =>
+            {
+                Assert.That(result.Mnemonic, Is.EqualTo("lda"));
+                Assert.That(result.TokenCount, Is.EqualTo(1 + RegisterNode.TokenCount + 1 + (2 + HexNumberNode.TokenCount)));
+                Assert.That(result.Span.Line, Is.EqualTo(4));
+                Assert.That(result.Span.StartColumn, Is.EqualTo(0));
+                Assert.That(result.Span.EndColumn, Is.EqualTo(15));
+            });
+            var operands = result.GetOperands();
+            Assert.That(operands, Is.InstanceOf<InstructionOperandSet.RegisterAndMemoryAddressOperand>());
+            var regAndMemOp = (InstructionOperandSet.RegisterAndMemoryAddressOperand)operands;
+            Assert.That(regAndMemOp.FirstOperand.RegisterName, Is.EqualTo("r0"));
+            var memoryAddr = regAndMemOp.SecondOperand.GetAddress();
+            Assert.That(memoryAddr, Is.InstanceOf<MemoryAddress.Immediate>());
+            var immAddr = (MemoryAddress.Immediate)memoryAddr;
+            Assert.That(immAddr.Address.Value, Is.EqualTo("0x10"));
+        }
+
+        [Test]
+        public void ValidTwoRegisters_CreateFromTokens_ReturnsExpectedInstructionNode()
+        {
+            var tokens = new[]
+            {
+                new Token(TokenType.Identifier, "add", 5, 0),
+                new Token(TokenType.Register, "r1", 5, 4),
+                new Token(TokenType.Comma, ",", 5, 6),
+                new Token(TokenType.Register, "r2", 5, 8),
+                new Token(TokenType.EndOfLine, string.Empty, 5, 10)
+            };
+            var result = InstructionNode.CreateFromTokens(tokens, 0);
+            Assert.Multiple(() =>
+            {
+                Assert.That(result.Mnemonic, Is.EqualTo("add"));
+                Assert.That(result.TokenCount, Is.EqualTo(1 + RegisterNode.TokenCount + 1 + RegisterNode.TokenCount));
+                Assert.That(result.Span.Line, Is.EqualTo(5));
+                Assert.That(result.Span.StartColumn, Is.EqualTo(0));
+                Assert.That(result.Span.EndColumn, Is.EqualTo(10));
+            });
+            var operands = result.GetOperands();
+            Assert.That(operands, Is.InstanceOf<InstructionOperandSet.TwoRegistersOperand>());
+            var twoRegOp = (InstructionOperandSet.TwoRegistersOperand)operands;
+            Assert.Multiple(() =>
+            {
+                Assert.That(twoRegOp.FirstOperand.RegisterName, Is.EqualTo("r1"));
+                Assert.That(twoRegOp.SecondOperand.RegisterName, Is.EqualTo("r2"));
+            });
+        }
+    }
+
+    [TestFixture]
+    internal class StatementNode_tests
+    {
+        [Test]
+        public void HeaderLabelInstruction_CreateFromTokens_ReturnsExpectedStatementNode()
+        {
+            var tokens = new[]
+            {
+                new Token(TokenType.Dot, ".", 0, 0),
+                new Token(TokenType.Identifier, "text", 0, 1),
+                new Token(TokenType.Identifier, "start", 0, 6),
+                new Token(TokenType.Colon, ":", 0, 11),
+                new Token(TokenType.Identifier, "nop", 0, 13),
+                new Token(TokenType.EndOfLine, string.Empty, 0, 16)
+            };
+            var result = StatementNode.CreateFromTokens(tokens, 0);
+            Assert.Multiple(() =>
+            {
+                Assert.That(result.TokenCount, Is.EqualTo(2 + LabelNode.TokenCount + 1 + 1), "directive + label + instruction + EOL");
+                Assert.That(result.Span.Line, Is.EqualTo(0));
+                Assert.That(result.Span.StartColumn, Is.EqualTo(0));
+                Assert.That(result.Span.EndColumn, Is.EqualTo(16));
+                Assert.That(result.HasHeaderDirective, Is.True);
+                Assert.That(result.HasLabel, Is.True);
+                Assert.That(result.HasInstruction, Is.True);
+                Assert.That(result.HasPostDirective, Is.False);
+            });
+        }
+
+        [Test]
+        public void HeaderLabelPostDirective_CreateFromTokens_ReturnsExpectedStatementNode()
+        {
+            var tokens = new[]
+            {
+                new Token(TokenType.Dot, ".", 1, 0),
+                new Token(TokenType.Identifier, "text", 1, 1),
+                new Token(TokenType.Identifier, "str", 1, 6),
+                new Token(TokenType.Colon, ":", 1, 9),
+                new Token(TokenType.Dot, ".", 1, 11),
+                new Token(TokenType.Identifier, "string", 1, 12),
+                new Token(TokenType.String, "\"x\"", 1, 18),
+                new Token(TokenType.EndOfLine, string.Empty, 1, 21)
+            };
+            var result = StatementNode.CreateFromTokens(tokens, 0);
+            Assert.Multiple(() =>
+            {
+                Assert.That(result.TokenCount, Is.EqualTo(2 + LabelNode.TokenCount + (2 + StringLiteralNode.TokenCount) + 1));
+                Assert.That(result.Span.Line, Is.EqualTo(1));
+                Assert.That(result.Span.StartColumn, Is.EqualTo(0));
+                Assert.That(result.Span.EndColumn, Is.EqualTo(21));
+                Assert.That(result.HasHeaderDirective, Is.True);
+                Assert.That(result.HasLabel, Is.True);
+                Assert.That(result.HasPostDirective, Is.True);
+                Assert.That(result.HasInstruction, Is.False);
+            });
+        }
+
+        [Test]
+        public void MissingEndOfLine_CreateFromTokens_ThrowsParserException()
+        {
+            var tokens = new[]
+            {
+                new Token(TokenType.Dot, ".", 2, 0),
+                new Token(TokenType.Identifier, "text", 2, 1),
+                new Token(TokenType.Identifier, "start", 2, 6),
+                new Token(TokenType.Colon, ":", 2, 11),
+                new Token(TokenType.Identifier, "nop", 2, 13)
+            };
+            Assert.Throws<ParserException>(() => StatementNode.CreateFromTokens(tokens, 0));
+        }
+
+        [Test]
+        public void PostAndInstruction_CreateFromTokens_ThrowsParserException()
+        {
+            var tokens = new[]
+            {
+                new Token(TokenType.Identifier, "nop", 1, 0),
+                new Token(TokenType.Dot, ".", 1, 3),
+                new Token(TokenType.Identifier, "string", 1, 4),
+                new Token(TokenType.String, "\"x\"", 1, 10),
+                new Token(TokenType.EndOfLine, string.Empty, 1, 13)
+            };
+            Assert.Throws<ParserException>(() => StatementNode.CreateFromTokens(tokens, 0));
+        }
+    }
 }

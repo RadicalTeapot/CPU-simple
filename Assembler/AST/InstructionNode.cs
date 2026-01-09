@@ -76,7 +76,7 @@ namespace Assembler.AST
             var mnemonic = instructionToken.Lexeme;
             index++;
 
-            if (MemoryAddressNode.IsValidMemoryAddressAtIndex(tokens, index))
+            if (tokens.Count > index && MemoryAddressNode.IsValidMemoryAddressAtIndex(tokens, index))
             {
                 var memoryAddressOperand = MemoryAddressNode.CreateFromTokens(tokens, index);
                 var span = new NodeSpan(instructionToken.Column, memoryAddressOperand.Span.EndColumn, instructionToken.Line);
@@ -87,7 +87,7 @@ namespace Assembler.AST
                     _memoryAddressOperand = memoryAddressOperand,
                 };
             }
-            else if (RegisterNode.IsValidRegisterNodeAtIndex(tokens, index))
+            else if (tokens.Count > index && RegisterNode.IsValidRegisterNodeAtIndex(tokens, index))
             {
                 var registerOperands = new List<RegisterNode>();
                 var registerOperand = RegisterNode.CreateFromTokens(tokens, index);
@@ -100,34 +100,41 @@ namespace Assembler.AST
                 LabelReferenceNode? labelReferenceOperand = null;
                 MemoryAddressNode? memoryAddressOperand = null;
                 var signature = new List<OperandType> { OperandType.Register };
-                if (HexNumberNode.IsValidHexNodeAtIndex(tokens, index))
+
+                if (tokens.Count > index && tokens[index].Type == TokenType.Comma)
                 {
-                    immediateOperand = HexNumberNode.CreateFromTokens(tokens, index);
-                    tokenCount += HexNumberNode.TokenCount;
-                    index += HexNumberNode.TokenCount;
-                    signature.Add(OperandType.Immediate);
-                }
-                else if (LabelReferenceNode.IsValidLabelReferenceAtIndex(tokens, index))
-                {
-                    labelReferenceOperand = LabelReferenceNode.CreateFromTokens(tokens, index);
-                    tokenCount += LabelReferenceNode.TokenCount;
-                    index += LabelReferenceNode.TokenCount;
-                    signature.Add(OperandType.LabelReference);
-                }
-                else if (MemoryAddressNode.IsValidMemoryAddressAtIndex(tokens, index))
-                {
-                    memoryAddressOperand = MemoryAddressNode.CreateFromTokens(tokens, index);
-                    tokenCount += memoryAddressOperand.TokenCount;
-                    index += memoryAddressOperand.TokenCount;
-                    signature.Add(OperandType.MemoryAddress);
-                }
-                else if (RegisterNode.IsValidRegisterNodeAtIndex(tokens, index))
-                {
-                    var secondRegisterOperand = RegisterNode.CreateFromTokens(tokens, index);
-                    registerOperands.Add(secondRegisterOperand);
-                    tokenCount += RegisterNode.TokenCount;
-                    index += RegisterNode.TokenCount;
-                    signature.Add(OperandType.Register);
+                    index++; // Skip comma
+                    tokenCount++; // for the comma
+
+                    if (tokens.Count > index && HexNumberNode.IsValidHexNodeAtIndex(tokens, index))
+                    {
+                        immediateOperand = HexNumberNode.CreateFromTokens(tokens, index);
+                        tokenCount += HexNumberNode.TokenCount;
+                        index += HexNumberNode.TokenCount;
+                        signature.Add(OperandType.Immediate);
+                    }
+                    else if (tokens.Count > index && LabelReferenceNode.IsValidLabelReferenceAtIndex(tokens, index))
+                    {
+                        labelReferenceOperand = LabelReferenceNode.CreateFromTokens(tokens, index);
+                        tokenCount += LabelReferenceNode.TokenCount;
+                        index += LabelReferenceNode.TokenCount;
+                        signature.Add(OperandType.LabelReference);
+                    }
+                    else if (tokens.Count > index && MemoryAddressNode.IsValidMemoryAddressAtIndex(tokens, index))
+                    {
+                        memoryAddressOperand = MemoryAddressNode.CreateFromTokens(tokens, index);
+                        tokenCount += memoryAddressOperand.TokenCount;
+                        index += memoryAddressOperand.TokenCount;
+                        signature.Add(OperandType.MemoryAddress);
+                    }
+                    else if (tokens.Count > index && RegisterNode.IsValidRegisterNodeAtIndex(tokens, index))
+                    {
+                        var secondRegisterOperand = RegisterNode.CreateFromTokens(tokens, index);
+                        registerOperands.Add(secondRegisterOperand);
+                        tokenCount += RegisterNode.TokenCount;
+                        index += RegisterNode.TokenCount;
+                        signature.Add(OperandType.Register);
+                    }
                 }
 
                 var span = new NodeSpan(instructionToken.Column, tokens[index].Column + tokens[index].Lexeme.Length, instructionToken.Line);

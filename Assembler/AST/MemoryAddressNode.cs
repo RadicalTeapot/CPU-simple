@@ -78,28 +78,31 @@ namespace Assembler.AST
             HexNumberNode? offset = null;
             AddressType addressType;
 
-            if (HexNumberNode.IsValidHexNodeAtIndex(tokens, index))
+            if (tokens.Count > index && HexNumberNode.IsValidHexNodeAtIndex(tokens, index))
             {
                 addressType = AddressType.Immediate;
                 immediateAddress = HexNumberNode.CreateFromTokens(tokens, index);
                 tokenCount += HexNumberNode.TokenCount;
                 index += HexNumberNode.TokenCount;
             }
-            else if (LabelReferenceNode.IsValidLabelReferenceAtIndex(tokens, index))
+            else if (tokens.Count > index && LabelReferenceNode.IsValidLabelReferenceAtIndex(tokens, index))
             {
                 addressType = AddressType.Label;
                 labelAddress = LabelReferenceNode.CreateFromTokens(tokens, index);
+                tokenCount += LabelReferenceNode.TokenCount;
                 index += LabelReferenceNode.TokenCount;
 
-                var offsetToken = tokens[index];
-                if (offsetToken.Type == TokenType.Plus || offsetToken.Type == TokenType.Minus)
+                
+                if (tokens.Count > index && (tokens[index].Type == TokenType.Plus || tokens[index].Type == TokenType.Minus))
                 {
+                    var offsetToken = tokens[index];
                     addressType = offsetToken.Type == TokenType.Plus
                         ? AddressType.PositiveOffset
                         : AddressType.NegativeOffset;
+                    tokenCount++; // For the offset sign
                     index++; // Skip the offset sign
 
-                    if (HexNumberNode.IsValidHexNodeAtIndex(tokens, index))
+                    if (tokens.Count > index && HexNumberNode.IsValidHexNodeAtIndex(tokens, index))
                     {
                         offset = HexNumberNode.CreateFromTokens(tokens, index);
                         tokenCount += HexNumberNode.TokenCount;
@@ -116,9 +119,10 @@ namespace Assembler.AST
                 throw new ParserException($"Unexpected token {tokens[index]} for memory address", tokens[index].Line, tokens[index].Column);
             }
 
-            if (tokens[index].Type != TokenType.RightSquareBracket)
+            if (tokens.Count <= index || tokens[index].Type != TokenType.RightSquareBracket)
             {
-                throw new ParserException("Expected closing square bracket for memory address.", tokens[index].Line, tokens[index].Column);
+                var lastToken = tokens[Math.Min(index, tokens.Count - 1)];
+                throw new ParserException("Expected closing square bracket for memory address.", lastToken.Line, lastToken.Column);
             }
 
             var nodeSpan = new NodeSpan(startColumn, tokens[index].Column + 1, tokens[index].Line);
