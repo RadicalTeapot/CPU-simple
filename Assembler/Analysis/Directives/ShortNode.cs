@@ -4,7 +4,7 @@ using System.Diagnostics;
 
 namespace Assembler.Analysis.Directives
 {
-    internal class ShortNode : IAnalysisNode
+    internal class ShortNode : BaseAnalysisNode
     {
         public ShortNode(DirectiveNode directive)
         {
@@ -13,13 +13,11 @@ namespace Assembler.Analysis.Directives
             {
                 throw new AnalyserException("'short' directive requires a single numeric operand", directive.Span.Line, directive.Span.StartColumn);
             }
+
             Debug.Assert(BitConverter.IsLittleEndian, "This code assumes a little-endian architecture");
-            emitNode = new DataEmitNode(BitConverter.GetBytes(OperandValueProcessor.ParseHexUShortString(shortOperand.Value))); // Little-endian
+            EmitNodes = [
+                new DataEmitNode(BitConverter.GetBytes(OperandValueProcessor.ParseHexUShortString(shortOperand.Value)))
+            ];
         }
-
-        public int Count => emitNode.Count;
-        public byte[] EmitBytes() => emitNode.Emit();
-
-        private readonly DataEmitNode emitNode;
     }
 }

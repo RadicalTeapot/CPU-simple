@@ -1,10 +1,9 @@
 ﻿using Assembler.Analysis.EmitNode;
 using Assembler.AST;
 
-
 namespace Assembler.Analysis.Directives
 {
-    internal class OrgNode : IAnalysisNode
+    internal class OrgNode : BaseAnalysisNode
     {
         public OrgNode(DirectiveNode directive, int currentLocationCounter)
         {
@@ -26,13 +25,9 @@ namespace Assembler.Analysis.Directives
             }
 
             var bytesToFill = address - currentLocationCounter;
-            emitNode = new FillEmitNode(bytesToFill, fillValue);
+            EmitNodes = [new FillEmitNode(bytesToFill, fillValue)];
         }
 
-        public int Count => emitNode.Count;
-        public byte[] EmitBytes() => emitNode.Emit();
-
-        private readonly FillEmitNode emitNode;
         private const byte DefaultFillValue = 0x00;
     }
 }

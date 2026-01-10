@@ -3,7 +3,7 @@ using Assembler.AST;
 
 namespace Assembler.Analysis.Directives
 {
-    internal class StringNode : IAnalysisNode
+    internal class StringNode : BaseAnalysisNode
     {
         public StringNode(DirectiveNode directive)
         {
@@ -14,12 +14,9 @@ namespace Assembler.Analysis.Directives
             }
             var processedStr = OperandValueProcessor.ProcessString(stringLiteral.Value);
             var strBytes = System.Text.Encoding.ASCII.GetBytes(processedStr);
-            emitNode = new DataEmitNode([.. strBytes, 0x00]);
+            EmitNodes = [new DataEmitNode([.. strBytes, NullTerminator])];
         }
 
-        public int Count => emitNode.Count;
-        public byte[] EmitBytes() => emitNode.Emit();
-
-        private readonly DataEmitNode emitNode;
+        private const byte NullTerminator = 0x00;
     }
 }

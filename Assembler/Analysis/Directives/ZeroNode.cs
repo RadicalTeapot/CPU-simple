@@ -3,7 +3,7 @@ using Assembler.AST;
 
 namespace Assembler.Analysis.Directives
 {
-    internal class ZeroNode : IAnalysisNode
+    internal class ZeroNode : BaseAnalysisNode
     {
         public ZeroNode(DirectiveNode directiveNode)
         {
@@ -13,13 +13,9 @@ namespace Assembler.Analysis.Directives
                 throw new AnalyserException("'zero' directive requires a single numeric operand", directiveNode.Span.Line, directiveNode.Span.StartColumn);
             }
             var zeroCount = OperandValueProcessor.ParseHexNumberString(zeroCountOperand.Value);
-            emitNode = new FillEmitNode(zeroCount, FillValue);
+            EmitNodes = [new FillEmitNode(zeroCount, FillValue)];
         }
 
-        public int Count => emitNode.Count;
-        public byte[] EmitBytes() => emitNode.Emit();
-
-        private readonly FillEmitNode emitNode;
         private const byte FillValue = 0x00;
     }
 }

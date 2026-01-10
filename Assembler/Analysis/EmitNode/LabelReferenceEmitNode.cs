@@ -2,7 +2,7 @@
 
 namespace Assembler.Analysis.EmitNode
 {
-    internal class LabelReferenceEmitNode(LabelReferenceNode labelRefNode, int offset)
+    internal class LabelReferenceEmitNode(LabelReferenceNode labelRefNode, int offset) : IEmitNode
     {
         public LabelReferenceNode LabelRefNode { get; } = labelRefNode;
         public int Offset { get; } = offset;

@@ -4,9 +4,9 @@ using CPU.opcodes;
 
 namespace Assembler.Analysis.Instructions
 {
-    internal class SingleRegisterInstruction : IAnalysisNode
+    internal class SingleRegisterNode : BaseAnalysisNode
     {
-        public SingleRegisterInstruction(InstructionNode instruction, OpcodeBaseCode opcode)
+        public SingleRegisterNode(InstructionNode instruction, OpcodeBaseCode opcode)
         {
             var mnemonic = instruction.Mnemonic;
             var operands = instruction.GetOperands();
@@ -14,14 +14,8 @@ namespace Assembler.Analysis.Instructions
             {
                 throw new AnalyserException($"'{mnemonic}' instruction takes a single operand", instruction.Span.Line, instruction.Span.StartColumn);
             }
-            var reg = Convert.ToByte(register.RegisterName) & 0x03;
-            var opcodeValue = (byte)((byte)opcode | reg);
-            emitNode = new DataEmitNode([opcodeValue]);
+            var opcodeByte = GetOpcodeByteWithRegister(opcode, register);
+            EmitNodes = [new DataEmitNode([opcodeByte])];
         }
-
-        public int Count => emitNode.Count;
-        public byte[] EmitBytes() => emitNode.Emit();
-
-        private readonly DataEmitNode emitNode;
     }
 }

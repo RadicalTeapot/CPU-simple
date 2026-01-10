@@ -1,8 +1,10 @@
 ﻿using Assembler.Analysis;
 using Assembler.Analysis.Directives;
+using Assembler.Analysis.EmitNode;
 using Assembler.Analysis.Instructions;
 using Assembler.AST;
 using CPU.opcodes;
+using System.Diagnostics;
 
 namespace Assembler
 {
@@ -20,30 +22,15 @@ namespace Assembler
 
     public class Analyser
     {
-        private Section TextSection;
-        private List<Section> DataSections;
-        private Section currentSection;
-        private int textSectionCounter;
-        private LabelReferenceManager labelManager;
-
-        public Analyser()
+        public IList<IEmitNode> Run(Parser.ProgramNode program)
         {
-            TextSection = new Section();
-            DataSections = [];
-            currentSection = TextSection;
-            textSectionCounter = 0;
-            labelManager = new LabelReferenceManager();
-        }
-
-        public IList<IAnalysisNode> Run(Parser.ProgramNode program)
-        {
-            TextSection = new Section();
-            DataSections = [];
-            currentSection = TextSection;
-            textSectionCounter = 0;
-            labelManager = new LabelReferenceManager();
+            Initialize();
 
             // First pass: analyse statements
+            Debug.Assert(
+                _sections.Count >= 1 && _sections[TextSectionIndex].SectionType == Section.Type.Text,
+                "Initial section setup is incorrect");
+
             var analysisExceptions = new List<AnalyserException>();
             foreach (var statement in program.Statements)
             {
@@ -64,22 +51,32 @@ namespace Assembler
             }
 
             // Second pass: place sections and resolve labels
-            var sectionOffset = TextSection.LocationCounter;
-            foreach (var dataSection in DataSections)
+            var sectionOffset = 0;
+            foreach (var section in _sections)
             {
-                dataSection.StartAddress = sectionOffset;
-                sectionOffset += dataSection.LocationCounter;
+                section.StartAddress = sectionOffset;
+                sectionOffset += section.LocationCounter;
             }
             labelManager.ResolveLabels();
 
             // Collect all nodes in order
-            var emitNodes = new List<IAnalysisNode>();
-            emitNodes.AddRange(TextSection.Nodes);
-            foreach (var dataSection in DataSections)
+            var emitNodes = new List<IEmitNode>();
+            foreach (var section in _sections)
             {
-                emitNodes.AddRange(dataSection.Nodes);
+                foreach (var analysisNode in section.Nodes)
+                {
+                    emitNodes.AddRange(analysisNode.EmitNodes);
+                }
             }
             return emitNodes;
+        }
+
+        private void Initialize()
+        {
+            _sections = [new Section(Section.Type.Text)]; // Text section should always be first
+            _currentSectionIndex = TextSectionIndex;
+            textSectionWasFound = false;
+            labelManager = new LabelReferenceManager();
         }
 
         private void HandleStatement(StatementNode statement)
@@ -88,7 +85,7 @@ namespace Assembler
 
             if (statement.HasLabel)
             {
-                labelManager.LocateLabel(statement.GetLabel(), currentSection);
+                labelManager.LocateLabel(statement.GetLabel(), CurrentSection);
             }
 
             HandlePostDirective(statement);
@@ -96,9 +93,10 @@ namespace Assembler
             if (statement.HasInstruction)
             {
                 var instruction = statement.GetInstruction();
-                if (currentSection != TextSection)
+                if (CurrentSection.SectionType != Section.Type.Text)
                 {
-                    throw new AnalyserException("Instructions are only allowed in the text section", instruction.Span.Line, instruction.Span.StartColumn);
+                    throw new AnalyserException("Instructions are only allowed in the text section", 
+                        instruction.Span.Line, instruction.Span.StartColumn);
                 }
                 HandleInstruction(instruction);
             }
@@ -112,21 +110,21 @@ namespace Assembler
                 switch (headerDirective.Directive)
                 {
                     case "data":
-                        var section = new Section();
-                        DataSections.Add(section);
-                        currentSection = section;
+                        var section = new Section(Section.Type.Data);
+                        _sections.Add(section);
+                        _currentSectionIndex = _sections.Count - 1;
                         break;
                     case "text":
-                        if (textSectionCounter > 0)
+                        if (textSectionWasFound)
                         {
                             throw new AnalyserException("Multiple text section directives are not allowed",
                                 headerDirective.Span.Line, headerDirective.Span.StartColumn);
                         }
-                        currentSection = TextSection;
-                        textSectionCounter++;
+                        _currentSectionIndex = TextSectionIndex;
+                        textSectionWasFound = true;
                         break;
                     case "org":
-                        currentSection.Nodes.Add(new OrgNode(headerDirective, currentSection.LocationCounter));
+                        CurrentSection.Nodes.Add(new OrgNode(headerDirective, CurrentSection.LocationCounter));
                         break;
                     default:
                         throw new AnalyserException($"Invalid header directive: {headerDirective.Directive}",
@@ -140,7 +138,7 @@ namespace Assembler
             if (statement.HasPostDirective)
             {
                 var postDirective = statement.GetPostDirective();
-                if (currentSection == TextSection)
+                if (CurrentSection.SectionType == Section.Type.Text)
                 {
                     throw new AnalyserException("Post directives are not allowed in the text section",
                         postDirective.Span.Line, postDirective.Span.StartColumn);
@@ -149,19 +147,19 @@ namespace Assembler
                 switch (postDirective.Directive)
                 {
                     case "byte":
-                        currentSection.Nodes.Add(new ByteNode(postDirective));
+                        CurrentSection.Nodes.Add(new ByteNode(postDirective));
                         break;
                     case "short":
-                        currentSection.Nodes.Add(new ShortNode(postDirective));
+                        CurrentSection.Nodes.Add(new ShortNode(postDirective));
                         break;
                     case "zero":
-                        currentSection.Nodes.Add(new ZeroNode(postDirective));
+                        CurrentSection.Nodes.Add(new ZeroNode(postDirective));
                         break;
                     case "string":
-                        currentSection.Nodes.Add(new StringNode(postDirective));
+                        CurrentSection.Nodes.Add(new StringNode(postDirective));
                         break;
                     case "org":
-                        currentSection.Nodes.Add(new OrgNode(postDirective, currentSection.LocationCounter));
+                        CurrentSection.Nodes.Add(new OrgNode(postDirective, CurrentSection.LocationCounter));
                         break;
                     default:
                         throw new AnalyserException($"Invalid post-directive: {postDirective.Directive}",
@@ -188,7 +186,7 @@ namespace Assembler
                 case OpcodeBaseCode.CLZ:
                 case OpcodeBaseCode.SEZ:
                 case OpcodeBaseCode.RET:
-                    currentSection.Nodes.Add(new NoOperandInstruction(instruction, opcode));
+                    CurrentSection.Nodes.Add(new NoOperandNode(instruction, opcode));
                     break;
                 case OpcodeBaseCode.JMP:
                 case OpcodeBaseCode.JCC:
@@ -196,7 +194,7 @@ namespace Assembler
                 case OpcodeBaseCode.JZC:
                 case OpcodeBaseCode.JZS:
                 case OpcodeBaseCode.CAL:
-                    currentSection.Nodes.Add(new SingleMemoryAddressInstruction(instruction, opcode, labelManager));
+                    CurrentSection.Nodes.Add(new SingleMemoryAddressNode(instruction, opcode, labelManager));
                     break;
                 case OpcodeBaseCode.POP:
                 case OpcodeBaseCode.PEK:
@@ -207,7 +205,7 @@ namespace Assembler
                 case OpcodeBaseCode.RRT:
                 case OpcodeBaseCode.INC:
                 case OpcodeBaseCode.DEC:
-                    currentSection.Nodes.Add(new SingleRegisterInstruction(instruction, opcode));
+                    CurrentSection.Nodes.Add(new SingleRegisterNode(instruction, opcode));
                     break;
                 case OpcodeBaseCode.LDI:
                 case OpcodeBaseCode.ADI:
@@ -217,7 +215,7 @@ namespace Assembler
                 case OpcodeBaseCode.ORI:
                 case OpcodeBaseCode.XRI:
                 case OpcodeBaseCode.BTI:
-                    currentSection.Nodes.Add(new RegisterAndImmediate(instruction, opcode, labelManager));
+                    CurrentSection.Nodes.Add(new RegisterAndImmediateNode(instruction, opcode, labelManager));
                     break;
                 case OpcodeBaseCode.LDA:
                 case OpcodeBaseCode.STA:
@@ -228,7 +226,7 @@ namespace Assembler
                 case OpcodeBaseCode.ORA:
                 case OpcodeBaseCode.XRA:
                 case OpcodeBaseCode.BTA:
-                    currentSection.Nodes.Add(new RegisterAndMemoryAddressInstruction(instruction, opcode, labelManager));
+                    CurrentSection.Nodes.Add(new RegisterAndMemoryAddressNode(instruction, opcode, labelManager));
                     break;
                 case OpcodeBaseCode.MOV:
                 case OpcodeBaseCode.ADD:
@@ -237,12 +235,20 @@ namespace Assembler
                 case OpcodeBaseCode.AND:
                 case OpcodeBaseCode.OR:
                 case OpcodeBaseCode.XOR:
-                    currentSection.Nodes.Add(new TwoRegisterInstruction(instruction, opcode));
+                    CurrentSection.Nodes.Add(new TwoRegisterNode(instruction, opcode));
                     break;
                 default:
                     throw new AnalyserException($"Opcode handling not implemented for: {mnemonic}",
                         instruction.Span.Line, instruction.Span.StartColumn);
             }
         }
+
+        private Section CurrentSection { get => _sections[_currentSectionIndex]; }
+
+        private List<Section> _sections = [];
+        private int _currentSectionIndex = 0;
+        private bool textSectionWasFound = false;
+        private LabelReferenceManager labelManager = new();
+        private const int TextSectionIndex = 0;
     }
 }
