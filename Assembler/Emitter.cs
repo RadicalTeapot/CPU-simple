@@ -13,9 +13,9 @@ namespace Assembler
         public Emitter(int memorySize = 0)
         {
 #if x16
-            _memorySize = memorySize == 0 || memorySize > 65535 ? 65535 : (memorySize - 1);
+            _memorySize = memorySize == 0 || memorySize > 65536 ? 65536 : memorySize;
 #else
-            _memorySize = memorySize == 0 || memorySize > 256 ? 255 : (memorySize - 1);
+            _memorySize = memorySize == 0 || memorySize > 256 ? 256 : memorySize;
 #endif
             _memory = new byte[_memorySize];
             _written = new bool[_memorySize];
@@ -44,14 +44,14 @@ namespace Assembler
             var count = node.Count;
             Debug.Assert(bytes.Length == count, "EmitNode: byte array length does not match count.");
 
+            if (_programCounter + count >= _memorySize)
+            {
+                throw new EmitterException($"Memory overflow: attempting to write beyond address {_memorySize:X4}.");
+            }
+
             if (_written.AsSpan(_programCounter, count).Contains(true))
             {
                 throw new EmitterException($"Memory overwrite detected between address {_programCounter:X4} and {_programCounter + count - 1:X4}.");
-            }
-
-            if (_programCounter + count > _memorySize)
-            {
-                throw new EmitterException($"Memory overflow: attempting to write beyond address {_memorySize:X4}.");
             }
 
             Array.Copy(bytes, 0, _memory, _programCounter, count);
