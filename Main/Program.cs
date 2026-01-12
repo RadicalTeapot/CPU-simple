@@ -4,7 +4,7 @@ class Program
 {
     static void Main()
     {
-        var program = AssembleProgram(PROG_2);
+        var program = AssembleProgram(PROG_3);
         var cpu = new CPU.CPU(new CPU.Config());
         cpu.LoadProgram(program);
         cpu.Run(traceEnabled: true);
@@ -58,4 +58,18 @@ class Program
        "HLT"
     ];
 #endif
+
+    /// <summary>
+    /// Same as PROG_2 but using labels
+    /// </summary>
+    private static readonly string[] PROG_3 = [
+       "LDI R0, #0x00       ; Accumulator",
+       "LDI R1, #0x03       ; Limit",
+       "LOOP_START:         ; Label for the start of the loop",
+       "CLC                 ; Clear carry flag (for ADI to work correctly when jumping after CMP)",
+       "ADI R0, #0x02       ; Increment R0",
+       "CMP R0, R1          ; Set carry when R0 >= R1",
+       "JCC [LOOP_START]    ; Jump back to CLC if carry not set",
+       "HLT"
+    ];
 }
