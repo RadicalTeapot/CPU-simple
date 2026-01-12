@@ -610,7 +610,10 @@ namespace Assembler.Tests
         [Test]
         public void ValidMnemonicOnly_CreateFromTokens_ReturnsExpectedInstructionNode()
         {
-            var tokens = new[] { new Token(TokenType.Identifier, "nop", 0, 0) };
+            var tokens = new[] { 
+                new Token(TokenType.Identifier, "nop", 0, 0),
+                new Token(TokenType.EndOfLine, string.Empty, 1, 11)
+            };
             var result = InstructionNode.CreateFromTokens(tokens, 0);
             Assert.Multiple(() =>
             {
