@@ -3,10 +3,9 @@
 ## Implementation
 
 Using compile flags to let the compiler know without having to make everything generic.
-The main change was to split actions on memory addresses (which might be 16bit wide) from other ones (e.g., using immediates
-or registers).
+The main change was to split actions on memory addresses (which might be 16-bit wide) from other ones (e.g., using immediates or registers).
 
-16bit is little-endian.
+16-bit architecture is little-endian.
 
 ### Stack
 

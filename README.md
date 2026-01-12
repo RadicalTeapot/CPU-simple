@@ -55,10 +55,6 @@ dotnet run --project Main/Main.csproj
 
 ## To do
 
-- [x] Write assembler
-- [x] Move PSH to 0x20
-- [x] Implement LDX and STX in ISA
-- [x] Implement assembler support for indirect with offset instructions
 - [ ] Write a bank of small programs for 8 and 16 bit version
 - [ ] Implement CPU TUI
 - [ ] Write grammar for tree-sitter
@@ -69,4 +65,4 @@ dotnet run --project Main/Main.csproj
 - [ ] Cleanup opcode constructors to take only necessary parameters (or use an interface to mask un-necessary parameters)
 - [ ] Cleanup trace logic to add before and after snapshots of registers, memory and stack
 
-- [ ] Cleanup docs and document design choices
+- [/] Cleanup docs and document design choices
