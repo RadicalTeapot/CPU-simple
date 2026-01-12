@@ -98,7 +98,10 @@ namespace Assembler
                 _labelManager.LocateLabel(statement.GetLabel(), CurrentSection);
             }
 
-            HandlePostDirective(statement);
+            if (statement.HasPostDirective)
+            {
+                HandleDirective(statement.GetPostDirective());
+            }
 
             if (statement.HasInstruction)
             {
@@ -125,16 +128,15 @@ namespace Assembler
                         _currentSectionIndex = _sections.Count - 1;
                         break;
                     case "text":
-                        if (_textSectionWasFound)
-                        {
-                            throw new AnalyserException("Multiple text section directives are not allowed",
-                                headerDirective.Span.Line, headerDirective.Span.StartColumn);
-                        }
-                        _currentSectionIndex = TextSectionIndex;
+                        _currentSectionIndex = TextSectionIndex; // Switch (back) to the text section
                         _textSectionWasFound = true;
                         break;
                     case "org":
-                        CurrentSection.Nodes.Add(new OrgNode(headerDirective, CurrentSection.LocationCounter, _memoryAddressValueProcessor));
+                    case "byte":
+                    case "short":
+                    case "zero":
+                    case "string":
+                        HandleDirective(headerDirective);
                         break;
                     default:
                         throw new AnalyserException($"Invalid header directive: {headerDirective.Directive}",
@@ -143,38 +145,34 @@ namespace Assembler
             }
         }
 
-        private void HandlePostDirective(StatementNode statement)
+        private void HandleDirective(DirectiveNode directive)
         {
-            if (statement.HasPostDirective)
+            if (CurrentSection.SectionType == Section.Type.Text)
             {
-                var postDirective = statement.GetPostDirective();
-                if (CurrentSection.SectionType == Section.Type.Text)
-                {
-                    throw new AnalyserException("Post directives are not allowed in the text section",
-                        postDirective.Span.Line, postDirective.Span.StartColumn);
-                }
+                throw new AnalyserException("Post directives are not allowed in the text section",
+                    directive.Span.Line, directive.Span.StartColumn);
+            }
 
-                switch (postDirective.Directive)
-                {
-                    case "byte":
-                        CurrentSection.Nodes.Add(new ByteNode(postDirective));
-                        break;
-                    case "short":
-                        CurrentSection.Nodes.Add(new ShortNode(postDirective));
-                        break;
-                    case "zero":
-                        CurrentSection.Nodes.Add(new ZeroNode(postDirective));
-                        break;
-                    case "string":
-                        CurrentSection.Nodes.Add(new StringNode(postDirective));
-                        break;
-                    case "org":
-                        CurrentSection.Nodes.Add(new OrgNode(postDirective, CurrentSection.LocationCounter, _memoryAddressValueProcessor));
-                        break;
-                    default:
-                        throw new AnalyserException($"Invalid post-directive: {postDirective.Directive}",
-                           postDirective.Span.Line, postDirective.Span.StartColumn);
-                }
+            switch (directive.Directive)
+            {
+                case "byte":
+                    CurrentSection.Nodes.Add(new ByteNode(directive));
+                    break;
+                case "short":
+                    CurrentSection.Nodes.Add(new ShortNode(directive));
+                    break;
+                case "zero":
+                    CurrentSection.Nodes.Add(new ZeroNode(directive));
+                    break;
+                case "string":
+                    CurrentSection.Nodes.Add(new StringNode(directive));
+                    break;
+                case "org":
+                    CurrentSection.Nodes.Add(new OrgNode(directive, CurrentSection.LocationCounter, _memoryAddressValueProcessor));
+                    break;
+                default:
+                    throw new AnalyserException($"Invalid directive: {directive.Directive}",
+                        directive.Span.Line, directive.Span.StartColumn);
             }
         }
 
