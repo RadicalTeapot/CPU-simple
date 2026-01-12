@@ -13,11 +13,11 @@ namespace Assembler.Analysis.Directives
             switch (operands)
             {
                 case DirectiveOperandSet.SingleHexNumberOperand(var addressOperand):
-                    address = BitConverter.ToInt32(memoryAddressValueProcessor.ParseAddressValueString(addressOperand));
+                    address = memoryAddressValueProcessor.ParseAddressValueString(addressOperand);
                     fillValue = DefaultFillValue;
                     break;
                 case DirectiveOperandSet.TwoHexNumberOperands(var addressOperand, var fillValueOperand):
-                    address = BitConverter.ToInt32(memoryAddressValueProcessor.ParseAddressValueString(addressOperand));
+                    address = memoryAddressValueProcessor.ParseAddressValueString(addressOperand);
                     fillValue = OperandValueProcessor.ParseHexByteString(fillValueOperand.Value);
                     break;
                 default:

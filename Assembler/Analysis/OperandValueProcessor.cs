@@ -70,22 +70,35 @@ namespace Assembler.Analysis
 
     internal class MemoryAddressValueProcessor(int memorySize)
     {
-        public byte[] ParseAddressValueString(HexNumberNode hexNumber)
+#if x16
+        public ushortParseAddressValueString(HexNumberNode hexNumber)
         {
             var address = OperandValueProcessor.ParseHexNumberString(hexNumber.Value);
-#if x16
             if (address < 0 || address >= memorySize)
             {
                 throw new AnalyserException("Address value out of range for 16-bit architecture", hexNumber.Span.Line, hexNumber.Span.StartColumn);
             }
-            Debug.Assert(BitConverter.IsLittleEndian, "Expected little-endian architecture");
-            return BitConverter.GetBytes((ushort)address); // Little-endian
+            return (ushort)address;
+        }
 #else
+        public byte ParseAddressValueString(HexNumberNode hexNumber)
+        {
+            var address = OperandValueProcessor.ParseHexNumberString(hexNumber.Value);
             if (address < 0 || address >= memorySize)
             {
                 throw new AnalyserException("Address value out of range for 8-bit architecture", hexNumber.Span.Line, hexNumber.Span.StartColumn);
             }
-            return [(byte)address];
+            return (byte)address;
+        }
+#endif
+
+        public byte[] ParseAddressValueStringAsByteArray(HexNumberNode hexNumber)
+        {
+            var addressValue = ParseAddressValueString(hexNumber);
+#if x16
+            return BitConverter.GetBytes(addressValue);
+#else
+            return [addressValue];
 #endif
         }
     }

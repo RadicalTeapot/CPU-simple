@@ -4,7 +4,7 @@ class Program
 {
     static void Main()
     {
-        var program = AssembleProgram(PROG_4);
+        var program = AssembleProgram(PROG_5);
         var cpu = new CPU.CPU(new CPU.Config());
         cpu.LoadProgram(program);
         cpu.Run(traceEnabled: true);
@@ -87,5 +87,22 @@ class Program
         "start: .byte #0x01",
         ".byte #0x02",
         ".byte #0x03",
-        ];
+    ];
+
+    /// <summary>
+    /// Test multi text sections and org directive
+    /// </summary>
+    private static readonly string[] PROG_5 = [
+        ".text",
+        "LDI R0, #0x00",
+        ".data",
+        "myData: .byte #0x42",
+        ".text",
+        "LDA R1, [myData]",
+        ".data",
+        ".org #0x10 moreData: .byte #0x99",
+        ".text",
+        "LDA R2, [moreData]",
+        "HLT"
+    ];
 }

@@ -22,7 +22,7 @@ namespace Assembler.Analysis.Instructions
             switch (memoryAddress)
             {
                 case MemoryAddress.Immediate(var hexAddress):
-                    var addressValue = memoryAddressValueProcessor.ParseAddressValueString(hexAddress);
+                    var addressValue = memoryAddressValueProcessor.ParseAddressValueStringAsByteArray(hexAddress);
                     EmitNodes = [new DataEmitNode([ opcodeByte, ..addressValue ])];
                     break;
                 case MemoryAddress.Label(var labelReference):
