@@ -13,7 +13,7 @@ hex-alphanum = '0x', ( num | hex-alpha ), { num | hex-alpha };
 num-literal = '#', hex-alphanum;
 reg = 'r', num, { num };
 identifier = ( '_' | alpha ), { num | alpha | '_' };
-memory-identifier = num-literal | identifier | ( identifier, ( + | - ), num-literal );
+memory-identifier = num-literal | identifier | reg | ( identifier, ( + | - ), num-literal ) | (reg, (+ | -), num-litteral );
 memory = '[', memory-identifier, ']';
 argument = reg | num-literal | identifier | memory;
 string-literal = '"', { string-chars }, '"';
@@ -48,7 +48,7 @@ Memory addresses are surrounded by square brackets (e.g., `ada r0, [#0x0C]`), su
 
 Section directives are only semantically valid as the first directive of a statement. There are currently two section directives:
 
-- `.text` defines the program section, only one such section is supported. It always starts to address `0x00`.
+- `.text` defines the program section. It always starts to address `0x00`. Muliple sections are concatenated together when emitting machine code.
 - `.data` defines the data declaration section, typically only one such section is declared. Those are emitted in the same order as declared in program, starting right after `.text` section ends.
 
 The following directives are syntactically valid anywhere, but semantically restricted to data section:

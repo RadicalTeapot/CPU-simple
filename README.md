@@ -56,6 +56,8 @@ dotnet run --project Main/Main.csproj
 ## To do
 
 - [x] Write assembler
+- [ ] Move PSH to 0x20
+- [ ] Implement LDX and STX
 - [ ] Write a bank of small programs for 8 and 16 bit version
 - [ ] Implement CPU TUI
 - [ ] Write grammar for tree-sitter
