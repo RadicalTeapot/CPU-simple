@@ -2260,4 +2260,80 @@ namespace CPU.Tests
             Assert.That(state.GetRegister(0), Is.EqualTo(0b1111_0000), "R0 should not be modified by BTA.");
         }
     }
+
+    [TestFixture]
+    public class LDX_tests
+    {
+        [Test]
+        public void LDX_R0_R1WithoutOffset_LoadsValueFromMemory()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.LDX | 0b0000, 0b0000_0001], // LDX R0, [R1]
+                out var state,
+                out _,
+                out var memory);
+            state.SetRegister(1, 0x10); // R1 points to address 0x10
+            memory.WriteByte(0x10, 0x42);
+            // Act
+            cpu.Step(traceEnabled: false);
+            // Assert
+            Assert.That(state.GetRegister(0), Is.EqualTo(0x42), "R0 should load value 0x42 from memory address 0x10.");
+        }
+
+        [Test]
+        public void LDX_R0_R1WithOffset_LoadsValueFromMemory()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.LDX | 0b0000, 0b0000_0101], // LDX R0, [R1+1]
+                out var state,
+                out _,
+                out var memory);
+            state.SetRegister(1, 0x10); // R1 points to address 0x10 + 0x01 offset
+            memory.WriteByte(0x11, 0x42);
+            // Act
+            cpu.Step(traceEnabled: false);
+            // Assert
+            Assert.That(state.GetRegister(0), Is.EqualTo(0x42), "R0 should load value 0x42 from memory address 0x11.");
+        }
+    }
+
+    [TestFixture]
+    public class STX_tests
+    {
+        [Test]
+        public void STX_R0_R1WithoutOffset_StoresValueToMemory()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.STX | 0b0000, 0b0000_0001], // STX R0, [R1]
+                out var state,
+                out _,
+                out var memory);
+            state.SetRegister(0, 0x42); // R0 contains value 0x42
+            state.SetRegister(1, 0x10); // R1 points to address 0x10
+            // Act
+            cpu.Step(traceEnabled: false);
+            // Assert
+            Assert.That(memory.ReadByte(0x10), Is.EqualTo(0x42), "Memory address 0x10 should contain value 0x42 after STX.");
+        }
+
+        [Test]
+        public void STX_R0_R1WithOffset_StoresValueToMemory()
+        {
+            // Arrange
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.STX | 0b0000, 0b0000_0101], // STX R0, [R1+1]
+                out var state,
+                out _,
+                out var memory);
+            state.SetRegister(0, 0x42); // R0 contains value 0x42
+            state.SetRegister(1, 0x10); // R1 points to address 0x10 + 0x01 offset
+            // Act
+            cpu.Step(traceEnabled: false);
+            // Assert
+            Assert.That(memory.ReadByte(0x11), Is.EqualTo(0x42), "Memory address 0x11 should contain value 0x42 after STX.");
+        }
+    }
 }

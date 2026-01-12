@@ -7,7 +7,7 @@
     {
         SystemAndJump = 0x00,
         Load = 0x10,
-        Store = 0x20,
+        StoreAndIndirect = 0x20,
         Move = 0x30,
         SingleRegisterALU = 0x40,
         Add = 0x50,
@@ -36,7 +36,7 @@
         {
             [OpcodeGroupBaseCode.SystemAndJump] = NO_REGISTER_MASK,
             [OpcodeGroupBaseCode.Load] = ONE_REGISTER_MASK,
-            [OpcodeGroupBaseCode.Store] = ONE_REGISTER_MASK,
+            [OpcodeGroupBaseCode.StoreAndIndirect] = ONE_REGISTER_MASK,
             [OpcodeGroupBaseCode.Move] = TWO_REGISTER_MASK,
             [OpcodeGroupBaseCode.SingleRegisterALU] = ONE_REGISTER_MASK,
             [OpcodeGroupBaseCode.Add] = TWO_REGISTER_MASK,

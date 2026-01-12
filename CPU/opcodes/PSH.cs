@@ -2,7 +2,7 @@
 
 namespace CPU.opcodes
 {
-    [Opcode(OpcodeBaseCode.PSH, OpcodeGroupBaseCode.Store, RegisterArgsCount.One, OperandType.None)]
+    [Opcode(OpcodeBaseCode.PSH, OpcodeGroupBaseCode.StoreAndIndirect, RegisterArgsCount.One, OperandType.None)]
     internal class PSH(State cpuState, Memory memory, Stack stack, OpcodeArgs args) : IOpcode
     {
         public void Execute()

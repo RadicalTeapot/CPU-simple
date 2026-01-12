@@ -21,6 +21,8 @@
         PEK = 0x1C,
         PSH = 0x20,
         STA = 0x24,
+        LDX = 0x28,
+        STX = 0x2C,
         MOV = 0x30,
         ADI = 0x40,
         ADA = 0x44,
@@ -60,6 +62,7 @@
         /// Bits 0-1 register index, typically destination register, if applicable.
         /// </summary>
         public byte LowRegisterIdx = 0;
+        public byte IndirectRegisterIdx = 0;
         public byte ImmediateValue = 0;
 #if x16
         public ushort AddressValue = 0;

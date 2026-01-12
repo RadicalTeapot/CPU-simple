@@ -20,6 +20,7 @@ namespace CPU.opcodes
         None,
         Address,
         Immediate,
+        RegAndImmediate,
     }
 
     /// <summary>

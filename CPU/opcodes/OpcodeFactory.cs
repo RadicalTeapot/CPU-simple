@@ -23,6 +23,7 @@ namespace CPU.opcodes
                 OperandType.None => 1,
                 OperandType.Address => 1 + AddressSize,
                 OperandType.Immediate => 2,
+                OperandType.RegAndImmediate => 2,
                 _ => throw new InvalidOperationException($"Unknown operand type: {metadata.OperandType}"),
             };
         }
@@ -76,6 +77,8 @@ namespace CPU.opcodes
                     args.HighRegisterIdx = (byte)((instruction >> 2) & REGISTER_MASK);
                     args.LowRegisterIdx = (byte)(instruction & REGISTER_MASK);
                     break;
+                default:
+                    throw new InvalidOperationException($"Unknown register args count: {metadata.RegisterArgsCount}");
             }
 
             // Fetch operand from instruction bytes
@@ -89,6 +92,12 @@ namespace CPU.opcodes
                 case OperandType.Immediate:
                     args.ImmediateValue = instructionBytes[1];
                     break;
+                case OperandType.RegAndImmediate:
+                    args.IndirectRegisterIdx = (byte)(instructionBytes[1] & REGISTER_MASK);
+                    args.ImmediateValue = (byte)(instructionBytes[1] >> 2);
+                    break;
+                default:
+                    throw new InvalidOperationException($"Unknown operand type: {metadata.OperandType}");
             }
 
             return args;
