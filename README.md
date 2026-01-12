@@ -55,7 +55,15 @@ dotnet run --project Main/Main.csproj
 
 ## To do
 
-- [/] Write assembler
+- [x] Write assembler
+- [ ] Write a bank of small programs for 8 and 16 bit version
+- [ ] Implement CPU TUI
+- [ ] Write grammar for tree-sitter
+- [ ] Write LSP server
+- [ ] Implement PPU and map some memory for it (for 16-bit version)
+- [ ] Implement sound chip and map some memory for it too (for 16-bit version)
+
 - [ ] Cleanup opcode constructors to take only necessary parameters (or use an interface to mask un-necessary parameters)
 - [ ] Cleanup trace logic to add before and after snapshots of registers, memory and stack
-- [ ] Implement TUI
+
+- [ ] Cleanup docs and document design choices
