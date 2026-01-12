@@ -146,10 +146,14 @@ namespace Assembler.AST
                     _memoryAddressOperand = memoryAddressOperand,
                 };
             }
-            else
+            else if (tokens.Count > index && tokens[index].Type == TokenType.EndOfLine)
             {
                 var span = new NodeSpan(instructionToken.Column, instructionToken.Column + instructionToken.Lexeme.Length, instructionToken.Line);
                 instructionNode = new InstructionNode(mnemonic, 1, [], span);
+            }
+            else
+            {
+                throw new ParserException("Invalid instruction operands.", tokens[index].Line, tokens[index].Column);
             }
 
             return instructionNode;

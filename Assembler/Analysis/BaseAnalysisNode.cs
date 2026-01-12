@@ -10,15 +10,20 @@ namespace Assembler.Analysis
         public IEmitNode[] EmitNodes { get; init; } = [];
 
         protected static byte GetOpcodeByte(OpcodeBaseCode opcode) => (byte)opcode;
+
         protected static byte GetOpcodeByteWithRegister(OpcodeBaseCode opcode, RegisterNode registerOperand)
         {
-            var regIdx = Convert.ToByte(registerOperand.RegisterName) & 0x03;
+            var regNum = registerOperand.RegisterName[1..]; // Trim the 'R' prefix
+            var regIdx = Convert.ToByte(regNum) & 0x03;
             return (byte)((byte)opcode | regIdx);
         }
+
         protected static byte GetOpcodeByteWithTwoRegisters(OpcodeBaseCode opcode, RegisterNode firstRegisterOperand, RegisterNode secondRegisterOperand)
         {
-            var firstRegIdx = Convert.ToByte(firstRegisterOperand.RegisterName) & 0x03;
-            var secondRegIdx = Convert.ToByte(secondRegisterOperand.RegisterName) & 0x03;
+            var firstRegNum = firstRegisterOperand.RegisterName[1..]; // Trim the 'R' prefix
+            var firstRegIdx = Convert.ToByte(firstRegNum) & 0x03;
+            var secondRegNum = secondRegisterOperand.RegisterName[1..]; // Trim the 'R' prefix
+            var secondRegIdx = Convert.ToByte(secondRegNum) & 0x03;
             return (byte)((byte)opcode | (secondRegIdx << 2) | firstRegIdx);
         }
     }
