@@ -1,9 +1,4 @@
 ﻿using Assembler.AST;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Assembler.Analysis
 {
@@ -71,19 +66,22 @@ namespace Assembler.Analysis
         {
             return Convert.ToUInt16(hexString[2..], 16);
         }
+    }
 
-        public static byte[] ParseAddressValueString(HexNumberNode hexNumber)
+    internal class MemoryAddressValueProcessor(int memorySize)
+    {
+        public byte[] ParseAddressValueString(HexNumberNode hexNumber)
         {
-            var address = ParseHexNumberString(hexNumber.Value);
+            var address = OperandValueProcessor.ParseHexNumberString(hexNumber.Value);
 #if x16
-            if (address < 0 || address > 0xFFFF)
+            if (address < 0 || address >= memorySize)
             {
                 throw new AnalyserException("Address value out of range for 16-bit architecture", hexNumber.Span.Line, hexNumber.Span.StartColumn);
             }
             Debug.Assert(BitConverter.IsLittleEndian, "Expected little-endian architecture");
             return BitConverter.GetBytes((ushort)address); // Little-endian
 #else
-            if (address < 0 || address > 0xFF)
+            if (address < 0 || address >= memorySize)
             {
                 throw new AnalyserException("Address value out of range for 8-bit architecture", hexNumber.Span.Line, hexNumber.Span.StartColumn);
             }

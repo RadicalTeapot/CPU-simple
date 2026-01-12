@@ -6,7 +6,9 @@ namespace Assembler.Analysis.Instructions
 {
     internal class RegisterAndMemoryAddressNode : BaseAnalysisNode
     {
-        public RegisterAndMemoryAddressNode(InstructionNode instruction, OpcodeBaseCode opcode, LabelReferenceManager labelRefManager)
+        public RegisterAndMemoryAddressNode(
+            InstructionNode instruction, OpcodeBaseCode opcode, LabelReferenceManager labelRefManager,
+            MemoryAddressValueProcessor memoryAddressValueProcessor)
         {
             var mnemonic = instruction.Mnemonic;
             var operands = instruction.GetOperands();
@@ -20,7 +22,7 @@ namespace Assembler.Analysis.Instructions
             switch (memoryAddress)
             {
                 case MemoryAddress.Immediate(var hexAddress):
-                    var addressValue = OperandValueProcessor.ParseAddressValueString(hexAddress);
+                    var addressValue = memoryAddressValueProcessor.ParseAddressValueString(hexAddress);
                     EmitNodes = [
                         new DataEmitNode([opcodeByte, ..addressValue])
                     ];

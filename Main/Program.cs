@@ -16,7 +16,7 @@ class Program
         var program = string.Join(Environment.NewLine, programLines);
         var tokens = new Lexer().Tokenize(program);
         var programNode = Parser.ParseProgram(tokens);
-        var emitNodes = new Analyser().Run(programNode); // TODO Analyser should also have a memorySize parameter
+        var emitNodes = new Analyser(memorySize).Run(programNode);
         var outputBytes = new Emitter(memorySize).Emit(emitNodes);
         return outputBytes;
     }
