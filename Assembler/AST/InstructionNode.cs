@@ -153,7 +153,8 @@ namespace Assembler.AST
             }
             else
             {
-                throw new ParserException("Invalid instruction operands.", tokens[index].Line, tokens[index].Column);
+                var lastToken = tokens[Math.Min(index, tokens.Count - 1)];
+                throw new ParserException("Invalid instruction operands.", lastToken.Line, lastToken.Column);
             }
 
             return instructionNode;
