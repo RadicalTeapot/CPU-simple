@@ -9,6 +9,8 @@ namespace Assembler.AST
         public record Label(LabelReferenceNode LabelRef) : MemoryAddress;
         public record LabelWithPositiveOffset(LabelReferenceNode LabelRef, HexNumberNode Offset) : MemoryAddress;
         public record LabelWithNegativeOffset(LabelReferenceNode LabelRef, HexNumberNode Offset) : MemoryAddress;
+        public record Register(RegisterNode RegisterNode) : MemoryAddress;
+        public record RegisterWithPositiveOffset(RegisterNode RegisterNode, HexNumberNode Offset) : MemoryAddress;
     }
 
     public class MemoryAddressNode(int tokenCount, NodeSpan span)
@@ -19,7 +21,9 @@ namespace Assembler.AST
             Label,
             Immediate,
             PositiveOffset,
-            NegativeOffset
+            NegativeOffset,
+            Register,
+            RegisterPositiveOffset
         }
 
         public int TokenCount { get; } = tokenCount;
@@ -40,6 +44,12 @@ namespace Assembler.AST
                 case AddressType.NegativeOffset:
                     Debug.Assert(_labelAddress != null && _offset != null && _addressOffsetType == AddressType.NegativeOffset, "Memory address has no label reference with negative offset");
                     return new MemoryAddress.LabelWithNegativeOffset(_labelAddress!, _offset!);
+                case AddressType.Register:
+                    Debug.Assert(_registerAddress != null, "Memory address has no register reference");
+                    return new MemoryAddress.Register(_registerAddress!);
+                case AddressType.RegisterPositiveOffset:
+                    Debug.Assert(_registerAddress != null && _offset != null && _addressOffsetType == AddressType.RegisterPositiveOffset, "Memory address has no register reference with positive offset");
+                    return new MemoryAddress.RegisterWithPositiveOffset(_registerAddress!, _offset!);
                 default:
                     throw new ParserException("Unknown memory address type", Span.Line, Span.StartColumn);
             };
@@ -75,6 +85,7 @@ namespace Assembler.AST
             var tokenCount = 2; // For the square brackets
             HexNumberNode? immediateAddress = null;
             LabelReferenceNode? labelAddress = null;
+            RegisterNode? registerAddress = null;
             HexNumberNode? offset = null;
             AddressType addressType;
 
@@ -114,6 +125,29 @@ namespace Assembler.AST
                     }
                 }
             }
+            else if (tokens.Count > index && RegisterNode.IsValidRegisterNodeAtIndex(tokens, index))
+            {
+                addressType = AddressType.Register;
+                registerAddress = RegisterNode.CreateFromTokens(tokens, index);
+                tokenCount += RegisterNode.TokenCount;
+                index += RegisterNode.TokenCount;
+                if (tokens.Count > index && (tokens[index].Type == TokenType.Plus))
+                {
+                    addressType = AddressType.RegisterPositiveOffset;
+                    tokenCount++; // For the offset sign
+                    index++; // Skip the offset sign
+                    if (tokens.Count > index && HexNumberNode.IsValidHexNodeAtIndex(tokens, index))
+                    {
+                        offset = HexNumberNode.CreateFromTokens(tokens, index);
+                        tokenCount += HexNumberNode.TokenCount;
+                        index += HexNumberNode.TokenCount;
+                    }
+                    else
+                    {
+                        throw new ParserException($"Unexpected token {tokens[index]} for offset value", tokens[index].Line, tokens[index].Column);
+                    }
+                }
+            }
             else
             {
                 throw new ParserException($"Unexpected token {tokens[index]} for memory address", tokens[index].Line, tokens[index].Column);
@@ -130,6 +164,7 @@ namespace Assembler.AST
             {
                 _immediateAddress = immediateAddress,
                 _labelAddress = labelAddress,
+                _registerAddress = registerAddress,
                 _offset = offset,
                 _addressOffsetType = addressType,
             };
@@ -137,6 +172,7 @@ namespace Assembler.AST
 
         private HexNumberNode? _immediateAddress;
         private LabelReferenceNode? _labelAddress;
+        private RegisterNode? _registerAddress;
         private HexNumberNode? _offset;
         private AddressType _addressOffsetType;
 

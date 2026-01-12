@@ -234,6 +234,8 @@ namespace Assembler
                 case OpcodeBaseCode.ORA:
                 case OpcodeBaseCode.XRA:
                 case OpcodeBaseCode.BTA:
+                case OpcodeBaseCode.LDX:
+                case OpcodeBaseCode.STX:
                     CurrentSection.Nodes.Add(new RegisterAndMemoryAddressNode(instruction, opcode, _labelManager, _memoryAddressValueProcessor));
                     break;
                 case OpcodeBaseCode.MOV:

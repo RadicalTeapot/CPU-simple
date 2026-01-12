@@ -47,6 +47,21 @@ namespace Assembler.Analysis.Instructions
                         labelRefManager.CreateAndRegisterEmitNode(labelReference, negativeOffset)
                     ];
                     break;
+                case MemoryAddress.Register(var registerAddress):
+                    EmitNodes = [
+                        new DataEmitNode([opcodeByte, GetRegisterIndex(registerAddress)])
+                    ];
+                    break;
+                case MemoryAddress.RegisterWithPositiveOffset(var registerAddress, var offset):
+                    var regPositiveOffset = OperandValueProcessor.ParseHexNumberString(offset.Value);
+                    if (regPositiveOffset > 0x3F)
+                    {
+                        throw new AnalyserException($"Offset for '{mnemonic}' instruction must be smaller than 64", instruction.Span.Line, instruction.Span.StartColumn);
+                    }
+                    EmitNodes = [
+                        new DataEmitNode([opcodeByte, (byte)(regPositiveOffset << 2 | GetRegisterIndex(registerAddress))])
+                    ];
+                    break;
                 default:
                     throw new AnalyserException($"Invalid memory address operand for '{mnemonic}' instruction", instruction.Span.Line, instruction.Span.StartColumn);
             }

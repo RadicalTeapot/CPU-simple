@@ -4,7 +4,7 @@ class Program
 {
     static void Main()
     {
-        var program = AssembleProgram(PROG_3);
+        var program = AssembleProgram(PROG_4);
         var cpu = new CPU.CPU(new CPU.Config());
         cpu.LoadProgram(program);
         cpu.Run(traceEnabled: true);
@@ -72,4 +72,20 @@ class Program
        "JCC [LOOP_START]    ; Jump back to CLC if carry not set",
        "HLT"
     ];
+
+    /// <summary>
+    /// Test indirect addressing modes
+    /// </summary>
+    private static readonly string[] PROG_4 = [
+        ".text",
+        "LDI R0, start",
+        "LDX R1, [r0]",
+        "LDX R2, [r0 + #0x01]",
+        "LDX R3, [r0 + #0x02]",
+        "HLT",
+        ".data",
+        "start: .byte #0x01",
+        ".byte #0x02",
+        ".byte #0x03",
+        ];
 }

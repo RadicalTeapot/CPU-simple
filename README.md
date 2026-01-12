@@ -58,7 +58,7 @@ dotnet run --project Main/Main.csproj
 - [x] Write assembler
 - [x] Move PSH to 0x20
 - [x] Implement LDX and STX in ISA
-- [ ] Implement assembler support for indirect with offset instructions
+- [x] Implement assembler support for indirect with offset instructions
 - [ ] Write a bank of small programs for 8 and 16 bit version
 - [ ] Implement CPU TUI
 - [ ] Write grammar for tree-sitter
