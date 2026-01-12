@@ -8,30 +8,34 @@ namespace Assembler
         public EmitterException(string message) : base(message) { }
     }
 
-    internal class Emitter
+    public class Emitter
     {
-        public Emitter(int maxAddressValue = 0)
+        public Emitter(int memorySize = 0)
         {
 #if x16
-            memory = new byte[65536]; // 64KB for 16-bit architecture
-            written = new bool[65536];
-            this.maxAddressValue = maxAddressValue == 0 ? 65535 : maxAddressValue;
+            this.maxAddressValue = memorySize == 0 || memorySize > 65535 ? 65535 : (memorySize - 1);
 #else
-            memory = new byte[256]; // 256 bytes for 8-bit architecture
-            written = new bool[256];
-            this.maxAddressValue = maxAddressValue == 0 ? 255 : maxAddressValue;
+            this.memorySize = memorySize == 0 || memorySize > 256 ? 255 : (memorySize - 1);
 #endif
-            Array.Fill(memory, (byte)0x00);
-            Array.Fill(written, false);
-            programCounter = 0;
+            memory = new byte[this.memorySize];
+            written = new bool[this.memorySize];
         }
 
-        public void Emit(IList<IEmitNode> nodes)
+        public byte[] Emit(IList<IEmitNode> nodes)
         {
+            Initialize();
             foreach (var node in nodes)
             {
                 EmitNode(node);
             }
+            return memory;
+        }
+
+        private void Initialize()
+        {
+            Array.Fill(memory, (byte)0x00);
+            Array.Fill(written, false);
+            programCounter = 0;
         }
 
         private void EmitNode(IEmitNode node)
@@ -45,9 +49,9 @@ namespace Assembler
                 throw new EmitterException($"Memory overwrite detected between address {programCounter:X4} and {programCounter + count - 1:X4}.");
             }
 
-            if (programCounter + count - 1 > maxAddressValue)
+            if (programCounter + count > memorySize)
             {
-                throw new EmitterException($"Memory overflow: attempting to write beyond address {maxAddressValue:X4}.");
+                throw new EmitterException($"Memory overflow: attempting to write beyond address {memorySize:X4}.");
             }
 
             Array.Copy(bytes, 0, memory, programCounter, count);
@@ -57,6 +61,6 @@ namespace Assembler
         private readonly byte[] memory;
         private readonly bool[] written;
         private int programCounter = 0;
-        private readonly int maxAddressValue = 0;
+        private readonly int memorySize = 0;
     }
 }
