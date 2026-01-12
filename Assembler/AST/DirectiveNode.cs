@@ -7,8 +7,8 @@ namespace Assembler.AST
     {
         public record None : DirectiveOperandSet;
         public record SingleStringOperand(StringLiteralNode Operand) : DirectiveOperandSet;
-        public record SingleHexNumberOperand(HexNumberNode Operand) : DirectiveOperandSet;
-        public record TwoHexNumberOperands(HexNumberNode FirstOperand, HexNumberNode SecondOperand) : DirectiveOperandSet;
+        public record SingleHexNumberOperand(ImmediateValueNode Operand) : DirectiveOperandSet;
+        public record PairOfImmediateValueOperands(ImmediateValueNode FirstOperand, ImmediateValueNode SecondOperand) : DirectiveOperandSet;
     }
 
     public class DirectiveNode(string directive, int tokenCount, NodeSpan span) : BaseNode(span)
@@ -25,11 +25,11 @@ namespace Assembler.AST
                     Debug.Assert(_stringOperand != null, "Directive has no single string operand");
                     return new DirectiveOperandSet.SingleStringOperand(_stringOperand);
                 case [OperandType.Immediate]:
-                    Debug.Assert(_hexNumberOperands != null && _hexNumberOperands.Count == 1, "Directive has no single immediate operand");
-                    return new DirectiveOperandSet.SingleHexNumberOperand(_hexNumberOperands[0]);
+                    Debug.Assert(_immediateOperands != null && _immediateOperands.Count == 1, "Directive has no single immediate operand");
+                    return new DirectiveOperandSet.SingleHexNumberOperand(_immediateOperands[0]);
                 case [OperandType.Immediate, OperandType.Immediate]:
-                    Debug.Assert(_hexNumberOperands != null && _hexNumberOperands.Count == 2, "Directive does not have two immediate operands");
-                    return new DirectiveOperandSet.TwoHexNumberOperands(_hexNumberOperands[0], _hexNumberOperands[1]);
+                    Debug.Assert(_immediateOperands != null && _immediateOperands.Count == 2, "Directive does not have two immediate operands");
+                    return new DirectiveOperandSet.PairOfImmediateValueOperands(_immediateOperands[0], _immediateOperands[1]);
                 default:
                     throw new ParserException("Unkown signature for directive operands", Span.Line, Span.StartColumn);
             };
@@ -64,20 +64,20 @@ namespace Assembler.AST
             var directiveNameToken = tokens[index + 1];
             var currentTokenIndex = index + 2; // Move past .directive
 
-            var immediateOperands = new List<HexNumberNode>();
-            if (tokens.Count > currentTokenIndex && HexNumberNode.IsValidHexNodeAtIndex(tokens, currentTokenIndex))
+            var immediateOperands = new List<ImmediateValueNode>();
+            if (tokens.Count > currentTokenIndex && ImmediateValueNode.IsValidImmediateValueNodeAtIndex(tokens, currentTokenIndex))
             {
-                immediateOperands.Add(HexNumberNode.CreateFromTokens(tokens, currentTokenIndex));
-                currentTokenIndex += HexNumberNode.TokenCount;
+                immediateOperands.Add(ImmediateValueNode.CreateFromTokens(tokens, currentTokenIndex));
+                currentTokenIndex += ImmediateValueNode.TokenCount;
 
                 // Check for a comma, indicating a second operand
                 if (tokens.Count > currentTokenIndex && tokens[currentTokenIndex].Type == TokenType.Comma)
                 {
                     currentTokenIndex++;
-                    if (tokens.Count > currentTokenIndex && HexNumberNode.IsValidHexNodeAtIndex(tokens, currentTokenIndex))
+                    if (tokens.Count > currentTokenIndex && ImmediateValueNode.IsValidImmediateValueNodeAtIndex(tokens, currentTokenIndex))
                     {
-                        immediateOperands.Add(HexNumberNode.CreateFromTokens(tokens, currentTokenIndex));
-                        currentTokenIndex += HexNumberNode.TokenCount;
+                        immediateOperands.Add(ImmediateValueNode.CreateFromTokens(tokens, currentTokenIndex));
+                        currentTokenIndex += ImmediateValueNode.TokenCount;
                     }
                     else
                     {
@@ -98,7 +98,7 @@ namespace Assembler.AST
 
                 directiveNode = new DirectiveNode(directiveNameToken.Lexeme, tokenCount, nodeSpan)
                 {
-                    _hexNumberOperands = immediateOperands,
+                    _immediateOperands = immediateOperands,
                     _signature = signature
                 };
             }
@@ -124,7 +124,7 @@ namespace Assembler.AST
         }
 
         private StringLiteralNode? _stringOperand;
-        private List<HexNumberNode>? _hexNumberOperands;
+        private List<ImmediateValueNode>? _immediateOperands;
         private OperandType[] _signature = [];
         private const int minTokenCount = 2; // .directive
     }

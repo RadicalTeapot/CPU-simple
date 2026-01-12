@@ -5,12 +5,12 @@ namespace Assembler.AST
 {
     public abstract record MemoryAddress
     {
-        public record Immediate(HexNumberNode Address) : MemoryAddress;
+        public record Immediate(ImmediateValueNode Address) : MemoryAddress;
         public record Label(LabelReferenceNode LabelRef) : MemoryAddress;
-        public record LabelWithPositiveOffset(LabelReferenceNode LabelRef, HexNumberNode Offset) : MemoryAddress;
-        public record LabelWithNegativeOffset(LabelReferenceNode LabelRef, HexNumberNode Offset) : MemoryAddress;
+        public record LabelWithPositiveOffset(LabelReferenceNode LabelRef, ImmediateValueNode Offset) : MemoryAddress;
+        public record LabelWithNegativeOffset(LabelReferenceNode LabelRef, ImmediateValueNode Offset) : MemoryAddress;
         public record Register(RegisterNode RegisterNode) : MemoryAddress;
-        public record RegisterWithPositiveOffset(RegisterNode RegisterNode, HexNumberNode Offset) : MemoryAddress;
+        public record RegisterWithPositiveOffset(RegisterNode RegisterNode, ImmediateValueNode Offset) : MemoryAddress;
     }
 
     public class MemoryAddressNode(int tokenCount, NodeSpan span)
@@ -83,18 +83,18 @@ namespace Assembler.AST
             index++; // Skip '['
 
             var tokenCount = 2; // For the square brackets
-            HexNumberNode? immediateAddress = null;
+            ImmediateValueNode? immediateAddress = null;
             LabelReferenceNode? labelAddress = null;
             RegisterNode? registerAddress = null;
-            HexNumberNode? offset = null;
+            ImmediateValueNode? offset = null;
             AddressType addressType;
 
-            if (tokens.Count > index && HexNumberNode.IsValidHexNodeAtIndex(tokens, index))
+            if (tokens.Count > index && ImmediateValueNode.IsValidImmediateValueNodeAtIndex(tokens, index))
             {
                 addressType = AddressType.Immediate;
-                immediateAddress = HexNumberNode.CreateFromTokens(tokens, index);
-                tokenCount += HexNumberNode.TokenCount;
-                index += HexNumberNode.TokenCount;
+                immediateAddress = ImmediateValueNode.CreateFromTokens(tokens, index);
+                tokenCount += ImmediateValueNode.TokenCount;
+                index += ImmediateValueNode.TokenCount;
             }
             else if (tokens.Count > index && LabelReferenceNode.IsValidLabelReferenceAtIndex(tokens, index))
             {
@@ -113,11 +113,11 @@ namespace Assembler.AST
                     tokenCount++; // For the offset sign
                     index++; // Skip the offset sign
 
-                    if (tokens.Count > index && HexNumberNode.IsValidHexNodeAtIndex(tokens, index))
+                    if (tokens.Count > index && ImmediateValueNode.IsValidImmediateValueNodeAtIndex(tokens, index))
                     {
-                        offset = HexNumberNode.CreateFromTokens(tokens, index);
-                        tokenCount += HexNumberNode.TokenCount;
-                        index += HexNumberNode.TokenCount;
+                        offset = ImmediateValueNode.CreateFromTokens(tokens, index);
+                        tokenCount += ImmediateValueNode.TokenCount;
+                        index += ImmediateValueNode.TokenCount;
                     }
                     else
                     {
@@ -136,11 +136,11 @@ namespace Assembler.AST
                     addressType = AddressType.RegisterPositiveOffset;
                     tokenCount++; // For the offset sign
                     index++; // Skip the offset sign
-                    if (tokens.Count > index && HexNumberNode.IsValidHexNodeAtIndex(tokens, index))
+                    if (tokens.Count > index && ImmediateValueNode.IsValidImmediateValueNodeAtIndex(tokens, index))
                     {
-                        offset = HexNumberNode.CreateFromTokens(tokens, index);
-                        tokenCount += HexNumberNode.TokenCount;
-                        index += HexNumberNode.TokenCount;
+                        offset = ImmediateValueNode.CreateFromTokens(tokens, index);
+                        tokenCount += ImmediateValueNode.TokenCount;
+                        index += ImmediateValueNode.TokenCount;
                     }
                     else
                     {
@@ -170,10 +170,10 @@ namespace Assembler.AST
             };
         }
 
-        private HexNumberNode? _immediateAddress;
+        private ImmediateValueNode? _immediateAddress;
         private LabelReferenceNode? _labelAddress;
         private RegisterNode? _registerAddress;
-        private HexNumberNode? _offset;
+        private ImmediateValueNode? _offset;
         private AddressType _addressOffsetType;
 
         private const int minTokenCount = 3; // [ label ]

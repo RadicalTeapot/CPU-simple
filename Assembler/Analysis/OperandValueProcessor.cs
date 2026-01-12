@@ -81,20 +81,20 @@ namespace Assembler.Analysis
             return (ushort)address;
         }
 #else
-        public byte ParseAddressValueString(HexNumberNode hexNumber)
+        public byte ParseAddressValueString(ImmediateValueNode immediateOperand)
         {
-            var address = OperandValueProcessor.ParseHexNumberString(hexNumber.Value);
+            var address = OperandValueProcessor.ParseHexNumberString(immediateOperand.Value);
             if (address < 0 || address >= memorySize)
             {
-                throw new AnalyserException("Address value out of range for 8-bit architecture", hexNumber.Span.Line, hexNumber.Span.StartColumn);
+                throw new AnalyserException("Address value out of range for 8-bit architecture", immediateOperand.Span.Line, immediateOperand.Span.StartColumn);
             }
             return (byte)address;
         }
 #endif
 
-        public byte[] ParseAddressValueStringAsByteArray(HexNumberNode hexNumber)
+        public byte[] ParseAddressValueStringAsByteArray(ImmediateValueNode immediateOperand)
         {
-            var addressValue = ParseAddressValueString(hexNumber);
+            var addressValue = ParseAddressValueString(immediateOperand);
 #if x16
             return BitConverter.GetBytes(addressValue);
 #else

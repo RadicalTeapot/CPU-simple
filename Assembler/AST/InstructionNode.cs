@@ -17,7 +17,7 @@ namespace Assembler.AST
         public record None : InstructionOperandSet;
         public record SingleMemoryAddressOperand(MemoryAddressNode Operand) : InstructionOperandSet;
         public record SingleRegisterOperand(RegisterNode Operand) : InstructionOperandSet;
-        public record RegisterAndHexNumberOperand(RegisterNode FirstOperand, HexNumberNode SecondOperand) : InstructionOperandSet;
+        public record RegisterAndImmediateValueOperand(RegisterNode FirstOperand, ImmediateValueNode SecondOperand) : InstructionOperandSet;
         public record RegisterAndLabelOperand(RegisterNode FirstOperand, LabelReferenceNode SecondOperand) : InstructionOperandSet;
         public record RegisterAndMemoryAddressOperand(RegisterNode FirstOperand, MemoryAddressNode SecondOperand) : InstructionOperandSet;
         public record TwoRegistersOperand(RegisterNode FirstOperand, RegisterNode SecondOperand) : InstructionOperandSet;
@@ -42,7 +42,7 @@ namespace Assembler.AST
                     return new InstructionOperandSet.SingleRegisterOperand(_registerOperands[0]);
                 case [OperandType.Register, OperandType.Immediate]:
                     Debug.Assert(_registerOperands != null && _registerOperands.Count == 1 && _immediateOperand != null, "Instruction has no register and immediate operand");
-                    return new InstructionOperandSet.RegisterAndHexNumberOperand(_registerOperands[0], _immediateOperand);
+                    return new InstructionOperandSet.RegisterAndImmediateValueOperand(_registerOperands[0], _immediateOperand);
                 case [OperandType.Register, OperandType.LabelReference]:
                     Debug.Assert(_registerOperands != null && _registerOperands.Count == 1 && _labelReferenceOperand != null, "Instruction has no register and label reference operand");
                     return new InstructionOperandSet.RegisterAndLabelOperand(_registerOperands[0], _labelReferenceOperand);
@@ -96,7 +96,7 @@ namespace Assembler.AST
                 var tokenCount = RegisterNode.TokenCount + 1; // +1 for the instruction token
                 index += RegisterNode.TokenCount;
 
-                HexNumberNode? immediateOperand = null;
+                ImmediateValueNode? immediateOperand = null;
                 LabelReferenceNode? labelReferenceOperand = null;
                 MemoryAddressNode? memoryAddressOperand = null;
                 var signature = new List<OperandType> { OperandType.Register };
@@ -106,11 +106,11 @@ namespace Assembler.AST
                     index++; // Skip comma
                     tokenCount++; // for the comma
 
-                    if (tokens.Count > index && HexNumberNode.IsValidHexNodeAtIndex(tokens, index))
+                    if (tokens.Count > index && ImmediateValueNode.IsValidImmediateValueNodeAtIndex(tokens, index))
                     {
-                        immediateOperand = HexNumberNode.CreateFromTokens(tokens, index);
-                        tokenCount += HexNumberNode.TokenCount;
-                        index += HexNumberNode.TokenCount;
+                        immediateOperand = ImmediateValueNode.CreateFromTokens(tokens, index);
+                        tokenCount += ImmediateValueNode.TokenCount;
+                        index += ImmediateValueNode.TokenCount;
                         signature.Add(OperandType.Immediate);
                     }
                     else if (tokens.Count > index && LabelReferenceNode.IsValidLabelReferenceAtIndex(tokens, index))
@@ -160,7 +160,7 @@ namespace Assembler.AST
         }
 
         private List<RegisterNode>? _registerOperands;
-        private HexNumberNode? _immediateOperand;
+        private ImmediateValueNode? _immediateOperand;
         private LabelReferenceNode? _labelReferenceOperand;
         private MemoryAddressNode? _memoryAddressOperand;
 

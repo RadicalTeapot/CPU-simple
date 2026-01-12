@@ -16,7 +16,7 @@ namespace Assembler.Analysis.Directives
                     address = memoryAddressValueProcessor.ParseAddressValueString(addressOperand);
                     fillValue = DefaultFillValue;
                     break;
-                case DirectiveOperandSet.TwoHexNumberOperands(var addressOperand, var fillValueOperand):
+                case DirectiveOperandSet.PairOfImmediateValueOperands(var addressOperand, var fillValueOperand):
                     address = memoryAddressValueProcessor.ParseAddressValueString(addressOperand);
                     fillValue = OperandValueProcessor.ParseHexByteString(fillValueOperand.Value);
                     break;

@@ -158,10 +158,10 @@ namespace Assembler.Tests
     }
 
     [TestFixture]
-    internal class HexNumberNode_tests
+    internal class ImmediateValueNode_tests
     {
         [Test]
-        public void ValidHex_IsValidHexNodeAtIndex_ReturnsTrue()
+        public void ValidImmediate_IsValidHexNodeAtIndex_ReturnsTrue()
         {
             var tokens = new[]
             {
@@ -169,44 +169,44 @@ namespace Assembler.Tests
                 new Token(TokenType.HexNumber, "0x0", 0, 1)
             };
 
-            var result = HexNumberNode.IsValidHexNodeAtIndex(tokens, 0);
+            var result = ImmediateValueNode.IsValidImmediateValueNodeAtIndex(tokens, 0);
             Assert.That(result, Is.True, "A hash followed by a hex number should be a valid immediate hex");
         }
 
         [Test]
-        public void NonHashStart_IsValidHexNodeAtIndex_ReturnsFalse()
+        public void NonHashStart_IsValidImmediateNodeAtIndex_ReturnsFalse()
         {
             var tokens = new[] { new Token(TokenType.HexNumber, "0x10", 0, 0) };
-            var result = HexNumberNode.IsValidHexNodeAtIndex(tokens, 0);
+            var result = ImmediateValueNode.IsValidImmediateValueNodeAtIndex(tokens, 0);
             Assert.That(result, Is.False, "Without a leading hash, it is not a valid immediate hex");
 
             tokens = new[] { new Token(TokenType.Identifier, "label", 0, 0) };
-            result = HexNumberNode.IsValidHexNodeAtIndex(tokens, 0);
+            result = ImmediateValueNode.IsValidImmediateValueNodeAtIndex(tokens, 0);
             Assert.That(result, Is.False, "Identifier is not a valid immediate hex");
         }
 
         [Test]
-        public void HashWithoutValue_IsValidHexNodeAtIndex_ThrowsParserException()
+        public void HashWithoutValue_IsValidImmediateNodeAtIndex_ThrowsParserException()
         {
             var tokens = new[] { new Token(TokenType.Hash, "#", 0, 0) };
-            Assert.Throws<ParserException>(() => HexNumberNode.IsValidHexNodeAtIndex(tokens, 0),
-                "A hash without a following hex number should throw");
+            Assert.Throws<ParserException>(() => ImmediateValueNode.IsValidImmediateValueNodeAtIndex(tokens, 0),
+                "A hash without a following immediate value should throw");
         }
 
         [Test]
-        public void HashFollowedByNonHex_IsValidHexNodeAtIndex_ThrowsParserException()
+        public void HashFollowedByNonHex_IsValidImmediateNodeAtIndex_ThrowsParserException()
         {
             var tokens = new[]
             {
                 new Token(TokenType.Hash, "#", 0, 0),
                 new Token(TokenType.Identifier, "x", 0, 1)
             };
-            Assert.Throws<ParserException>(() => HexNumberNode.IsValidHexNodeAtIndex(tokens, 0),
+            Assert.Throws<ParserException>(() => ImmediateValueNode.IsValidImmediateValueNodeAtIndex(tokens, 0),
                 "A hash followed by a non-hex token should throw");
         }
 
         [Test]
-        public void ValidHex_CreateFromTokens_ReturnsExpectedHexNumberNode()
+        public void ValidImmediate_CreateFromTokens_ReturnsExpectedHexNumberNode()
         {
             var tokens = new[]
             {
@@ -214,11 +214,11 @@ namespace Assembler.Tests
                 new Token(TokenType.HexNumber, "0x1A2", 2, 11)
             };
 
-            var result = HexNumberNode.CreateFromTokens(tokens, 0);
+            var result = ImmediateValueNode.CreateFromTokens(tokens, 0);
             Assert.Multiple(() =>
             {
-                Assert.That(HexNumberNode.TokenCount, Is.EqualTo(2), "Token count for hex number node should be 2");
-                Assert.That(result.Value, Is.EqualTo("0x1A2"), "Hex value should be read from the second token");
+                Assert.That(ImmediateValueNode.TokenCount, Is.EqualTo(2), "Token count for immediate value node should be 2");
+                Assert.That(result.Value, Is.EqualTo("0x1A2"), "Immediate value should be read from the second token");
                 Assert.That(result.Span.Line, Is.EqualTo(2), "Span line should be that of the hash token");
                 Assert.That(result.Span.StartColumn, Is.EqualTo(10), "Span start should be at the hash token column");
                 Assert.That(result.Span.EndColumn, Is.EqualTo(16), "Span end should be hex token column + hex lexeme length");
@@ -226,30 +226,30 @@ namespace Assembler.Tests
         }
 
         [Test]
-        public void InvalidHex_NoHash_CreateFromTokens_ThrowsParserException()
+        public void InvalidImmediate_NoHash_CreateFromTokens_ThrowsParserException()
         {
             var tokens = new[] { new Token(TokenType.HexNumber, "0xFF", 0, 0) };
-            Assert.Throws<ParserException>(() => HexNumberNode.CreateFromTokens(tokens, 0),
+            Assert.Throws<ParserException>(() => ImmediateValueNode.CreateFromTokens(tokens, 0),
                 "CreateFromTokens should throw when the first token is not a hash");
         }
 
         [Test]
-        public void InvalidHex_HashWithoutValue_CreateFromTokens_ThrowsParserException()
+        public void InvalidImmediate_HashWithoutValue_CreateFromTokens_ThrowsParserException()
         {
             var tokens = new[] { new Token(TokenType.Hash, "#", 0, 0) };
-            Assert.Throws<ParserException>(() => HexNumberNode.CreateFromTokens(tokens, 0),
-                "CreateFromTokens should throw when a hex number does not follow the hash");
+            Assert.Throws<ParserException>(() => ImmediateValueNode.CreateFromTokens(tokens, 0),
+                "CreateFromTokens should throw when a immediate value does not follow the hash");
         }
 
         [Test]
-        public void InvalidHex_HashFollowedByNonHex_CreateFromTokens_ThrowsParserException()
+        public void InvalidImmediate_HashFollowedByNonHex_CreateFromTokens_ThrowsParserException()
         {
             var tokens = new[]
             {
                 new Token(TokenType.Hash, "#", 0, 0),
                 new Token(TokenType.String, "\"s\"", 0, 1)
             };
-            Assert.Throws<ParserException>(() => HexNumberNode.CreateFromTokens(tokens, 0),
+            Assert.Throws<ParserException>(() => ImmediateValueNode.CreateFromTokens(tokens, 0),
                 "CreateFromTokens should throw when the token after hash is not a hex number");
         }
     }
@@ -349,7 +349,7 @@ namespace Assembler.Tests
             var result = MemoryAddressNode.CreateFromTokens(tokens, 0);
             Assert.Multiple(() =>
             {
-                Assert.That(result.TokenCount, Is.EqualTo(2 + HexNumberNode.TokenCount));
+                Assert.That(result.TokenCount, Is.EqualTo(2 + ImmediateValueNode.TokenCount));
                 Assert.That(result.Span.Line, Is.EqualTo(1));
                 Assert.That(result.Span.StartColumn, Is.EqualTo(10));
                 Assert.That(result.Span.EndColumn, Is.EqualTo(17), "End should include the right bracket");
@@ -400,7 +400,7 @@ namespace Assembler.Tests
             var result = MemoryAddressNode.CreateFromTokens(tokens, 0);
             Assert.Multiple(() =>
             {
-                Assert.That(result.TokenCount, Is.EqualTo(2 + LabelReferenceNode.TokenCount + 1 + HexNumberNode.TokenCount));
+                Assert.That(result.TokenCount, Is.EqualTo(2 + LabelReferenceNode.TokenCount + 1 + ImmediateValueNode.TokenCount));
                 Assert.That(result.Span.Line, Is.EqualTo(3));
                 Assert.That(result.Span.StartColumn, Is.EqualTo(0));
                 Assert.That(result.Span.EndColumn, Is.EqualTo(11));
@@ -431,7 +431,7 @@ namespace Assembler.Tests
             var result = MemoryAddressNode.CreateFromTokens(tokens, 0);
             Assert.Multiple(() =>
             {
-                Assert.That(result.TokenCount, Is.EqualTo(2 + LabelReferenceNode.TokenCount + 1 + HexNumberNode.TokenCount));
+                Assert.That(result.TokenCount, Is.EqualTo(2 + LabelReferenceNode.TokenCount + 1 + ImmediateValueNode.TokenCount));
                 Assert.That(result.Span.Line, Is.EqualTo(4));
                 Assert.That(result.Span.StartColumn, Is.EqualTo(0));
                 Assert.That(result.Span.EndColumn, Is.EqualTo(11));
@@ -537,7 +537,7 @@ namespace Assembler.Tests
             Assert.Multiple(() =>
             {
                 Assert.That(result.Directive, Is.EqualTo("org"));
-                Assert.That(result.TokenCount, Is.EqualTo(2 + HexNumberNode.TokenCount));
+                Assert.That(result.TokenCount, Is.EqualTo(2 + ImmediateValueNode.TokenCount));
                 Assert.That(result.Span.Line, Is.EqualTo(1));
                 Assert.That(result.Span.StartColumn, Is.EqualTo(0));
                 Assert.That(result.Span.EndColumn, Is.EqualTo(6 + "0x10".Length));
@@ -561,7 +561,7 @@ namespace Assembler.Tests
             Assert.Multiple(() =>
             {
                 Assert.That(result.Directive, Is.EqualTo("org"));
-                Assert.That(result.TokenCount, Is.EqualTo(2 + HexNumberNode.TokenCount + 1 + HexNumberNode.TokenCount));
+                Assert.That(result.TokenCount, Is.EqualTo(2 + ImmediateValueNode.TokenCount + 1 + ImmediateValueNode.TokenCount));
                 Assert.That(result.Span.Line, Is.EqualTo(2));
                 Assert.That(result.Span.StartColumn, Is.EqualTo(0));
                 Assert.That(result.Span.EndColumn, Is.EqualTo(12 + "0xFF".Length));
@@ -696,14 +696,14 @@ namespace Assembler.Tests
             Assert.Multiple(() =>
             {
                 Assert.That(result.Mnemonic, Is.EqualTo("adi"));
-                Assert.That(result.TokenCount, Is.EqualTo(1 + RegisterNode.TokenCount + 1 + HexNumberNode.TokenCount));
+                Assert.That(result.TokenCount, Is.EqualTo(1 + RegisterNode.TokenCount + 1 + ImmediateValueNode.TokenCount));
                 Assert.That(result.Span.Line, Is.EqualTo(2));
                 Assert.That(result.Span.StartColumn, Is.EqualTo(0));
                 Assert.That(result.Span.EndColumn, Is.EqualTo(13));
             });
             var operands = result.GetOperands();
-            Assert.That(operands, Is.InstanceOf<InstructionOperandSet.RegisterAndHexNumberOperand>());
-            var regAndHexOp = (InstructionOperandSet.RegisterAndHexNumberOperand)operands;
+            Assert.That(operands, Is.InstanceOf<InstructionOperandSet.RegisterAndImmediateValueOperand>());
+            var regAndHexOp = (InstructionOperandSet.RegisterAndImmediateValueOperand)operands;
             Assert.Multiple(() =>
             {
                 Assert.That(regAndHexOp.FirstOperand.RegisterName, Is.EqualTo("r1"));
@@ -759,7 +759,7 @@ namespace Assembler.Tests
             Assert.Multiple(() =>
             {
                 Assert.That(result.Mnemonic, Is.EqualTo("lda"));
-                Assert.That(result.TokenCount, Is.EqualTo(1 + RegisterNode.TokenCount + 1 + (2 + HexNumberNode.TokenCount)));
+                Assert.That(result.TokenCount, Is.EqualTo(1 + RegisterNode.TokenCount + 1 + (2 + ImmediateValueNode.TokenCount)));
                 Assert.That(result.Span.Line, Is.EqualTo(4));
                 Assert.That(result.Span.StartColumn, Is.EqualTo(0));
                 Assert.That(result.Span.EndColumn, Is.EqualTo(15));

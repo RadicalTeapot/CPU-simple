@@ -2,13 +2,13 @@
 
 namespace Assembler.AST
 {
-    public class HexNumberNode(string value, NodeSpan span) : BaseNode(span)
+    public class ImmediateValueNode(string value, NodeSpan span) : BaseNode(span)
     {
         public string Value { get; } = value;
 
         public const int TokenCount = 2;
 
-        public static bool IsValidHexNodeAtIndex(IList<Token> tokens, int index)
+        public static bool IsValidImmediateValueNodeAtIndex(IList<Token> tokens, int index)
         {
             if (tokens[index].Type != TokenType.Hash)
             {
@@ -25,9 +25,9 @@ namespace Assembler.AST
             return true;
         }
 
-        public static HexNumberNode CreateFromTokens(IList<Token> tokens, int index)
+        public static ImmediateValueNode CreateFromTokens(IList<Token> tokens, int index)
         {
-            if (!IsValidHexNodeAtIndex(tokens, index))
+            if (!IsValidImmediateValueNodeAtIndex(tokens, index))
             {
                 throw new ParserException("Invalid hex number operand syntax.", tokens[index].Line, tokens[index].Column);
             }
@@ -36,7 +36,7 @@ namespace Assembler.AST
             var hexNumberToken = tokens[index + 1];
             var value = hexNumberToken.Lexeme;
             var span = new NodeSpan(hashToken.Column, hexNumberToken.Column + hexNumberToken.Lexeme.Length, hashToken.Line);
-            return new HexNumberNode(value, span);
+            return new ImmediateValueNode(value, span);
         }
     }
 }

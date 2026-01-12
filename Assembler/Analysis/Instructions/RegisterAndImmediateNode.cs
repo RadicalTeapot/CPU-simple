@@ -11,7 +11,7 @@ namespace Assembler.Analysis.Instructions
             var operands = instruction.GetOperands();
             switch (operands)
             {
-                case InstructionOperandSet.RegisterAndHexNumberOperand(var registerOperand, var immediateOperand):
+                case InstructionOperandSet.RegisterAndImmediateValueOperand(var registerOperand, var immediateOperand):
                     var immediateValue = OperandValueProcessor.ParseHexByteString(immediateOperand.Value);
                     EmitNodes = [new DataEmitNode([GetOpcodeByteWithRegister(opcode, registerOperand), immediateValue])];
                     break;
