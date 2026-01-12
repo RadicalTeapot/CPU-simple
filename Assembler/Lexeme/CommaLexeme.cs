@@ -1,6 +1,6 @@
 ﻿namespace Assembler.Lexeme
 {
-    [Lexeme(TokenType.Comma, shouldFailIfAtEndOfLine: true)]
+    [Lexeme(TokenType.Comma)]
     internal class CommaLexeme : ILexeme
     {
         public bool TryMatch(string line, int column, out string matchedText)

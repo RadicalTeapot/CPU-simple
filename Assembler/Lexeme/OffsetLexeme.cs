@@ -1,6 +1,6 @@
 ﻿namespace Assembler.Lexeme
 {
-    [Lexeme(TokenType.Plus, shouldFailIfAtEndOfLine: true)]
+    [Lexeme(TokenType.Plus)]
     internal class PositiveOffsetLexeme : ILexeme
     {
         public bool TryMatch(string line, int column, out string matchedText)
@@ -16,7 +16,7 @@
         }
     }
 
-    [Lexeme(TokenType.Minus, true)]
+    [Lexeme(TokenType.Minus)]
     internal class NegativeOffsetLexeme : ILexeme
     {
         public bool TryMatch(string line, int column, out string matchedText)

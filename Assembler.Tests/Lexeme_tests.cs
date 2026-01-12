@@ -19,18 +19,6 @@ namespace Assembler.Tests
                 Assert.That(result[0].Column, Is.EqualTo(0));
             });
         }
-
-        [Test]
-        public void HashAtEndOfLine_ThrowsLexerException()
-        {
-            var lexer = new Lexer();
-            var ex = Assert.Throws<LexerException>(() => lexer.Tokenize("#"));
-            Assert.Multiple(() =>
-            {
-                Assert.That(ex.Line, Is.EqualTo(0));
-                Assert.That(ex.Column, Is.EqualTo(0));
-            });
-        }
     }
 
     [TestFixture]
@@ -103,18 +91,6 @@ namespace Assembler.Tests
                 Assert.That(result[0].Lexeme, Is.EqualTo(","));
             });
         }
-
-        [Test]
-        public void CommaAtEndOfLine_ThrowsLexerException()
-        {
-            var lexer = new Lexer();
-            var ex = Assert.Throws<LexerException>(() => lexer.Tokenize(","));
-            Assert.Multiple(() =>
-            {
-                Assert.That(ex.Line, Is.EqualTo(0));
-                Assert.That(ex.Column, Is.EqualTo(0));
-            });
-        }
     }
 
     [TestFixture]
@@ -130,18 +106,6 @@ namespace Assembler.Tests
             {
                 Assert.That(result[0].Type, Is.EqualTo(TokenType.Dot));
                 Assert.That(result[0].Lexeme, Is.EqualTo("."));
-            });
-        }
-
-        [Test]
-        public void DotAtEndOfLine_ThrowsLexerException()
-        {
-            var lexer = new Lexer();
-            var ex = Assert.Throws<LexerException>(() => lexer.Tokenize("."));
-            Assert.Multiple(() =>
-            {
-                Assert.That(ex.Line, Is.EqualTo(0));
-                Assert.That(ex.Column, Is.EqualTo(0));
             });
         }
     }
@@ -163,18 +127,6 @@ namespace Assembler.Tests
         }
 
         [Test]
-        public void PositiveOffsetAtEndOfLine_ThrowsLexerException()
-        {
-            var lexer = new Lexer();
-            var ex = Assert.Throws<LexerException>(() => lexer.Tokenize("+"));
-            Assert.Multiple(() =>
-            {
-                Assert.That(ex.Line, Is.EqualTo(0));
-                Assert.That(ex.Column, Is.EqualTo(0));
-            });
-        }
-
-        [Test]
         public void NegativeOffsetLexeme_CorrectlyIdentifiesMinus()
         {
             var lexer = new Lexer();
@@ -184,18 +136,6 @@ namespace Assembler.Tests
             {
                 Assert.That(result[0].Type, Is.EqualTo(TokenType.Minus));
                 Assert.That(result[0].Lexeme, Is.EqualTo("-"));
-            });
-        }
-
-        [Test]
-        public void NegativeOffsetAtEndOfLine_ThrowsLexerException()
-        {
-            var lexer = new Lexer();
-            var ex = Assert.Throws<LexerException>(() => lexer.Tokenize("-"));
-            Assert.Multiple(() =>
-            {
-                Assert.That(ex.Line, Is.EqualTo(0));
-                Assert.That(ex.Column, Is.EqualTo(0));
             });
         }
     }
@@ -230,18 +170,6 @@ namespace Assembler.Tests
             {
                 Assert.That(result[0].Type, Is.EqualTo(TokenType.LeftSquareBracket));
                 Assert.That(result[0].Lexeme, Is.EqualTo("["));
-            });
-        }
-
-        [Test]
-        public void LeftSquareBracketAtEndOfLine_ThrowsLexerException()
-        {
-            var lexer = new Lexer();
-            var ex = Assert.Throws<LexerException>(() => lexer.Tokenize("["));
-            Assert.Multiple(() =>
-            {
-                Assert.That(ex.Line, Is.EqualTo(0));
-                Assert.That(ex.Column, Is.EqualTo(0));
             });
         }
 

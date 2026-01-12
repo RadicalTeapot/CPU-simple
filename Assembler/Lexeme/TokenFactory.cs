@@ -32,11 +32,6 @@ namespace Assembler.Lexeme
                 if (lexeme.Lexeme.TryMatch(source, column, out var matchedText))
                 {
                     var endIdx = column + matchedText.Length;
-                    if (lexeme.ShouldFailIfAtEndOfLine && endIdx >= source.Length)
-                    {
-                        throw new LexerException("Unexpected end of line", line, column);
-                    }
-
                     token = new Token(lexeme.Type, matchedText, line, column);
                     newColumn = endIdx;
                     return true;
@@ -48,11 +43,10 @@ namespace Assembler.Lexeme
             return false;
         }
 
-        private class LexemeMetadata(ILexeme lexeme, TokenType type, bool shouldFailIfAtEndOfLine, int priority)
+        private class LexemeMetadata(ILexeme lexeme, TokenType type, int priority)
         {
             public ILexeme Lexeme { get; init; } = lexeme;
             public TokenType Type { get; init; } = type;
-            public bool ShouldFailIfAtEndOfLine { get; init; } = shouldFailIfAtEndOfLine;
             public int Priority { get; init; } = priority;
 
         }
@@ -72,7 +66,6 @@ namespace Assembler.Lexeme
                     lexemes.Add(new LexemeMetadata(
                         lexemeInstance,
                         attribute.Type,
-                        attribute.ShouldFailIfAtEndOfLine,
                         attribute.Priority));
                 }
             }
