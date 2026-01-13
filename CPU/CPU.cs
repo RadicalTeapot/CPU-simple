@@ -6,6 +6,8 @@ namespace CPU
 {
     public class CPU
     {
+        public IProgress<CpuInspector>? ProgressInspector { get; set; } = null;
+
         public CPU(Config config) :
             this(new State(config.RegisterCount),
                  new Stack(config.StackSize),
@@ -17,6 +19,7 @@ namespace CPU
             _state = state;
             _stack = stack;
             _memory = memory;
+            _cycle = 0;
             _opcodeFactory = new OpcodeFactory();
         }
 
@@ -24,6 +27,7 @@ namespace CPU
         {
             _state.Reset();
             _stack.Reset();
+            _cycle = 0;
             // Note: Memory is not cleared on reset
         }
 
@@ -35,13 +39,14 @@ namespace CPU
             _memory.LoadBytes(0, program);
         }
 
-        public void Run(bool traceEnabled)
+        public void Run()
         {
+            Reset();
             while (_state.GetPC() - AddressSize <= _memory.Size)
             {
                 try
                 {
-                    Step(traceEnabled);
+                    Step();
                 }
                 catch (OpcodeException.HaltException)
                 {
@@ -61,19 +66,15 @@ namespace CPU
         /// <summary>
         /// Executes a single instruction cycle: Fetch → Decode → Execute.
         /// </summary>
-        public void Step(bool traceEnabled)
+        public void Step()
         {
-            var pcBefore = _state.GetPC();
-
             var instructionBytes = Fetch();
-            var opcodeInstance = Decode(instructionBytes, out DecodedInstruction decoded);
+            var opcodeInstance = Decode(instructionBytes, out var decoded);
             opcodeInstance.Execute();
 
-            if (traceEnabled)
-            {
-                var trace = new Trace(pcBefore, _state.GetPC(), decoded);
-                trace.Dump();
-            }
+            _cycle++;
+
+            ProgressInspector?.Report(CpuInspector.Create(_cycle, _state, _stack, _memory, decoded.AsStringArray()));
         }
 
         private byte[] Fetch()
@@ -110,6 +111,7 @@ namespace CPU
         private readonly Stack _stack;
         private readonly Memory _memory;
         private readonly OpcodeFactory _opcodeFactory;
+        private int _cycle = 0;
 #if x16
         public const int AddressSize = 2;
 #else

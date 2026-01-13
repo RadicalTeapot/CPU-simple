@@ -38,7 +38,7 @@ namespace CPU.Tests
                 out _);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetPC(), Is.EqualTo(1), "PC should increment by 1 after NOP.");
@@ -59,7 +59,7 @@ namespace CPU.Tests
                 out _);
 
             // Act & Assert
-            Assert.Throws<OpcodeException.HaltException>(() => cpu.Step(traceEnabled: false));
+            Assert.Throws<OpcodeException.HaltException>(() => cpu.Step());
         }
     }
 
@@ -77,7 +77,7 @@ namespace CPU.Tests
                 out _);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetPC(), Is.EqualTo(5), "PC should be set to the target address after JMP.");
@@ -99,7 +99,7 @@ namespace CPU.Tests
             var initialSP = stack.SP;
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetPC(), Is.EqualTo(5), "PC should be set to the target address after CAL.");
@@ -125,7 +125,7 @@ namespace CPU.Tests
             var initialSP = stack.SP;
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Arrange
             Assert.That(state.GetPC(), Is.EqualTo(5), "PC should be set to the address popped from the stack after RET.");
@@ -147,7 +147,7 @@ namespace CPU.Tests
             state.SetRegister(0, 42); // Set R0 to a known value
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetRegister(0), Is.EqualTo(42), "R0 should contain the value copied from R1.");
@@ -170,7 +170,7 @@ namespace CPU.Tests
                 out _);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetRegister(0), Is.EqualTo(0x01), "R0 should contain the immediate value 1.");
@@ -193,7 +193,7 @@ namespace CPU.Tests
             memory.WriteByte(0x10, 1); // Set memory at address 16 to 1
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetRegister(0), Is.EqualTo(1), "R0 should contain the value loaded from memory.");
@@ -217,7 +217,7 @@ namespace CPU.Tests
             state.SetRegister(0, 1); // Set R0 to 1
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(memory.ReadByte(0), Is.EqualTo(1), "Memory at address 0 should contain the value from R0.");
@@ -241,7 +241,7 @@ namespace CPU.Tests
             state.SetRegister(0, 1); // Set R0 to 1
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetRegister(0), Is.EqualTo(2), "Result should be R0 + 1 + carry = 1 + 1 + 0 = 2");
@@ -262,7 +262,7 @@ namespace CPU.Tests
             state.SetRegister(0, 1); // Set R0 to 1
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetRegister(0), Is.EqualTo(0), "Result should be R0 + 255 + carry = 1 + 255 + 0 = 0 (overflow)");
@@ -280,7 +280,7 @@ namespace CPU.Tests
                 out _);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetRegister(0), Is.EqualTo(0), "Result should be R0 + 0 + carry = 0 + 0 + 0 = 0");
@@ -299,7 +299,7 @@ namespace CPU.Tests
             state.SetCarryFlag(true);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetRegister(0), Is.EqualTo(1), "Result should be R0 + 0 + carry = 0 + 0 + 1 = 1");
@@ -322,7 +322,7 @@ namespace CPU.Tests
             state.SetCarryFlag(true); // No borrow carry
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetRegister(0), Is.EqualTo(1), "Result shoud be R0 - 1 - (1 - carry) = 2 - 1 - 0 = 1");
@@ -344,7 +344,7 @@ namespace CPU.Tests
             state.SetCarryFlag(true); // No borrow carry
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetRegister(0), Is.EqualTo(0), "Result should be R0 - 1 - (1 - carry) = 1 - 1 - 0 = 0");
@@ -364,7 +364,7 @@ namespace CPU.Tests
             state.SetCarryFlag(false); // No borrow carry
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetRegister(0), Is.EqualTo(0), "Result should be R0 - 0 - (1 - carry) = 1 - 0 - 1 = 0");
@@ -382,7 +382,7 @@ namespace CPU.Tests
             state.SetCarryFlag(true); // No borrow carry
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetRegister(0), Is.EqualTo(255), "Result should be R0 - 1 - (1 - carry) = 0 - 1 - 0 = 255 (underflow)");
@@ -405,7 +405,7 @@ namespace CPU.Tests
             state.SetCarryFlag(true);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.C, Is.False, "Carry flag should have been cleared");
@@ -428,7 +428,7 @@ namespace CPU.Tests
             state.SetCarryFlag(false);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.C, Is.True, "Carry flag should have been set");
@@ -451,7 +451,7 @@ namespace CPU.Tests
             state.SetZeroFlag(true);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.Z, Is.False, "Zero flag should have been cleared");
@@ -474,7 +474,7 @@ namespace CPU.Tests
             state.SetZeroFlag(false);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.Z, Is.True, "Zero flag should have been set");
@@ -499,7 +499,7 @@ namespace CPU.Tests
             state.SetZeroFlag(true);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.Z, Is.True, "Zero flag should be set when R0 equals R1.");
@@ -520,7 +520,7 @@ namespace CPU.Tests
             state.SetZeroFlag(true);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.Z, Is.False, "Zero flag should be cleared when R0 equals R1.");
@@ -540,7 +540,7 @@ namespace CPU.Tests
             state.SetCarryFlag(false);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.C, Is.True, "Carry flag should be set when destination > source.");
@@ -560,7 +560,7 @@ namespace CPU.Tests
             state.SetCarryFlag(false);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.C, Is.True, "Carry flag should be set when destination == source.");
@@ -580,7 +580,7 @@ namespace CPU.Tests
             state.SetCarryFlag(true);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.C, Is.False, "Carry flag should be cleared when destination < source.");
@@ -603,7 +603,7 @@ namespace CPU.Tests
             state.SetCarryFlag(false);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetPC(), Is.EqualTo(0x10), "PC should be set to the target address when carry flag is false.");
@@ -621,7 +621,7 @@ namespace CPU.Tests
             state.SetCarryFlag(true);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             var expectedPc = 1 + OpcodeTestHelpers.AddressSize; // instruction + address size
@@ -644,7 +644,7 @@ namespace CPU.Tests
             state.SetCarryFlag(true);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetPC(), Is.EqualTo(0x10), "PC should be set to the target address when carry flag is true.");
@@ -662,7 +662,7 @@ namespace CPU.Tests
             state.SetCarryFlag(false);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             var expectedPc = 1 + OpcodeTestHelpers.AddressSize; // instruction + address size
@@ -685,7 +685,7 @@ namespace CPU.Tests
             state.SetZeroFlag(false);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetPC(), Is.EqualTo(0x10), "PC should be set to the target address when zero flag is false.");
@@ -703,7 +703,7 @@ namespace CPU.Tests
             state.SetZeroFlag(true);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             var expectedPc = 1 + OpcodeTestHelpers.AddressSize; // instruction + address size
@@ -726,7 +726,7 @@ namespace CPU.Tests
             state.SetZeroFlag(true);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetPC(), Is.EqualTo(0x10), "PC should be set to the target address when zero flag is true.");
@@ -744,7 +744,7 @@ namespace CPU.Tests
             state.SetZeroFlag(false);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             var expectedPc = 1 + OpcodeTestHelpers.AddressSize; // instruction + address size
@@ -768,7 +768,7 @@ namespace CPU.Tests
             var initialSP = stack.SP;
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(stack.PeekByte(), Is.EqualTo(1), "Stack should contain the value from R0.");
@@ -788,7 +788,7 @@ namespace CPU.Tests
             state.SetRegister(0, 1);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetRegister(0), Is.EqualTo(1), "R0 should remain unchanged after PSH.");
@@ -811,7 +811,7 @@ namespace CPU.Tests
             var initialSP = stack.SP;
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetRegister(0), Is.EqualTo(1), "R0 should contain the value peeked from stack.");
@@ -831,7 +831,7 @@ namespace CPU.Tests
             stack.PushByte(1);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(stack.PeekByte(), Is.EqualTo(1), "Stack value should still be present after PEK.");
@@ -854,7 +854,7 @@ namespace CPU.Tests
             var initialSP = stack.SP;
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetRegister(0), Is.EqualTo(1), "R0 should contain the value popped from stack.");
@@ -875,7 +875,7 @@ namespace CPU.Tests
             stack.PushByte(2);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetRegister(0), Is.EqualTo(2), "R0 should contain the top value.");
@@ -900,7 +900,7 @@ namespace CPU.Tests
             state.SetCarryFlag(false);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetRegister(1), Is.EqualTo(8), "Result should be R0 + R1 + carry = 5 + 3 + 0 = 8");
@@ -923,7 +923,7 @@ namespace CPU.Tests
             state.SetCarryFlag(false);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetRegister(1), Is.EqualTo(1), "Result should be (2 + 255) mod 256 = 1");
@@ -944,7 +944,7 @@ namespace CPU.Tests
             state.SetCarryFlag(false);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetRegister(0), Is.EqualTo(0), "Result should be 0");
@@ -965,7 +965,7 @@ namespace CPU.Tests
             state.SetCarryFlag(true);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetRegister(1), Is.EqualTo(9), "Result should be R0 + R1 + carry = 5 + 3 + 1 = 9");
@@ -989,7 +989,7 @@ namespace CPU.Tests
             state.SetCarryFlag(true); // No borrow
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetRegister(1), Is.EqualTo(7), "Result should be R1 - R0 - (1 - carry) = 10 - 3 - 0 = 7");
@@ -1012,7 +1012,7 @@ namespace CPU.Tests
             state.SetCarryFlag(true); // No borrow
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetRegister(1), Is.EqualTo(255), "Result should be (1 - 2) mod 256 = 255");
@@ -1033,7 +1033,7 @@ namespace CPU.Tests
             state.SetCarryFlag(true); // No borrow
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetRegister(1), Is.EqualTo(0), "Result should be 0");
@@ -1054,7 +1054,7 @@ namespace CPU.Tests
             state.SetCarryFlag(false); // Borrow
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetRegister(1), Is.EqualTo(6), "Result should be R0 - R1 - (1 - carry) = 10 - 3 - 1 = 6");
@@ -1078,7 +1078,7 @@ namespace CPU.Tests
             state.SetCarryFlag(false);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetRegister(0), Is.EqualTo(8), "Result should be R0 + mem[16] + carry = 5 + 3 + 0 = 8");
@@ -1102,7 +1102,7 @@ namespace CPU.Tests
             state.SetCarryFlag(false);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetRegister(0), Is.EqualTo(1), "Result should be (2 + 255) mod 256 = 1");
@@ -1123,7 +1123,7 @@ namespace CPU.Tests
             state.SetCarryFlag(false);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetRegister(0), Is.EqualTo(0), "Result should be 0");
@@ -1144,7 +1144,7 @@ namespace CPU.Tests
             state.SetCarryFlag(true);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetRegister(0), Is.EqualTo(9), "Result should be R0 + mem[16] + carry = 5 + 3 + 1 = 9");
@@ -1168,7 +1168,7 @@ namespace CPU.Tests
             state.SetCarryFlag(true); // No borrow
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetRegister(0), Is.EqualTo(7), "Result should be R0 - mem[16] - (1 - carry) = 10 - 3 - 0 = 7");
@@ -1192,7 +1192,7 @@ namespace CPU.Tests
             state.SetCarryFlag(true); // No borrow
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetRegister(0), Is.EqualTo(255), "Result should be (1 - 2) mod 256 = 255");
@@ -1213,7 +1213,7 @@ namespace CPU.Tests
             state.SetCarryFlag(true); // No borrow
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetRegister(0), Is.EqualTo(0), "Result should be 0");
@@ -1234,7 +1234,7 @@ namespace CPU.Tests
             state.SetCarryFlag(false); // Borrow
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetRegister(0), Is.EqualTo(6), "Result should be R0 - mem[16] - (1 - carry) = 10 - 3 - 1 = 6");
@@ -1256,7 +1256,7 @@ namespace CPU.Tests
             state.SetRegister(0, 0b0010_1010); // 42
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetRegister(0), Is.EqualTo(0b0101_0100), "Result should be 42 << 1 = 84");
@@ -1276,7 +1276,7 @@ namespace CPU.Tests
             state.SetRegister(0, 0b1000_0001); // 129
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetRegister(0), Is.EqualTo(0b0000_0010), "Result should be 129 << 1 = 2");
@@ -1296,7 +1296,7 @@ namespace CPU.Tests
             state.SetCarryFlag(true);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetRegister(0), Is.EqualTo(0b1111_1110), "Result should be 127 << 1 = 254");
@@ -1319,7 +1319,7 @@ namespace CPU.Tests
             state.SetRegister(0, 0b0010_1010); // 42
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetRegister(0), Is.EqualTo(0b0001_0101), "Result should be 42 >> 1 = 21");
@@ -1339,7 +1339,7 @@ namespace CPU.Tests
             state.SetRegister(0, 0b0000_0011); // 3
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetRegister(0), Is.EqualTo(0b0000_0001), "Result should be 3 >> 1 = 1");
@@ -1359,7 +1359,7 @@ namespace CPU.Tests
             state.SetCarryFlag(true);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetRegister(0), Is.EqualTo(0b0111_1111), "Result should be 254 >> 1 = 127");
@@ -1382,7 +1382,7 @@ namespace CPU.Tests
             state.SetRegister(0, 0b0010_1010); // 42
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetRegister(0), Is.EqualTo(0b0101_0100), "Result should be 42 rotated left = 84");
@@ -1401,7 +1401,7 @@ namespace CPU.Tests
             state.SetRegister(0, 0b1000_0000); // 128
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetRegister(0), Is.EqualTo(0b0000_0001), "Result should be 128 rotated left = 1");
@@ -1420,7 +1420,7 @@ namespace CPU.Tests
             state.SetCarryFlag(false);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.C, Is.False, "Carry flag should remain unaffected.");
@@ -1442,7 +1442,7 @@ namespace CPU.Tests
             state.SetRegister(0, 0b0010_1010); // 42
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetRegister(0), Is.EqualTo(0b0001_0101), "Result should be 42 rotated right = 21");
@@ -1461,7 +1461,7 @@ namespace CPU.Tests
             state.SetRegister(0, 0b0000_0001); // 1
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetRegister(0), Is.EqualTo(0b1000_0000), "Result should be 1 rotated right = 128");
@@ -1480,7 +1480,7 @@ namespace CPU.Tests
             state.SetCarryFlag(false);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.C, Is.False, "Carry flag should remain unaffected.");
@@ -1502,7 +1502,7 @@ namespace CPU.Tests
             state.SetRegister(0, 0x01);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.Z, Is.True, "Zero flag should be set when values are equal.");
@@ -1521,7 +1521,7 @@ namespace CPU.Tests
             state.SetRegister(0, 0x02);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.Z, Is.False, "Zero flag should be clear when values are not equal.");
@@ -1540,7 +1540,7 @@ namespace CPU.Tests
             state.SetRegister(0, 0x01);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.Z, Is.False, "Zero flag should be clear when values are not equal.");
@@ -1564,7 +1564,7 @@ namespace CPU.Tests
             memory.WriteByte(0x10, 0x01);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.Z, Is.True, "Zero flag should be set when values are equal.");
@@ -1584,7 +1584,7 @@ namespace CPU.Tests
             memory.WriteByte(0x10, 0x01);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.Z, Is.False, "Zero flag should be clear when values are not equal.");
@@ -1604,7 +1604,7 @@ namespace CPU.Tests
             memory.WriteByte(0x10, 0x02);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.Z, Is.False, "Zero flag should be clear when values are not equal.");
@@ -1627,7 +1627,7 @@ namespace CPU.Tests
             state.SetRegister(0, 0x00);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetRegister(0), Is.EqualTo(0x01), "R0 should be incremented by 1.");
@@ -1646,7 +1646,7 @@ namespace CPU.Tests
             state.SetRegister(0, 0xFF);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetRegister(0), Is.EqualTo(0x00), "R0 should wrap to 0 on overflow.");
@@ -1669,7 +1669,7 @@ namespace CPU.Tests
             state.SetRegister(0, 0x02);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetRegister(0), Is.EqualTo(0x01), "R0 should be decremented by 1.");
@@ -1688,7 +1688,7 @@ namespace CPU.Tests
             state.SetRegister(0, 0x01);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetRegister(0), Is.EqualTo(0x00), "R0 should be 0.");
@@ -1707,7 +1707,7 @@ namespace CPU.Tests
             state.SetRegister(0, 0x00);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetRegister(0), Is.EqualTo(0xFF), "R0 should wrap to 0xFF on underflow.");
@@ -1731,7 +1731,7 @@ namespace CPU.Tests
             state.SetRegister(1, 0b1010_1010);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetRegister(1), Is.EqualTo(0b1010_0000), "R1 should contain R0 AND R1.");
@@ -1751,7 +1751,7 @@ namespace CPU.Tests
             state.SetRegister(1, 0b0000_1111);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetRegister(1), Is.EqualTo(0x00), "R1 should be 0.");
@@ -1774,7 +1774,7 @@ namespace CPU.Tests
             state.SetRegister(0, 0b1111_0000);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetRegister(0), Is.EqualTo(0b1010_0000), "R0 should contain R0 AND immediate.");
@@ -1793,7 +1793,7 @@ namespace CPU.Tests
             state.SetRegister(0, 0b1111_0000);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetRegister(0), Is.EqualTo(0x00), "R0 should be 0.");
@@ -1817,7 +1817,7 @@ namespace CPU.Tests
             memory.WriteByte(0x10, 0b1010_1010);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetRegister(0), Is.EqualTo(0b1010_0000), "R0 should contain R0 AND memory value.");
@@ -1837,7 +1837,7 @@ namespace CPU.Tests
             memory.WriteByte(0x10, 0b0000_1111);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetRegister(0), Is.EqualTo(0x00), "R0 should be 0.");
@@ -1861,7 +1861,7 @@ namespace CPU.Tests
             state.SetRegister(1, 0b0000_1111);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetRegister(1), Is.EqualTo(0b1111_1111), "R1 should contain R0 OR R1.");
@@ -1881,7 +1881,7 @@ namespace CPU.Tests
             state.SetRegister(1, 0x00);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetRegister(1), Is.EqualTo(0x00), "R1 should be 0.");
@@ -1904,7 +1904,7 @@ namespace CPU.Tests
             state.SetRegister(0, 0b1111_0000);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetRegister(0), Is.EqualTo(0b1111_1111), "R0 should contain R0 OR immediate.");
@@ -1923,7 +1923,7 @@ namespace CPU.Tests
             state.SetRegister(0, 0x00);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetRegister(0), Is.EqualTo(0x00), "R0 should be 0.");
@@ -1947,7 +1947,7 @@ namespace CPU.Tests
             memory.WriteByte(0x10, 0b0000_1111);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetRegister(0), Is.EqualTo(0b1111_1111), "R0 should contain R0 OR memory value.");
@@ -1967,7 +1967,7 @@ namespace CPU.Tests
             memory.WriteByte(0x10, 0x00);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetRegister(0), Is.EqualTo(0x00), "R0 should be 0.");
@@ -1991,7 +1991,7 @@ namespace CPU.Tests
             state.SetRegister(1, 0b1010_1010);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetRegister(1), Is.EqualTo(0b0101_1010), "R1 should contain R0 XOR R1.");
@@ -2011,7 +2011,7 @@ namespace CPU.Tests
             state.SetRegister(1, 0b1010_1010);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetRegister(1), Is.EqualTo(0x00), "R1 should be 0 when XORing same values.");
@@ -2034,7 +2034,7 @@ namespace CPU.Tests
             state.SetRegister(0, 0b1111_0000);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetRegister(0), Is.EqualTo(0b0101_1010), "R0 should contain R0 XOR immediate.");
@@ -2053,7 +2053,7 @@ namespace CPU.Tests
             state.SetRegister(0, 0b1010_1010);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetRegister(0), Is.EqualTo(0x00), "R0 should be 0.");
@@ -2077,7 +2077,7 @@ namespace CPU.Tests
             memory.WriteByte(0x10, 0b1010_1010);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetRegister(0), Is.EqualTo(0b0101_1010), "R0 should contain R0 XOR memory value.");
@@ -2097,7 +2097,7 @@ namespace CPU.Tests
             memory.WriteByte(0x10, 0b1010_1010);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetRegister(0), Is.EqualTo(0x00), "R0 should be 0.");
@@ -2120,7 +2120,7 @@ namespace CPU.Tests
             state.SetRegister(0, 0b1111_1111);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.Z, Is.True, "Zero flag should be set when bits match (result is not zero).");
@@ -2138,7 +2138,7 @@ namespace CPU.Tests
             state.SetRegister(0, 0b1111_0000);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.Z, Is.False, "Zero flag should be clear when bits do not match (result is zero).");
@@ -2156,7 +2156,7 @@ namespace CPU.Tests
             state.SetRegister(0, 0b0000_0000);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.Z, Is.False, "Zero flag should be clear when bits match and are zero.");
@@ -2174,7 +2174,7 @@ namespace CPU.Tests
             state.SetRegister(0, 0b1111_0000);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetRegister(0), Is.EqualTo(0b1111_0000), "R0 should not be modified by BTI.");
@@ -2197,7 +2197,7 @@ namespace CPU.Tests
             memory.WriteByte(0x10, 0b0000_1000);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.Z, Is.True, "Zero flag should be set when bits match (result is not zero).");
@@ -2216,7 +2216,7 @@ namespace CPU.Tests
             memory.WriteByte(0x10, 0b0000_1111);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.Z, Is.False, "Zero flag should be clear when bits do not match (result is zero).");
@@ -2235,7 +2235,7 @@ namespace CPU.Tests
             memory.WriteByte(0x10, 0b0000_0000);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.Z, Is.False, "Zero flag should be clear when bits match and are zero.");
@@ -2254,7 +2254,7 @@ namespace CPU.Tests
             memory.WriteByte(0x10, 0b1010_1010);
 
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
 
             // Assert
             Assert.That(state.GetRegister(0), Is.EqualTo(0b1111_0000), "R0 should not be modified by BTA.");
@@ -2276,7 +2276,7 @@ namespace CPU.Tests
             state.SetRegister(1, 0x10); // R1 points to address 0x10
             memory.WriteByte(0x10, 0x42);
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
             // Assert
             Assert.That(state.GetRegister(0), Is.EqualTo(0x42), "R0 should load value 0x42 from memory address 0x10.");
         }
@@ -2293,7 +2293,7 @@ namespace CPU.Tests
             state.SetRegister(1, 0x10); // R1 points to address 0x10 + 0x01 offset
             memory.WriteByte(0x11, 0x42);
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
             // Assert
             Assert.That(state.GetRegister(0), Is.EqualTo(0x42), "R0 should load value 0x42 from memory address 0x11.");
         }
@@ -2314,7 +2314,7 @@ namespace CPU.Tests
             state.SetRegister(0, 0x42); // R0 contains value 0x42
             state.SetRegister(1, 0x10); // R1 points to address 0x10
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
             // Assert
             Assert.That(memory.ReadByte(0x10), Is.EqualTo(0x42), "Memory address 0x10 should contain value 0x42 after STX.");
         }
@@ -2331,7 +2331,7 @@ namespace CPU.Tests
             state.SetRegister(0, 0x42); // R0 contains value 0x42
             state.SetRegister(1, 0x10); // R1 points to address 0x10 + 0x01 offset
             // Act
-            cpu.Step(traceEnabled: false);
+            cpu.Step();
             // Assert
             Assert.That(memory.ReadByte(0x11), Is.EqualTo(0x42), "Memory address 0x11 should contain value 0x42 after STX.");
         }

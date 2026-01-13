@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Text;
 
 namespace CPU.opcodes
 {
@@ -59,7 +60,7 @@ namespace CPU.opcodes
     /// <summary>
     /// Result of the decode phase: contains the opcode, its metadata, and parsed arguments.
     /// </summary>
-    internal readonly struct DecodedInstruction(
+    internal class DecodedInstruction(
         OpcodeMetadata metadata,
         OpcodeArgs args,
         byte rawInstruction)
@@ -68,5 +69,35 @@ namespace CPU.opcodes
         public OpcodeArgs Args { get; } = args;
         public byte RawInstruction { get; } = rawInstruction;
         public ConstructorInfo OpcodeConstructor => Metadata.OpcodeConstructor;
+
+        public string[] AsStringArray()
+        {
+            var parts = new List<string> { Metadata.BaseCode.ToString() };
+
+            if (Metadata.RegisterArgsCount == RegisterArgsCount.Two)
+            {
+                parts.Add($"R{Args.LowRegisterIdx}");
+                parts.Add($"R{Args.HighRegisterIdx}");
+            }
+            else if (Metadata.RegisterArgsCount == RegisterArgsCount.One)
+            {
+                parts.Add($"R{Args.LowRegisterIdx}");
+            }
+
+            if (Metadata.OperandType == OperandType.Address)
+            {
+                parts.Add($"[{Args.AddressValue:X2}]");
+            }
+            else if (Metadata.OperandType == OperandType.Immediate)
+            {
+                parts.Add($"#0x{Args.ImmediateValue:X2}");
+            }
+            else if (Metadata.OperandType == OperandType.RegAndImmediate)
+            {
+                parts.Add($"[R{Args.LowRegisterIdx}+#0x{Args.ImmediateValue:X2}]");
+            }
+
+            return parts.ToArray();
+        }
     }
 }

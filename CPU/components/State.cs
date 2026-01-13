@@ -37,6 +37,19 @@
         public void SetCarryFlag(bool value) => C = value;
         public int GetCarryFlagAsInt() => C ? 1 : 0;
 
+        internal void UpdateCpuInspectorBuilder(CpuInspector.Builder inspectorBuilder)
+        {
+            inspectorBuilder.SetZeroFlag(Z);
+            inspectorBuilder.SetCarryFlag(C);
+            var registers = new byte[RegisterCount];
+            for (int i = 0; i < RegisterCount; i++)
+            {
+                registers[i] = GetRegister(i);
+            }
+            inspectorBuilder.SetRegisters(registers);
+            inspectorBuilder.SetPC(GetPC());
+        }
+
         private readonly Register<byte>[] _registers;
 
 #if x16
