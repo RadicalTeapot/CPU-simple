@@ -40,16 +40,16 @@ namespace Assembler.AST
                     return new MemoryAddress.Label(_labelAddress!);
                 case AddressType.PositiveOffset:
                     Debug.Assert(_labelAddress != null && _offset != null && _addressOffsetType == AddressType.PositiveOffset, "Memory address has no label reference with positive offset");
-                    return new MemoryAddress.LabelWithPositiveOffset(_labelAddress!, _offset!);
+                    return new MemoryAddress.LabelWithPositiveOffset(_labelAddress, _offset);
                 case AddressType.NegativeOffset:
                     Debug.Assert(_labelAddress != null && _offset != null && _addressOffsetType == AddressType.NegativeOffset, "Memory address has no label reference with negative offset");
-                    return new MemoryAddress.LabelWithNegativeOffset(_labelAddress!, _offset!);
+                    return new MemoryAddress.LabelWithNegativeOffset(_labelAddress, _offset);
                 case AddressType.Register:
                     Debug.Assert(_registerAddress != null, "Memory address has no register reference");
-                    return new MemoryAddress.Register(_registerAddress!);
+                    return new MemoryAddress.Register(_registerAddress);
                 case AddressType.RegisterPositiveOffset:
                     Debug.Assert(_registerAddress != null && _offset != null && _addressOffsetType == AddressType.RegisterPositiveOffset, "Memory address has no register reference with positive offset");
-                    return new MemoryAddress.RegisterWithPositiveOffset(_registerAddress!, _offset!);
+                    return new MemoryAddress.RegisterWithPositiveOffset(_registerAddress, _offset);
                 default:
                     throw new ParserException("Unknown memory address type", Span.Line, Span.StartColumn);
             };

@@ -1,4 +1,5 @@
 ﻿using Assembler.AST;
+using System.Diagnostics;
 
 namespace Assembler.Analysis.EmitNode
 {
@@ -6,11 +7,28 @@ namespace Assembler.Analysis.EmitNode
     {
         public LabelReferenceNode LabelRefNode { get; } = labelRefNode;
         public int Offset { get; } = offset;
+#if x16
+        public int Count { get; } = 2;
+#else
         public int Count { get; } = 1;
+#endif
 
-        public void Resolve(byte value)
+        public void Resolve(int value)
         {
-            resolvedValue = (byte)(value + Offset); // TODO Handle overflow? And handle 16-bit labels?
+            var valueWithOffset = value + Offset;
+#if x16
+            if (valueWithOffset < 0 || valueWithOffset > 65535)
+            {
+                throw new ParserException($"Label '{LabelRefNode.Label}' resolved address {valueWithOffset:X4} with offset {Offset} is out of range for 16-bit addressing.", LabelRefNode.Span.Line, LabelRefNode.Span.StartColumn);
+            }
+            resolvedValue = (ushort)valueWithOffset;
+#else
+            if (valueWithOffset < 0 || valueWithOffset > 255)
+            {
+                throw new ParserException($"Label '{LabelRefNode.Label}' resolved address {valueWithOffset:X2} with offset {Offset} is out of range for 8-bit addressing.", LabelRefNode.Span.Line, LabelRefNode.Span.StartColumn);
+            }
+            resolvedValue = (byte)valueWithOffset;
+#endif
             isResolved = true;
         }
 
@@ -20,10 +38,19 @@ namespace Assembler.Analysis.EmitNode
             {
                 throw new ParserException($"Label '{LabelRefNode.Label}' has not been resolved yet.", LabelRefNode.Span.Line, LabelRefNode.Span.StartColumn);
             }
+#if x16
+            Debug.Assert(BitConverter.IsLittleEndian, "This code assumes a little-endian architecture");
+            return BitConverter.GetBytes(resolvedValue);
+#else
             return [resolvedValue];
+#endif
         }
 
         private bool isResolved = false;
+#if x16
+        private ushort resolvedValue;
+#else
         private byte resolvedValue;
+#endif
     }
 }

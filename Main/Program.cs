@@ -4,7 +4,7 @@ class Program
 {
     static void Main()
     {
-        var program = AssembleProgram(PROG_5);
+        var program = AssembleProgram(PROG_3);
         var cpu = new CPU.CPU(new CPU.Config());
         cpu.LoadProgram(program);
         cpu.Run(traceEnabled: true);
@@ -40,7 +40,7 @@ class Program
        "CLC             ; Clear carry flag (for ADI to work correctly when jumping after CMP)",
        "ADI R0, #0x02   ; Increment R0",
        "CMP R0, R1      ; Set carry when R0 >= R1",
-       "JCC [#0x0004]   ; Jump back to CLC if carry not set",
+       "JCC [#0x04]   ; Jump back to CLC if carry not set",
        "HLT"
     ];
 #else

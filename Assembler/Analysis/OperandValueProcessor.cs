@@ -1,4 +1,5 @@
 ﻿using Assembler.AST;
+using System.Diagnostics;
 
 namespace Assembler.Analysis
 {
@@ -71,7 +72,7 @@ namespace Assembler.Analysis
     internal class MemoryAddressValueProcessor(int memorySize)
     {
 #if x16
-        public ushortParseAddressValueString(HexNumberNode hexNumber)
+        public ushort ParseAddressValueString(ImmediateValueNode hexNumber)
         {
             var address = OperandValueProcessor.ParseHexNumberString(hexNumber.Value);
             if (address < 0 || address >= memorySize)
@@ -96,6 +97,7 @@ namespace Assembler.Analysis
         {
             var addressValue = ParseAddressValueString(immediateOperand);
 #if x16
+            Debug.Assert(BitConverter.IsLittleEndian, "This code assumes a little-endian architecture");
             return BitConverter.GetBytes(addressValue);
 #else
             return [addressValue];

@@ -78,7 +78,7 @@ namespace Assembler.Analysis
 
                 foreach (var emitNode in EmitNodes)
                 {
-                    emitNode.Resolve((byte)(locationCounter + section?.StartAddress ?? 0));
+                    emitNode.Resolve(locationCounter + section?.StartAddress ?? 0);
                 }
             }
 
