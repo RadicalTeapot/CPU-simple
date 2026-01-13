@@ -29,6 +29,7 @@ namespace CPU
             _stack.Reset();
             _cycle = 0;
             // Note: Memory is not cleared on reset
+            ProgressInspector?.Report(CpuInspector.Create(_cycle, _state, _stack, _memory, []));
         }
 
         public void LoadProgram(byte[] program)

@@ -1,58 +1,135 @@
-﻿using Spectre.Console;
+﻿using Assembler;
+using CPU;
+using Spectre.Console;
 
 namespace TUI
 {
-    public class HeaderPanel
+    public class ApplicationState
     {
-        public bool IsRunning
+        public event Action<CpuInspector>? CpuStateUpdate;
+        public event Action<bool>? RunningStateChanged;
+        public event Action<int>? TickRateChanged;
+
+        public void UpdateCpuState(CpuInspector inspector)
         {
+            CpuStateUpdate?.Invoke(inspector);
+        }
+
+        public bool IsRunning {
             get => _isRunning;
             set
             {
                 _isRunning = value;
-                _table.UpdateCell(0, 1, new Markup(_isRunning ? "[green]Yes[/]" : "[red]No[/]"));
+                RunningStateChanged?.Invoke(_isRunning);
             }
         }
 
-        public int TickRateMs
+        public int TickRate
         {
-            get => _tickRateMs;
+            get => _tickRate;
             set
             {
-                _tickRateMs = value;
-                _table.UpdateCell(2, 1, new Markup($"[green]{_tickRateMs} ms[/]"));
+                _tickRate = Math.Max(value, MinTickRate);
+                TickRateChanged?.Invoke(_tickRate);
             }
         }
 
-        public HeaderPanel(Layout layout)
+        private bool _isRunning = false;
+        private int _tickRate = 0;
+
+        private const int MinTickRate = 100;
+    }
+
+    public class CpuRunner
+    {
+        public CpuRunner(string program, ApplicationState applicationState)
         {
-            _table = new Table()
-                .HideHeaders()
-                .Expand()
-                .Border(TableBorder.None);
-
-            _table.AddColumn("status-name", col => col.RightAligned());
-            _table.AddColumn("status-value");
-            _table.AddRow("Running", "[red]No[/]");
-            _table.AddEmptyRow();
-            _table.AddRow("Tick rate", "[green]0ms[/]");
-
-            layout.Update(_table);
+            _cpu = new CPU.CPU(new Config())
+            {
+                ProgressInspector = new Progress<CpuInspector>(inspector => applicationState.UpdateCpuState(inspector))
+            };
+            _cpu.LoadProgram(AssembleProgram(program));
+            _cpu.Reset();
         }
 
-        private readonly Table _table;
-        private bool _isRunning = false;
-        private int _tickRateMs = 0;
+        public void Step() => _cpu.Step();
+        public void Reset() => _cpu.Reset();
+
+        //public void Run(int tickRateMs, CancellationToken cancellationToken)
+        //{
+        //    while (!cancellationToken.IsCancellationRequested)
+        //    {
+        //        Step();
+        //        if (tickRateMs > 0)
+        //        {
+        //            Thread.Sleep(tickRateMs);
+        //        }
+        //    }
+        //}
+
+        static byte[] AssembleProgram(string program)
+        {
+            const int memorySize = 240;
+            var tokens = new Lexer().Tokenize(program);
+            var programNode = Parser.ParseProgram(tokens);
+            var emitNodes = new Analyser(memorySize).Run(programNode);
+            var outputBytes = new Emitter(memorySize).Emit(emitNodes);
+            return outputBytes;
+        }
+
+        private readonly CPU.CPU _cpu;
+    }
+
+    public static class KeyHandler
+    {
+        public static void HandleKey(ConsoleKey key, ApplicationState applicationState, 
+            out bool stepRequested, out bool resetRequested, out bool quitRequested)
+        {
+            stepRequested = false;
+            resetRequested = false;
+            quitRequested = false;
+
+            if (key == ConsoleKey.Q)
+            {
+                quitRequested = true;
+            }
+            else if (key == ConsoleKey.Spacebar)
+            {
+                applicationState.IsRunning = false;
+                stepRequested = true;
+            }
+            else if (key == ConsoleKey.Enter)
+            {
+                applicationState.IsRunning = !applicationState.IsRunning;
+            }
+            else if (key == ConsoleKey.Add || key == ConsoleKey.OemPlus)
+            {
+                applicationState.TickRate = applicationState.TickRate - 100;
+            }
+            else if (key == ConsoleKey.Subtract || key == ConsoleKey.OemMinus)
+            {
+                applicationState.TickRate = applicationState.TickRate + 100;
+            }
+            else if (key == ConsoleKey.R)
+            {
+                resetRequested = true;
+            }
+        }
     }
 
     public static class Program
     {
         public static void Main(string[] args)
         {
-            var layout = CreateLayout();
-            var headerPanel = CreateHeaderPanel(layout);
-            headerPanel.IsRunning = false;
-            headerPanel.TickRateMs = 0;
+            var applicationState = new ApplicationState();
+
+            var program = "nop";
+            var cpuRunner = new CpuRunner(program, applicationState);
+
+            var layout = CreateLayout(applicationState);
+
+            applicationState.IsRunning = false;
+            applicationState.TickRate = 100;
 
             AnsiConsole.Live(layout)
                 .Start(ctx =>
@@ -62,40 +139,36 @@ namespace TUI
                         if (Console.KeyAvailable)
                         {
                             var key = Console.ReadKey(true).Key;
-                            if (key == ConsoleKey.Q)
+                            KeyHandler.HandleKey(key, applicationState, out bool stepRequested, out bool resetRequested, out bool quitRequested);
+
+                            if (quitRequested)
                             {
-                                break;
+                                return;
                             }
-                            else if (key == ConsoleKey.Spacebar)
+
+                            if (stepRequested)
                             {
-                                headerPanel.IsRunning = false;
+                                cpuRunner.Step();
                             }
-                            else if (key == ConsoleKey.Enter)
+
+                            if (resetRequested)
                             {
-                                headerPanel.IsRunning = !headerPanel.IsRunning;
-                            }
-                            else if (key == ConsoleKey.Add || key == ConsoleKey.OemPlus)
-                            {
-                                headerPanel.TickRateMs = Math.Max(100, headerPanel.TickRateMs - 100);
-                            }
-                            else if (key == ConsoleKey.Subtract || key == ConsoleKey.OemMinus)
-                            {
-                                headerPanel.TickRateMs += 100;
-                            }
-                            else if (key == ConsoleKey.R)
-                            {
-                                headerPanel.IsRunning = false;
-                                headerPanel.TickRateMs = 0;
+                                cpuRunner.Reset();
                             }
                         }
 
+                        if (applicationState.IsRunning)
+                        {
+                            cpuRunner.Step();
+                        }
+
                         ctx.Refresh();
-                        Thread.Sleep(100);
+                        Thread.Sleep(applicationState.TickRate); // TODO: Decouple from CPU speed (and run CPU in separate thread)
                     }
                 });
         }
 
-        private static Layout CreateLayout()
+        private static Layout CreateLayout(ApplicationState applicationState)
         {
             var layout = new Layout("root")
                 .SplitRows(
@@ -119,31 +192,47 @@ namespace TUI
                     new Layout("output-and-stack").Ratio(6)
                 );
 
-            layout["info"]
-                .SplitColumns(
-                    new Layout("state").Ratio(1),
-                    new Layout("cycle").Ratio(1),
-                    new Layout("PC").Ratio(1),
-                    new Layout("SP").Ratio(1),
-                    new Layout("flags").Ratio(2)
-                );
-
             layout["output-and-stack"]
                 .SplitColumns(
                     new Layout("output").Ratio(5),
                     new Layout("stack").Ratio(1)
                 );
 
+            CreateHeaderPanel(layout["header"], applicationState);
+            CreateCpuInfoPanel(layout["info"], applicationState);
+
             return layout;
         }
 
-        private static HeaderPanel CreateHeaderPanel(Layout layout)
+        private static void CreateHeaderPanel(Layout layout, ApplicationState applicationState)
         {
             var headerPanel = new Layout("header-content")
                 .SplitColumns(
                     new Layout("state").Ratio(2),
                     new Layout("instructions")
                 );
+
+            var stateTable = new Table()
+                .HideHeaders()
+                .Expand()
+                .Border(TableBorder.None);
+
+            stateTable.AddColumn("status-name", col => col.RightAligned());
+            stateTable.AddColumn("status-value");
+            stateTable.AddRow("Running", "[red]No[/]");
+            stateTable.AddEmptyRow();
+            stateTable.AddRow("Tick rate", "[green]0ms[/]");
+
+            applicationState.RunningStateChanged += isRunning =>
+            {
+                stateTable.UpdateCell(0, 1, new Markup(isRunning ? "[green]Yes[/]" : "[red]No[/]"));
+            };
+            applicationState.TickRateChanged += tickRate =>
+            {
+                stateTable.UpdateCell(2, 1, new Markup($"[green]{tickRate}ms[/]"));
+            };
+
+            headerPanel["state"].Update(stateTable);
 
             var instructionsTable = new Table()
                 .HideHeaders()
@@ -159,15 +248,115 @@ namespace TUI
 
             headerPanel["instructions"].Update(instructionsTable);
 
-            layout["header"].Update(
+            layout.Update(
                 new Panel(headerPanel)
                     .Header("CPU Emulator")
                     .Border(BoxBorder.Rounded)
                     .HeaderAlignment(Justify.Center)
                     .Expand()
             );
+        }
 
-            return new HeaderPanel(headerPanel["state"]);
+        private static void CreateCpuInfoPanel(Layout layout, ApplicationState applicationState)
+        {
+            var panelLayout = new Layout()
+                .SplitColumns(
+                    new Layout("state").Ratio(1),
+                    new Layout("cycle").Ratio(1),
+                    new Layout("PC").Ratio(1),
+                    new Layout("SP").Ratio(1),
+                    new Layout("flags").Ratio(2)
+                );
+
+            var stateTable = new Table()
+                .HideHeaders()
+                .Expand()
+                .Border(TableBorder.None)
+                .AddColumn("state")
+                .AddRow("[red]Stopped[/]");
+            applicationState.RunningStateChanged += isRunning =>
+            {
+                var stateText = isRunning ? "[green]Running[/]" : "[red]Stopped[/]";
+                stateTable.UpdateCell(0, 0, new Markup(stateText).Centered());
+            };
+            var statePanel = new Panel(stateTable)
+                .Header("State")
+                .Border(BoxBorder.Rounded)
+                .HeaderAlignment(Justify.Left)
+                .Expand();
+            panelLayout["state"].Update(statePanel);
+
+            var cycleTable = new Table()
+                .HideHeaders()
+                .Expand()
+                .Border(TableBorder.None)
+                .AddColumn("cycle")
+                .AddRow("0x00 (0)");
+            applicationState.CpuStateUpdate += inspector =>
+            {
+                cycleTable.UpdateCell(0, 0, $"0x{inspector.Cycle:X2} ({inspector.Cycle})");
+            };
+            var cyclePanel = new Panel(cycleTable)
+                .Header("Cycle")
+                .Border(BoxBorder.Rounded)
+                .HeaderAlignment(Justify.Left)
+                .Expand();
+            panelLayout["cycle"].Update(cyclePanel);
+
+            var pcTable = new Table()
+                .HideHeaders()
+                .Expand()
+                .Border(TableBorder.None)
+                .AddColumn("PC")
+                .AddRow("0x00 (0)");
+            applicationState.CpuStateUpdate += inspector =>
+            {
+                pcTable.UpdateCell(0, 0, $"0x{inspector.PC:X2} ({inspector.PC})");
+            };
+            var pcPanel = new Panel(pcTable)
+                .Header("PC")
+                .Border(BoxBorder.Rounded)
+                .HeaderAlignment(Justify.Left)
+                .Expand();
+            panelLayout["PC"].Update(pcPanel);
+
+            var spTable = new Table()
+                .HideHeaders()
+                .Expand()
+                .Border(TableBorder.None)
+                .AddColumn("SP")
+                .AddRow("0x00 (0)");
+            applicationState.CpuStateUpdate += inspector =>
+            {
+                spTable.UpdateCell(0, 0, $"0x{inspector.SP:X2} ({inspector.SP})");
+            };
+            var spPanel = new Panel(spTable)
+                .Header("SP")
+                .Border(BoxBorder.Rounded)
+                .HeaderAlignment(Justify.Left)
+                .Expand();
+            panelLayout["SP"].Update(spPanel);
+
+            var flagsTable = new Table()
+                .HideHeaders()
+                .Expand()
+                .Border(TableBorder.None)
+                .AddColumn("Z")
+                .AddColumn("C")
+                .AddRow("Z(0)", "C(0)");
+            applicationState.CpuStateUpdate += inspector =>
+            {
+                flagsTable.UpdateCell(0, 0, inspector.ZeroFlag ? "Z(1)" : "Z(0)");
+                flagsTable.UpdateCell(0, 1, inspector.CarryFlag ? "C(1)" : "C(0)");
+            };
+            var flagsPanel = new Panel(flagsTable)
+                .Header("Flags")
+                .Border(BoxBorder.Rounded)
+                .HeaderAlignment(Justify.Left)
+                .Expand();
+            panelLayout["flags"].Update(flagsPanel);
+
+            layout.Update(panelLayout);
         }
     }
 }

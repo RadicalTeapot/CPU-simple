@@ -17,8 +17,8 @@ namespace CPU
         public bool ZeroFlag { get; private set; } = false;
         public bool CarryFlag { get; private set; } = false;
         public string[] LastInstruction { get; private set; } = [];
-        public byte[] Stack { get; private set; } = [];
-        public byte[] Memory { get; private set; } = [];
+        public byte[] StackContents { get; private set; } = [];
+        public byte[] MemoryContents { get; private set; } = [];
 
         internal class Builder()
         {
@@ -60,12 +60,12 @@ namespace CPU
             }
             public Builder SetStack(byte[] stack)
             {
-                _inspector.Stack = stack;
+                _inspector.StackContents = stack;
                 return this;
             }
             public Builder SetMemory(byte[] memory)
             {
-                _inspector.Memory = memory;
+                _inspector.MemoryContents = memory;
                 return this;
             }
             public CpuInspector Build()
