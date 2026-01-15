@@ -60,9 +60,11 @@ dotnet run --project Main/Main.csproj
 
 - [/] Write a bank of small programs for 8 and 16 bit version
   - [ ] Test out stack operations
-- [/] Implement CPU TUI
-  - [ ] Hook up remaining TUI panels
-  - [ ] Run on test program bank
+- [ ] Output symbols / sidecar file from compiler in preparation for debugging (output lua tables)
+- [ ] Change the CPU program to act as a backend that listens on STDIN for commands (load_prog(file_path), step(n=1), run, run_until(pc), read_mem) and sends back structured responses on STDOUT (lua tables)
+  - [ ] Add new CpuInspector that returns memory and stack diffs rather than whole dumps (to be sent on STDOUT)
+  - [ ] Logging on STDERR
+- [/] Implement CPU IDE ([inspiration for some UI](https://github.com/AfaanBilal/NanoCore/blob/master/assets/NanoCoreTUI.gif)) in Neovim
 - [ ] Write grammar for tree-sitter
 - [ ] Write LSP server
 - [ ] Implement PPU and map some memory for it (for 16-bit version)
