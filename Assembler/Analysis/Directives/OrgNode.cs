@@ -25,7 +25,7 @@ namespace Assembler.Analysis.Directives
             }
 
             var bytesToFill = address - currentLocationCounter;
-            EmitNodes = [new FillEmitNode(bytesToFill, fillValue)];
+            EmitNodes = [new FillEmitNode(bytesToFill, fillValue, directive.Span)];
         }
 
         private const byte DefaultFillValue = 0x00;

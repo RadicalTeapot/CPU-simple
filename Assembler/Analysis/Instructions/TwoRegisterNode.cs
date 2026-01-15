@@ -15,7 +15,7 @@ namespace Assembler.Analysis.Instructions
                 throw new AnalyserException($"'{mnemonic}' instruction requires two register operands", instruction.Span.Line, instruction.Span.StartColumn);
             }
             var opcodeByte = GetOpcodeByteWithTwoRegisters(opcode, firstOperand, secondOperand);
-            EmitNodes = [new DataEmitNode([opcodeByte])];
+            EmitNodes = [new DataEmitNode([opcodeByte], instruction.Span)];
         }
     }
 }

@@ -13,7 +13,7 @@ namespace Assembler.Analysis.Directives
                 throw new AnalyserException("'byte' directive requires a single numeric operand", directive.Span.Line, directive.Span.StartColumn);
             }
 
-            EmitNodes = [new DataEmitNode([OperandValueProcessor.ParseHexByteString(byteOperand.Value)])];
+            EmitNodes = [new DataEmitNode([OperandValueProcessor.ParseHexByteString(byteOperand.Value)], directive.Span)];
         }
     }
 }

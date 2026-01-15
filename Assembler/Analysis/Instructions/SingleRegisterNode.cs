@@ -15,7 +15,7 @@ namespace Assembler.Analysis.Instructions
                 throw new AnalyserException($"'{mnemonic}' instruction takes a single operand", instruction.Span.Line, instruction.Span.StartColumn);
             }
             var opcodeByte = GetOpcodeByteWithRegister(opcode, register);
-            EmitNodes = [new DataEmitNode([opcodeByte])];
+            EmitNodes = [new DataEmitNode([opcodeByte], instruction.Span)];
         }
     }
 }

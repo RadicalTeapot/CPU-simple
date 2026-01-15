@@ -24,32 +24,32 @@ namespace Assembler.Analysis.Instructions
                 case MemoryAddress.Immediate(var hexAddress):
                     var addressValue = memoryAddressValueProcessor.ParseAddressValueStringAsByteArray(hexAddress);
                     EmitNodes = [
-                        new DataEmitNode([opcodeByte, ..addressValue])
+                        new DataEmitNode([opcodeByte, ..addressValue], instruction.Span)
                     ];
                     break;
                 case MemoryAddress.Label(var labelReference):
                     EmitNodes = [
-                        new DataEmitNode([opcodeByte]),
+                        new DataEmitNode([opcodeByte], instruction.Span),
                         labelRefManager.CreateAndRegisterEmitNode(labelReference)
                     ];
                     break;
                 case MemoryAddress.LabelWithPositiveOffset(var labelReference, var offset):
                     var positiveOffset = OperandValueProcessor.ParseHexNumberString(offset.Value);
                     EmitNodes = [
-                        new DataEmitNode([opcodeByte]),
+                        new DataEmitNode([opcodeByte], instruction.Span),
                         labelRefManager.CreateAndRegisterEmitNode(labelReference, positiveOffset)
                     ];
                     break;
                 case MemoryAddress.LabelWithNegativeOffset(var labelReference, var offset):
                     var negativeOffset = OperandValueProcessor.ParseHexNumberString(offset.Value) * -1;
                     EmitNodes = [
-                        new DataEmitNode([opcodeByte]),
+                        new DataEmitNode([opcodeByte], instruction.Span),
                         labelRefManager.CreateAndRegisterEmitNode(labelReference, negativeOffset)
                     ];
                     break;
                 case MemoryAddress.Register(var registerAddress):
                     EmitNodes = [
-                        new DataEmitNode([opcodeByte, GetRegisterIndex(registerAddress)])
+                        new DataEmitNode([opcodeByte, GetRegisterIndex(registerAddress)], instruction.Span)
                     ];
                     break;
                 case MemoryAddress.RegisterWithPositiveOffset(var registerAddress, var offset):
@@ -59,7 +59,7 @@ namespace Assembler.Analysis.Instructions
                         throw new AnalyserException($"Offset for '{mnemonic}' instruction must be smaller than 64", instruction.Span.Line, instruction.Span.StartColumn);
                     }
                     EmitNodes = [
-                        new DataEmitNode([opcodeByte, (byte)(regPositiveOffset << 2 | GetRegisterIndex(registerAddress))])
+                        new DataEmitNode([opcodeByte, (byte)(regPositiveOffset << 2 | GetRegisterIndex(registerAddress))], instruction.Span)
                     ];
                     break;
                 default:

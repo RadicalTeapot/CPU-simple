@@ -13,11 +13,11 @@ namespace Assembler.Analysis.Instructions
             {
                 case InstructionOperandSet.RegisterAndImmediateValueOperand(var registerOperand, var immediateOperand):
                     var immediateValue = OperandValueProcessor.ParseHexByteString(immediateOperand.Value);
-                    EmitNodes = [new DataEmitNode([GetOpcodeByteWithRegister(opcode, registerOperand), immediateValue])];
+                    EmitNodes = [new DataEmitNode([GetOpcodeByteWithRegister(opcode, registerOperand), immediateValue], instruction.Span)];
                     break;
                 case InstructionOperandSet.RegisterAndLabelOperand(var registerOperand, var labelReferenceOperand):
                     var labelRefNode = labelRefManager.CreateAndRegisterEmitNode(labelReferenceOperand);
-                    EmitNodes = [new DataEmitNode([GetOpcodeByteWithRegister(opcode, registerOperand)]), labelRefNode];
+                    EmitNodes = [new DataEmitNode([GetOpcodeByteWithRegister(opcode, registerOperand)], instruction.Span), labelRefNode];
                     break;
                 default:
                     var mnemonic = instruction.Mnemonic;

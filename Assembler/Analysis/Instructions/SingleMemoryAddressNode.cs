@@ -23,25 +23,25 @@ namespace Assembler.Analysis.Instructions
             {
                 case MemoryAddress.Immediate(var hexAddress):
                     var addressValue = memoryAddressValueProcessor.ParseAddressValueStringAsByteArray(hexAddress);
-                    EmitNodes = [new DataEmitNode([ opcodeByte, ..addressValue ])];
+                    EmitNodes = [new DataEmitNode([ opcodeByte, ..addressValue ], instruction.Span)];
                     break;
                 case MemoryAddress.Label(var labelReference):
                     EmitNodes = [
-                        new DataEmitNode([ opcodeByte ]), 
+                        new DataEmitNode([ opcodeByte ], instruction.Span), 
                         labelRefManager.CreateAndRegisterEmitNode(labelReference)
                     ];
                     break;
                 case MemoryAddress.LabelWithPositiveOffset(var labelReference, var offset):
                     var positiveOffset = OperandValueProcessor.ParseHexNumberString(offset.Value);
                     EmitNodes = [
-                        new DataEmitNode([ opcodeByte ]),
+                        new DataEmitNode([ opcodeByte ], instruction.Span),
                         labelRefManager.CreateAndRegisterEmitNode(labelReference, positiveOffset)
                     ];
                     break;
                 case MemoryAddress.LabelWithNegativeOffset(var labelReference, var offset):
                     var negativeOffset = OperandValueProcessor.ParseHexNumberString(offset.Value) * -1;
                     EmitNodes = [
-                        new DataEmitNode([ opcodeByte ]),
+                        new DataEmitNode([ opcodeByte ], instruction.Span),
                         labelRefManager.CreateAndRegisterEmitNode(labelReference, negativeOffset)
                     ];
                     break;

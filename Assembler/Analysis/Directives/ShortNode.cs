@@ -16,7 +16,7 @@ namespace Assembler.Analysis.Directives
 
             Debug.Assert(BitConverter.IsLittleEndian, "This code assumes a little-endian architecture");
             EmitNodes = [
-                new DataEmitNode(BitConverter.GetBytes(OperandValueProcessor.ParseHexUShortString(shortOperand.Value)))
+                new DataEmitNode(BitConverter.GetBytes(OperandValueProcessor.ParseHexUShortString(shortOperand.Value)), directive.Span)
             ];
         }
     }

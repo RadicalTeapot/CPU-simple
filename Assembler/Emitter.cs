@@ -1,4 +1,5 @@
 ﻿using Assembler.Analysis.EmitNode;
+using Assembler.AST;
 using System.Diagnostics;
 
 namespace Assembler
@@ -7,6 +8,8 @@ namespace Assembler
     {
         public EmitterException(string message) : base(message) { }
     }
+
+    public record SpanAddressInfo(NodeSpan Span, int StartAddress, int EndAddress);
 
     public class Emitter
     {
@@ -19,6 +22,7 @@ namespace Assembler
 #endif
             _memory = new byte[_memorySize];
             _written = new bool[_memorySize];
+            _spanAddresses = [];
         }
 
         public byte[] Emit(IList<IEmitNode> nodes)
@@ -36,6 +40,7 @@ namespace Assembler
             Array.Fill(_memory, (byte)0x00);
             Array.Fill(_written, false);
             _programCounter = 0;
+            _spanAddresses.Clear();
         }
 
         private void EmitNode(IEmitNode node)
@@ -54,13 +59,17 @@ namespace Assembler
                 throw new EmitterException($"Memory overwrite detected between address {_programCounter:X4} and {_programCounter + count - 1:X4}.");
             }
 
+            _spanAddresses.Add(new SpanAddressInfo(node.Span, _programCounter, _programCounter + count - 1));
             Array.Copy(bytes, 0, _memory, _programCounter, count);
             _programCounter += count;
         }
 
+        public IList<SpanAddressInfo> GetSpanAddresses() => _spanAddresses.AsReadOnly();
+
         private readonly byte[] _memory;
         private readonly bool[] _written;
         private int _programCounter = 0;
+        private readonly List<SpanAddressInfo> _spanAddresses;
         private readonly int _memorySize = 0;
     }
 }

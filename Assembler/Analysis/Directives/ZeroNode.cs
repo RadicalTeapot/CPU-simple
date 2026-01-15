@@ -13,7 +13,7 @@ namespace Assembler.Analysis.Directives
                 throw new AnalyserException("'zero' directive requires a single numeric operand", directiveNode.Span.Line, directiveNode.Span.StartColumn);
             }
             var zeroCount = OperandValueProcessor.ParseHexNumberString(zeroCountOperand.Value);
-            EmitNodes = [new FillEmitNode(zeroCount, FillValue)];
+            EmitNodes = [new FillEmitNode(zeroCount, FillValue, directiveNode.Span)];
         }
 
         private const byte FillValue = 0x00;

@@ -1,4 +1,5 @@
 ﻿using Assembler.Analysis.EmitNode;
+using Assembler.AST;
 
 namespace Assembler.Tests
 {
@@ -87,6 +88,7 @@ namespace Assembler.Tests
             return bytes;
         }
         public int Count => bytes.Length;
+        public NodeSpan Span => new();
     }
 
     internal class TestFillEmitNode(int count, byte value) : IEmitNode
@@ -96,5 +98,6 @@ namespace Assembler.Tests
             return [.. Enumerable.Repeat(value, count)];
         }
         public int Count => count;
+        public NodeSpan Span => new();
     }
 }

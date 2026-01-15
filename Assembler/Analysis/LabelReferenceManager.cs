@@ -1,5 +1,6 @@
 ﻿using Assembler.Analysis.EmitNode;
 using Assembler.AST;
+using System.Diagnostics;
 
 namespace Assembler.Analysis
 {
@@ -21,7 +22,7 @@ namespace Assembler.Analysis
 
         public LabelReferenceEmitNode CreateAndRegisterEmitNode(LabelReferenceNode labelReferenceNode, int offset = 0)
         {
-            var labelRefEmitNode = new LabelReferenceEmitNode(labelReferenceNode, offset);
+            var labelRefEmitNode = new LabelReferenceEmitNode(labelReferenceNode, offset, labelReferenceNode.Span);
             GetOrCreateEmitNodeContainer(labelReferenceNode.Label).EmitNodes.Add(labelRefEmitNode);
             
             return labelRefEmitNode;
@@ -29,18 +30,28 @@ namespace Assembler.Analysis
 
         public void ResolveLabels()
         {
-            foreach (var emitNodeContainer in containers.Values)
+            foreach (var emitNodeContainer in _containers.Values)
             {
                 emitNodeContainer.ResolveEmitNodes();
             }
         }
 
+        public IList<Symbol> GetAllSymbols()
+        {
+            var symbols = new List<Symbol>();
+            foreach (var emitNodeContainer in _containers.Values)
+            {
+                symbols.Add(emitNodeContainer.AsSymbol());
+            }
+            return symbols;
+        }
+
         private EmitNodeContainer GetOrCreateEmitNodeContainer(string labelName)
         {
-            if (!containers.TryGetValue(labelName, out var emitNodeContainer))
+            if (!_containers.TryGetValue(labelName, out var emitNodeContainer))
             {
                 emitNodeContainer = new EmitNodeContainer(labelName);
-                containers.Add(labelName, emitNodeContainer);
+                _containers.Add(labelName, emitNodeContainer);
             }
             return emitNodeContainer;
         }
@@ -52,14 +63,14 @@ namespace Assembler.Analysis
 
             public void Locate(Section section, int sectionLocationCounter)
             {
-                if (isLocated)
+                if (_isLocated)
                 {
                     throw new InvalidOperationException($"Label '{LabelName}' location counter has already been set.");
                 }
 
-                locationCounter = sectionLocationCounter;
-                this.section = section;
-                isLocated = true;
+                _locationCounter = sectionLocationCounter;
+                _section = section;
+                _isLocated = true;
             }
 
             public void ResolveEmitNodes()
@@ -69,7 +80,7 @@ namespace Assembler.Analysis
                     return; // No emit nodes to resolve
                 }
 
-                if (!isLocated)
+                if (!_isLocated)
                 {
                     var firstEmitNode = EmitNodes[0];
                     throw new ParserException($"Label '{LabelName}' location counter has not been set.",
@@ -78,15 +89,27 @@ namespace Assembler.Analysis
 
                 foreach (var emitNode in EmitNodes)
                 {
-                    emitNode.Resolve(locationCounter + section?.StartAddress ?? 0);
+                    emitNode.Resolve(_locationCounter + _section?.StartAddress ?? 0);
                 }
             }
 
-            private int locationCounter;
-            private Section? section;
-            private bool isLocated = false;
+            public Symbol AsSymbol()
+            {
+                if (!_isLocated)
+                {
+                    throw new InvalidOperationException($"Label '{LabelName}' location counter has not been set.");
+                }
+
+                Debug.Assert(_section != null, "Section should not be null when creating symbol for located label.");
+                var symbolKind = _section.SectionType == Section.Type.Text ? SymbolKind.Function : SymbolKind.Variable;
+                return new Symbol(LabelName, _locationCounter + _section.StartAddress, symbolKind);
+            }
+
+            private int _locationCounter;
+            private Section? _section;
+            private bool _isLocated = false;
         }
 
-        private readonly Dictionary<string, EmitNodeContainer> containers = [];
+        private readonly Dictionary<string, EmitNodeContainer> _containers = [];
     }
 }

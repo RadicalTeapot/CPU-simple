@@ -15,7 +15,7 @@ namespace Assembler.Analysis.Instructions
                 throw new AnalyserException($"'{mnemonic}' instruction does not take any operands", instruction.Span.Line, instruction.Span.StartColumn);
             }
 
-            EmitNodes = [new DataEmitNode([GetOpcodeByte(opcode)])];
+            EmitNodes = [new DataEmitNode([GetOpcodeByte(opcode)], instruction.Span)];
         }
     }
 }

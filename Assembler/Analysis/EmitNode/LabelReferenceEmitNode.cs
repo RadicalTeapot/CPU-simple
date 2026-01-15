@@ -1,12 +1,12 @@
 ﻿using Assembler.AST;
-using System.Diagnostics;
 
 namespace Assembler.Analysis.EmitNode
 {
-    internal class LabelReferenceEmitNode(LabelReferenceNode labelRefNode, int offset) : IEmitNode
+    internal class LabelReferenceEmitNode(LabelReferenceNode labelRefNode, int offset, NodeSpan span) : IEmitNode
     {
         public LabelReferenceNode LabelRefNode { get; } = labelRefNode;
         public int Offset { get; } = offset;
+        public NodeSpan Span { get; } = span;
 #if x16
         public int Count { get; } = 2;
 #else

@@ -5,6 +5,7 @@ using Assembler.Analysis.Instructions;
 using Assembler.AST;
 using CPU.opcodes;
 using System.Diagnostics;
+using System.Linq.Expressions;
 
 namespace Assembler
 {
@@ -78,7 +79,21 @@ namespace Assembler
                     emitNodes.AddRange(analysisNode.EmitNodes);
                 }
             }
+            _analysisRan = true;
             return emitNodes;
+        }
+
+        public IList<Symbol> GetSymbols()
+        {
+            // Emit
+            // - a symbol table (name, address, kind (label, section, variable, function))
+            // - a mapping of source lines to addresses
+            if (!_analysisRan)
+            {
+                throw new InvalidOperationException("Analysis must be run before building debug info.");
+            }
+
+            return _labelManager.GetAllSymbols();
         }
 
         private void Initialize()
@@ -87,6 +102,7 @@ namespace Assembler
             _currentSectionIndex = TextSectionIndex;
             _textSectionWasFound = false;
             _labelManager = new LabelReferenceManager();
+            _analysisRan = false;
         }
 
         private void HandleStatement(StatementNode statement)
@@ -259,6 +275,7 @@ namespace Assembler
         private int _currentSectionIndex = 0;
         private bool _textSectionWasFound = false;
         private LabelReferenceManager _labelManager = new();
+        private bool _analysisRan = false;
         private readonly MemoryAddressValueProcessor _memoryAddressValueProcessor;
         private const int TextSectionIndex = 0;
     }

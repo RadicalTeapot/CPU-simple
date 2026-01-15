@@ -14,7 +14,7 @@ namespace Assembler.Analysis.Directives
             }
             var processedStr = OperandValueProcessor.ProcessString(stringLiteral.Value);
             var strBytes = System.Text.Encoding.ASCII.GetBytes(processedStr);
-            EmitNodes = [new DataEmitNode([.. strBytes, NullTerminator])];
+            EmitNodes = [new DataEmitNode([.. strBytes, NullTerminator], directive.Span)];
         }
 
         private const byte NullTerminator = 0x00;
