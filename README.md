@@ -60,15 +60,27 @@ dotnet run --project Main/Main.csproj
 
 - [/] Write a bank of small programs for 8 and 16 bit version
   - [ ] Test out stack operations
+- [ ] Missing assembler unit tests
+  - [ ] Analyser
+  - [ ] Emitter
 - [/] Change the CPU program to act as a backend that listens on STDIN for commands (load_prog(file_path), step(n=1), run(until...), read_mem) and sends back structured responses on STDOUT (lua tables)
   - [x] Commands via STDIN
-    - [/] load
+    - [x] load
     - [x] step
-    - [/] run
-    - [ ] read_mem
+    - [x] run
+    - [x] read_mem
   - [x] Logging on STDERR
-  - [ ] Add new CpuInspector that returns memory and stack diffs rather than whole dumps (to be sent on STDOUT)
-- [/] Implement CPU IDE ([inspiration for some UI](https://github.com/AfaanBilal/NanoCore/blob/master/assets/NanoCoreTUI.gif)) in Neovim
+  - [ ] After each tick output status + memory and stack diffs rather than whole dumps (to be sent on STDOUT)
+- [ ] Implement CPU IDE ([inspiration for some UI](https://github.com/AfaanBilal/NanoCore/blob/master/assets/NanoCoreTUI.gif)) in Neovim
+  - [ ] Run backend in Lua and communication over STDIN, STDOUT
+  - [ ] `:CpuLoad` (assemble buffer with debug symbols, load on CPU and reset)
+  - [ ] `:CpuStep`, `:CpuRun` and `:CpuReset` with simple print of status to a scratch buffer
+  - [ ] `:CpuDump` full memory, stack and status dump to a scratch buffer
+  - [ ] Highlights (using virtual text) of memory <-> assembly and symbols
+  - [ ] `:SetBp address`, `:CpuRunToBp`
+  - [ ] `:SetBP symbol`
+  - [ ] `:StepOver`, `:StepIn`, `:StepOut`
+  - [ ] Nice buffer UIs
 - [ ] Write grammar for tree-sitter
 - [ ] Write LSP server
 - [ ] Implement PPU and map some memory for it (for 16-bit version)

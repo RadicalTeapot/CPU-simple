@@ -1,20 +1,8 @@
-﻿using System.Data;
+﻿using Backend.Commands;
+using System.Data;
 
 namespace Backend
 {
-    internal enum CommandType
-    {
-        None,
-        Load,
-        Reset,
-        Run,
-        Pause,
-        Step,
-        Quit,
-        Help,
-        Unknown
-    }
-
     // Logging is done on STDERR
     internal static class Logger
     {
@@ -31,6 +19,15 @@ namespace Backend
         public static void Error(string message)
         {
             Console.Error.WriteLine($"[ERROR] {message}");
+        }
+    }
+
+    // Output is done on STDOUT
+    internal static class Output
+    {
+        public static void Write(string message)
+        {
+            Console.Out.WriteLine(message);
         }
     }
 
@@ -51,8 +48,7 @@ namespace Backend
                     return InvalidArgExitCode;
             }
 
-            var cpu = new CPU.CPU(config);
-            var cpuHandler = new CpuHandler(cpu);
+            var cpuHandler = new CpuHandler(config);
             Logger.Log("Backend application started.");
             while (true)
             {
@@ -60,22 +56,18 @@ namespace Backend
                 // Listen for commands on STDIN and execute them
                 if (Console.KeyAvailable)
                 {
-                    ParseCommand(out var commandType, out var commandArgs);
-                    if (commandType == CommandType.Quit)
+                    ParseCommand(out var name, out var commandArgs);
+                    if (name == "quit" || name == "exit")
                     {
                         Logger.Log("Quitting backend application.");
                         return 0;
                     }
-                    else if (commandType == CommandType.Help)
-                    {
-                        Logger.Log("Available commands: load, reset, run, step [step_count], quit / exit, help / ?");
-                    }
                     else
                     {
-                        cpuHandler.HandleCommand(commandType, commandArgs);
+                        cpuHandler.RunCommand(name, commandArgs);
                     }
                 }
-                cpuHandler.Execute();
+                cpuHandler.Tick();
                 Thread.Sleep(100);
             }
         }
@@ -140,9 +132,9 @@ namespace Backend
             return 0;
         }
 
-        private static void ParseCommand(out CommandType type, out string[] args)
+        private static void ParseCommand(out string name, out string[] args)
         {
-            type = CommandType.Unknown;
+            name = "";
             args = [];
 
             var command = Console.ReadLine();
@@ -151,20 +143,7 @@ namespace Backend
             var parts = command.Split(' ', StringSplitOptions.RemoveEmptyEntries);
             if (parts.Length == 0) return;
 
-            type = parts[0] switch
-            {
-                "load" => CommandType.Load,
-                "reset" => CommandType.Reset,
-                "run" => CommandType.Run,
-                "pause" => CommandType.Pause,
-                "step" => CommandType.Step,
-                "quit" => CommandType.Quit,
-                "exit" => CommandType.Quit,
-                "help" => CommandType.Help,
-                "?" => CommandType.Help,
-                _ => CommandType.Unknown
-            };
-
+            name = parts[0];
             args = parts.Length > 1 ? parts[1..] : [];
         }
 

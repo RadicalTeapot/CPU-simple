@@ -1,196 +1,170 @@
-﻿namespace Backend
+﻿using Backend.Commands;
+using CPU;
+using System.Text;
+using System.Xml.Linq;
+
+namespace Backend
 {
     internal interface ICpuState
     {
-        ICpuState GetNextStateFromCommand(CommandType command, string[] args);
-        ICpuState Execute();
+        ICpuState RunCommand(CPU.CPU cpu, string name, string[] args);
+        ICpuState Tick(CPU.CPU cpu);
     }
 
-    internal class IdleState(CPU.CPU cpu) : ICpuState
+    internal class IdleState : ICpuState
     {
-        public ICpuState GetNextStateFromCommand(CommandType command, string[] args)
+        public ICpuState RunCommand(CPU.CPU cpu, string name, string[] args)
         {
-            _command = command;
-            _args = args;
-
-            return command switch
+            switch (name)
             {
-                CommandType.Load => this,
-                CommandType.Reset => this,
-                CommandType.Pause => this,
-                CommandType.Run => new RunningState(cpu, args),
-                CommandType.Step => new SteppingState(cpu, args),
-                _ => throw new NotImplementedException(),
-            };
-        }
-
-        public ICpuState Execute()
-        {
-            switch (_command)
-            {
-                case CommandType.Load:
-                    if (_args.Length == 0)
-                    {
-                        Logger.Error("No program specified to load.");
-                        break;
-                    }
-                    var programPath = _args[0];
-                    try
-                    {
-                        var programBytes = File.ReadAllBytes(programPath);
-                        cpu.LoadProgram(programBytes);
-                        Logger.Log($"Program loaded from {programPath}.");
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger.Error($"Failed to load program: {ex.Message}");
-                    }
+                case Load.Name:
+                    new Load(args).Execute(cpu);
                     break;
-                case CommandType.Reset:
-                    cpu.Reset();
-                    Logger.Log("CPU reset.");
+                case Reset.Name:
+                    Reset.Execute(cpu);
                     break;
-                case CommandType.None:
+                case Run.Name:
+                    return new RunningState(new Run(args));
+                case Step.Name:
+                    return new SteppingState(new Step(args));
+                case "help":
+                case "?":
+                    Logger.Log("Cpu is in Idle state.");
+                    Logger.Log("Available commands in Idle state: load, reset, run, step, help / ?");
                     break;
                 default:
-                    throw new NotImplementedException();
+                    Logger.Error($"Unsupported command '{name}' in Idle state.");
+                    Logger.Log("Available commands in Idle state: load, reset, run, step, help / ?");
+                    break;
             }
-
-            _command = CommandType.None;
-            _args = [];
-
             return this;
         }
 
-        private CommandType _command = CommandType.None;
-        private string[] _args = [];
+        public ICpuState Tick(CPU.CPU cpu)
+        {
+            return this;
+        }
     }
 
-    internal class RunningState(CPU.CPU cpu, string[] args) : ICpuState
+    internal class RunningState(Run runCommand) : ICpuState
     {
-        public ICpuState GetNextStateFromCommand(CommandType command, string[] args)
-        {
-            _command = command;
-            _args = args;
 
-            return command switch
-            {
-                CommandType.Reset => this,
-                CommandType.Run => this,
-                CommandType.Step => new SteppingState(cpu, args),
-                CommandType.Pause => new IdleState(cpu),
-                _ => throw new NotImplementedException(),
-            };
-        }
-
-        public ICpuState Execute()
+        public ICpuState RunCommand(CPU.CPU cpu, string name, string[] args)
         {
-            switch (_command)
+            switch (name)
             {
-                case CommandType.Reset:
-                    cpu.Reset();
-                    Logger.Log("CPU reset.");
+                case Reset.Name:
+                    Reset.Execute(cpu);
                     break;
-                case CommandType.Run:
-                    _runArgs = _args;
-                    Logger.Log("Run arguments updated.");
-                    break;
-                case CommandType.None:
+                case Run.Name:
+                    return new RunningState(new Run(args));
+                case Step.Name:
+                    return new SteppingState(new Step(args));
+                case "pause":
+                    Logger.Log("Pausing execution, transitioning to Idle state.");
+                    return new IdleState();
+                case "help":
+                case "?":
+                    Logger.Log("Cpu is in Run state.");
+                    Logger.Log("Available commands in Run state: reset, run, step, pause, help / ?");
                     break;
                 default:
-                    throw new NotImplementedException();
+                    Logger.Error($"Unsupported command '{name}' in Run state.");
+                    Logger.Log("Available commands in Run state: reset, run, step, pause, help / ?");
+                    break;
             }
-
-            // TODO : Handle run arguments (e.g. breakpoints, etc.)
-            cpu.Step();
-            Logger.Log("CPU stepped in Running state.");
-
-            _command = CommandType.None;
-            _args = [];
             return this;
         }
 
-        private CommandType _command = CommandType.None;
-        private string[] _args = [];
-        private string[] _runArgs = args;
+        public ICpuState Tick(CPU.CPU cpu)
+        {
+            runCommand.Execute(cpu);
+            if (runCommand.IsComplete)
+            {
+                Logger.Log("Run complete, transitioning to Idle state.");
+                return new IdleState();
+            }
+            return this;
+        }
     }
 
-    internal class SteppingState : ICpuState
+    internal class SteppingState(Step stepCommand) : ICpuState
     {
-        public SteppingState(CPU.CPU cpu, string[] args)
+        public ICpuState RunCommand(CPU.CPU cpu, string name, string[] args)
         {
-            _maxSteps = (args.Length > 0 ? int.Parse(args[0]) : 1);
-            _cpu = cpu;
-        }
-        public ICpuState GetNextStateFromCommand(CommandType command, string[] args)
-        {
-            _command = command;
-            _args = args;
-
-            return command switch
+            switch (name)
             {
-                CommandType.Reset => this,
-                CommandType.Run => new RunningState(_cpu, args),
-                CommandType.Step => this,
-                CommandType.Pause => new IdleState(_cpu),
-                _ => throw new NotImplementedException(),
-            };
-        }
-
-        public ICpuState Execute()
-        {
-            switch (_command)
-            {
-                case CommandType.Reset:
-                    _cpu.Reset();
-                    Logger.Log("CPU reset.");
+                case Reset.Name:
+                    Reset.Execute(cpu);
                     break;
-                case CommandType.Step:
-                    if (_args.Length > 0 && int.TryParse(_args[0], out var stepCount))
-                    {
-                        _maxSteps = stepCount;
-                        _stepsExecuted = 0;
-                        Logger.Log("Step arguments updated.");
-                    }
-                    else
-                    {
-                        Logger.Error("Invalid step count argument, skipping update.");
-                    }
-                    break;
-                case CommandType.None:
+                case Run.Name:
+                    return new RunningState(new Run(args));
+                case Step.Name:
+                    return new SteppingState(new Step(args));
+                case "pause":
+                    Logger.Log("Pausing execution, transitioning to Idle state.");
+                    return new IdleState();
+                case "help":
+                case "?":
+                    Logger.Log("Cpu is in Stepping state.");
+                    Logger.Log("Available commands in Stepping state: reset, run, step, pause, help / ?");
                     break;
                 default:
-                    throw new NotImplementedException();
+                    Logger.Error($"Unsupported command '{name}' in Stepping state.");
+                    Logger.Log("Available commands in Stepping state: reset, run, step, pause, help / ?");
+                    break;
             }
-
-            // TODO : Handle step arguments (e.g. step count, etc.)
-            _cpu.Step();
-            Logger.Log("CPU stepped in Stepping state.");
-
-            _stepsExecuted++;
-            if (_stepsExecuted >= _maxSteps)
-            {
-                Logger.Log("Stepping complete, transitioning to Idle state.");
-                return new IdleState(_cpu);
-            }
-
-            _command = CommandType.None;
-            _args = [];
             return this;
         }
 
-        private CommandType _command  = CommandType.None;
-        private string[] _args = [];
-        private int _maxSteps = 1;
-        private int _stepsExecuted = 0;
+        public ICpuState Tick(CPU.CPU cpu)
+        {
+            stepCommand.Execute(cpu);
+            if (stepCommand.IsComplete)
+            {
+                Logger.Log("Step complete, transitioning to Idle state.");
+                return new IdleState();
+            }
+            return this;
+        }
+    }
+
+    internal class CpuHandler
+    {
+        public CpuHandler(CPU.Config config)
+        {
+            _inspector = new CPU.CpuInspector();
+            _cpu = new CPU.CPU(config)
+            {
+                ProgressInspector = new Progress<CPU.CpuInspector>(inspector => _inspector = inspector)
+            };
+        }
+
+        public void RunCommand(string name, string[] args)
+        {
+            if (name == Status.Name)
+            {
+                Status.Execute(_inspector);
+            }
+            else if (name == ReadMemory.Name)
+            {
+                var readMemCommand = new ReadMemory(args);
+                readMemCommand.Execute(_inspector);
+            }
+            else if (name == ReadStack.Name)
+            {
+                ReadStack.Execute(_inspector);
+            }
+            else
+            {
+                _currentState = _currentState.RunCommand(_cpu, name, args);
+            }
+        }
+
+public void Tick() => _currentState = _currentState.Tick(_cpu);
+
+        private ICpuState _currentState = new IdleState();
         private readonly CPU.CPU _cpu;
-    }
-
-    internal class CpuHandler(CPU.CPU cpu)
-    {
-        public void HandleCommand(CommandType command, string[] args) => _currentState = _currentState.GetNextStateFromCommand(command, args);
-        public void Execute() => _currentState = _currentState.Execute();
-
-        private ICpuState _currentState = new IdleState(cpu);
+        private CPU.CpuInspector _inspector;
     }
 }

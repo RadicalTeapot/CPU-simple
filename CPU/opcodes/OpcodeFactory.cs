@@ -129,7 +129,8 @@ namespace CPU.opcodes
             var opcodeMetadataCache = new Dictionary<OpcodeBaseCode, OpcodeMetadata>();
             foreach (var type in opcodeTypes)
             {
-                var attribute = type.GetCustomAttribute<OpcodeAttribute>()!;
+                var attribute = type.GetCustomAttribute<OpcodeAttribute>();
+                Debug.Assert(attribute != null, $"Opcode class {type.Name} must have an OpcodeAttribute.");
 
                 // Standard constructor signature: (State, Memory, Stack, OpcodeArgs)
                 var constructor = type.GetConstructor([typeof(State), typeof(Memory), typeof(Stack), typeof(OpcodeArgs)]) 

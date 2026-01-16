@@ -94,7 +94,7 @@ namespace CPU.opcodes
             }
             else if (Metadata.OperandType == OperandType.RegAndImmediate)
             {
-                parts.Add($"[R{Args.LowRegisterIdx}+#0x{Args.ImmediateValue:X2}]");
+                parts.Add($"[R{Args.IndirectRegisterIdx}+#0x{Args.ImmediateValue:X2}]");
             }
 
             return parts.ToArray();
