@@ -13,15 +13,10 @@ namespace Assembler
 
     public class Emitter
     {
-        public Emitter(int memorySize = 0)
+        public Emitter(int maxAddress = 0)
         {
-#if x16
-            _memorySize = memorySize == 0 || memorySize > 65536 ? 65536 : memorySize;
-#else
-            _memorySize = memorySize == 0 || memorySize > 256 ? 256 : memorySize;
-#endif
-            _memory = new byte[_memorySize];
-            _written = new bool[_memorySize];
+            _maxAddress = (maxAddress == 0 || maxAddress > DefaultMaxAddress) ? DefaultMaxAddress : maxAddress;
+            _memory = [];
             _spanAddresses = [];
         }
 
@@ -32,13 +27,12 @@ namespace Assembler
             {
                 EmitNode(node);
             }
-            return _memory;
+            return [.. _memory];
         }
 
         private void Initialize()
         {
-            Array.Fill(_memory, (byte)0x00);
-            Array.Fill(_written, false);
+            _memory.Clear();
             _programCounter = 0;
             _spanAddresses.Clear();
         }
@@ -47,29 +41,33 @@ namespace Assembler
         {
             var bytes = node.Emit();
             var count = node.Count;
-            Debug.Assert(bytes.Length == count, "EmitNode: byte array length does not match count.");
 
-            if (_programCounter + count >= _memorySize)
+            if (bytes.Length != count)
             {
-                throw new EmitterException($"Memory overflow: attempting to write beyond address {_memorySize:X4}.");
+                throw new EmitterException("EmitNode: byte array length does not match count.");
             }
 
-            if (_written.AsSpan(_programCounter, count).Contains(true))
+            if (_programCounter + count > _maxAddress)
             {
-                throw new EmitterException($"Memory overwrite detected between address {_programCounter:X4} and {_programCounter + count - 1:X4}.");
+                throw new EmitterException($"Memory overflow: attempting to write beyond max address {_maxAddress:X4}.");
             }
 
             _spanAddresses.Add(new SpanAddressInfo(node.Span, _programCounter, _programCounter + count - 1));
-            Array.Copy(bytes, 0, _memory, _programCounter, count);
+            _memory.AddRange(bytes);
             _programCounter += count;
         }
 
         public IList<SpanAddressInfo> GetSpanAddresses() => _spanAddresses.AsReadOnly();
 
-        private readonly byte[] _memory;
-        private readonly bool[] _written;
+        private readonly List<byte> _memory;
         private int _programCounter = 0;
         private readonly List<SpanAddressInfo> _spanAddresses;
-        private readonly int _memorySize = 0;
+        private readonly int _maxAddress = 0;
+
+#if x16
+        private const int DefaultMemorySize = 0xFF80; // Reserve some space for stack (127 bytes)
+#else
+        private const int DefaultMaxAddress = 0xF0; // Reserve some space for stack (15 bytes)
+#endif
     }
 }
