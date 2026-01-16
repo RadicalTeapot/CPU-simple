@@ -5,7 +5,6 @@ using Assembler.Analysis.Instructions;
 using Assembler.AST;
 using CPU.opcodes;
 using System.Diagnostics;
-using System.Linq.Expressions;
 
 namespace Assembler
 {
@@ -100,7 +99,6 @@ namespace Assembler
         {
             _sections = [new Section(Section.Type.Text)]; // Text section should always be first
             _currentSectionIndex = TextSectionIndex;
-            _textSectionWasFound = false;
             _labelManager = new LabelReferenceManager();
             _analysisRan = false;
         }
@@ -145,7 +143,6 @@ namespace Assembler
                         break;
                     case "text":
                         _currentSectionIndex = TextSectionIndex; // Switch (back) to the text section
-                        _textSectionWasFound = true;
                         break;
                     case "org":
                     case "byte":
@@ -273,7 +270,6 @@ namespace Assembler
 
         private List<Section> _sections = [];
         private int _currentSectionIndex = 0;
-        private bool _textSectionWasFound = false;
         private LabelReferenceManager _labelManager = new();
         private bool _analysisRan = false;
         private readonly MemoryAddressValueProcessor _memoryAddressValueProcessor;

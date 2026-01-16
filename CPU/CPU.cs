@@ -38,6 +38,7 @@ namespace CPU
 
             _memory.Clear();
             _memory.LoadBytes(0, program);
+            Reset();
         }
 
         public void Run()

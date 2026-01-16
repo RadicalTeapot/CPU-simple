@@ -1,7 +1,7 @@
 ﻿using Assembler;
 using CPU;
 
-namespace Main
+namespace Backend
 {
     public class Trace: IProgress<CpuInspector>
     {
@@ -16,9 +16,9 @@ namespace Main
         }
     }
 
-    public class Program
+    public class IntegrationTests
     {
-        static void Main()
+        static void Run()
         {
             var program = AssembleProgram(PROG_2);
             var cpu = new CPU.CPU(new Config())

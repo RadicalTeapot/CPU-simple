@@ -15,6 +15,21 @@
         /// </summary>
         /// <remarks>Multi-line nodes are not supported by the language</remarks>
         public int Line { get; } = line;
+
+        public static NodeSpan Exclude(NodeSpan from, NodeSpan other)
+        {
+            if (from.Line != other.Line)
+            {
+                throw new ArgumentException("Cannot exclude spans from different lines.");
+            }
+            if (other.StartColumn < from.StartColumn || other.StartColumn > from.EndColumn)
+            {
+                throw new ArgumentException("Span to exclude must be overlapping the source span.");
+            }
+            int newStart = from.StartColumn;
+            int newEnd = other.StartColumn;
+            return new NodeSpan(newStart, newEnd, from.Line);
+        }
     }
 
     public abstract class BaseNode(NodeSpan span)

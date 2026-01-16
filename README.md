@@ -60,10 +60,14 @@ dotnet run --project Main/Main.csproj
 
 - [/] Write a bank of small programs for 8 and 16 bit version
   - [ ] Test out stack operations
-- [ ] Output symbols / sidecar file from compiler in preparation for debugging (output lua tables)
-- [ ] Change the CPU program to act as a backend that listens on STDIN for commands (load_prog(file_path), step(n=1), run, run_until(pc), read_mem) and sends back structured responses on STDOUT (lua tables)
+- [/] Change the CPU program to act as a backend that listens on STDIN for commands (load_prog(file_path), step(n=1), run(until...), read_mem) and sends back structured responses on STDOUT (lua tables)
+  - [x] Commands via STDIN
+    - [/] load
+    - [x] step
+    - [/] run
+    - [ ] read_mem
+  - [x] Logging on STDERR
   - [ ] Add new CpuInspector that returns memory and stack diffs rather than whole dumps (to be sent on STDOUT)
-  - [ ] Logging on STDERR
 - [/] Implement CPU IDE ([inspiration for some UI](https://github.com/AfaanBilal/NanoCore/blob/master/assets/NanoCoreTUI.gif)) in Neovim
 - [ ] Write grammar for tree-sitter
 - [ ] Write LSP server

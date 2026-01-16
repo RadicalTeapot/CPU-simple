@@ -17,7 +17,10 @@ namespace Assembler.Analysis.Instructions
                     break;
                 case InstructionOperandSet.RegisterAndLabelOperand(var registerOperand, var labelReferenceOperand):
                     var labelRefNode = labelRefManager.CreateAndRegisterEmitNode(labelReferenceOperand);
-                    EmitNodes = [new DataEmitNode([GetOpcodeByteWithRegister(opcode, registerOperand)], instruction.Span), labelRefNode];
+                    EmitNodes = [
+                        new DataEmitNode([GetOpcodeByteWithRegister(opcode, registerOperand)], NodeSpan.Exclude(instruction.Span, labelRefNode.Span)), 
+                        labelRefNode
+                    ];
                     break;
                 default:
                     var mnemonic = instruction.Mnemonic;
