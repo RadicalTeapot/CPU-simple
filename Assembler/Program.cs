@@ -34,7 +34,8 @@ namespace Assembler
 
             if (!config.UseStdout)
             {
-                WriteOutputFile(config.OutputFilePath!, outputBytes);
+                Debug.Assert(config.OutputFilePath != null, "Output file path should not be null when not using stdout.");
+                WriteOutputFile(config.OutputFilePath, outputBytes);
             }
             else
             {
