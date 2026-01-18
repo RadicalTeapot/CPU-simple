@@ -49,6 +49,33 @@ dotnet test cpu-simple.sln -c Debug
 dotnet run --project Main/Main.csproj
 ```
 
+## Neovim as IDE
+
+### Setup
+
+Copy the content of `nvim-plugin` folder into your neovim config folder and require the plugin.
+
+### Config
+
+```lua
+require("cpu-simple").setup({
+  backend_path = "../Main/bin/Debug/net9.0/Backend.exe",
+  assembler_path = "../Assembler/bin/Debug/net9.0/Assembler.exe",
+  memory_size = 256,
+  stack_size = 16,
+  registers = 4,
+})
+```
+
+### Commands
+
+- `:CpuStart`: Start the CPU backend process
+- `:CpuStop`: Stop the CPU backend process
+- `:CpuAssemble`: Assemble the current buffer to machine code
+- `:CpuLoad`: Load machine code into the CPU
+- `:CpuRun`: Run the loaded program
+- `:CpuSend`: Send a raw command to the CPU backend
+
 ## Project Goals
 
 - Simple, readable CPU and assembler implementation for learning and experimentation

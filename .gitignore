@@ -24,3 +24,8 @@ nunit-*.xml
 
 # Excel
 ~$*.xlsx
+
+# Neovim
+nvim-plugin/.DS_Store
+nvim-plugin-data/
+nvim-plugin/init.lua
