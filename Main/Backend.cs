@@ -54,7 +54,7 @@ namespace Backend
             {
                 // Main execution loop
                 // Listen for commands on STDIN and execute them
-                if (Console.KeyAvailable)
+                if (Console.In.Peek() >= 0)
                 {
                     ParseCommand(out var name, out var commandArgs);
                     if (name == "quit" || name == "exit")
