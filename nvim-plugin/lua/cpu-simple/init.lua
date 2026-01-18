@@ -137,6 +137,14 @@ function M.load(path)
     return
   end
 
+  if vim.fn.filereadable(file_path) == 0 then
+    vim.notify("File not found: " .. file_path, vim.log.levels.ERROR)
+    return
+  end
+
+  -- Convert to absolute path
+  file_path = vim.fn.fnamemodify(file_path, ":p")
+
   -- Send load command to backend
   M.backend.send("load " .. file_path)
 end

@@ -29,3 +29,5 @@ nunit-*.xml
 nvim-plugin/.DS_Store
 nvim-plugin-data/
 nvim-plugin/init.lua
+
+$null
