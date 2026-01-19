@@ -101,7 +101,7 @@ require("cpu-simple").setup({
 - [/] Implement CPU IDE ([inspiration for some UI](https://github.com/AfaanBilal/NanoCore/blob/master/assets/NanoCoreTUI.gif)) in Neovim
   - [x] Run backend in Lua and communication over STDIN, STDOUT
   - [x] `:CpuLoad` (load on CPU and reset)
-  - [x] `:CpuStep`, `:CpuRun` and `:CpuReset` with simple print of status to a scratch buffer
+  - [x] `:CpuStep`, `:CpuRun` and `:CpuReset` with simple print of status to a status line
   - [ ] `:CpuDump` full memory, stack and status dump to a scratch buffer
   - [ ] Highlights (using virtual text) of memory <-> assembly and symbols
   - [ ] `:SetBp address`, `:CpuRunToBp`

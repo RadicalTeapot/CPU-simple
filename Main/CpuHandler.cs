@@ -9,7 +9,7 @@ namespace Backend
     internal interface ICpuState
     {
         ICpuState RunCommand(CPU.CPU cpu, string name, string[] args);
-        ICpuState Tick(CPU.CPU cpu);
+        ICpuState Tick(CPU.CPU cpu, CpuInspector inspector);
     }
 
     internal class IdleState : ICpuState
@@ -41,7 +41,7 @@ namespace Backend
             return this;
         }
 
-        public ICpuState Tick(CPU.CPU cpu)
+        public ICpuState Tick(CPU.CPU cpu, CpuInspector inspector)
         {
             return this;
         }
@@ -76,9 +76,10 @@ namespace Backend
             return this;
         }
 
-        public ICpuState Tick(CPU.CPU cpu)
+        public ICpuState Tick(CPU.CPU cpu, CpuInspector inspector)
         {
             runCommand.Execute(cpu);
+            Output.WriteStatus(inspector);
             if (runCommand.IsComplete)
             {
                 Logger.Log("Run complete, transitioning to Idle state.");
@@ -117,9 +118,10 @@ namespace Backend
             return this;
         }
 
-        public ICpuState Tick(CPU.CPU cpu)
+        public ICpuState Tick(CPU.CPU cpu, CpuInspector inspector)
         {
             stepCommand.Execute(cpu);
+            Output.WriteStatus(inspector);
             if (stepCommand.IsComplete)
             {
                 Logger.Log("Step complete, transitioning to Idle state.");
@@ -154,7 +156,7 @@ namespace Backend
             return this;
         }
 
-        public ICpuState Tick(CPU.CPU cpu)
+        public ICpuState Tick(CPU.CPU cpu, CpuInspector inspector)
         {
             return this;
         }
@@ -181,7 +183,7 @@ namespace Backend
             }
             return this;
         }
-        public ICpuState Tick(CPU.CPU cpu)
+        public ICpuState Tick(CPU.CPU cpu, CpuInspector inspector)
         {
             return this;
         }
@@ -240,7 +242,7 @@ namespace Backend
             ICpuState nextState;
             try
             {
-                nextState = _currentState.Tick(_cpu);
+                nextState = _currentState.Tick(_cpu, _inspector);
             }
             catch (OpcodeException.HaltException)
             {
@@ -257,6 +259,6 @@ namespace Backend
 
         private ICpuState _currentState = new IdleState();
         private readonly CPU.CPU _cpu;
-        private CPU.CpuInspector _inspector;
+        private CpuInspector _inspector;
     }
 }

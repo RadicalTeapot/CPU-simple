@@ -1,6 +1,7 @@
 ﻿using Backend.Commands;
 using System.Collections.Concurrent;
 using System.Data;
+using System.Text;
 
 namespace Backend
 {
@@ -29,6 +30,22 @@ namespace Backend
         public static void Write(string message)
         {
             Console.Out.WriteLine(message);
+        }
+
+        public static void WriteStatus(CPU.CpuInspector inspector)
+        {
+            var zeroFlag = inspector.ZeroFlag ? 1 : 0;
+            var carryFlag = inspector.CarryFlag ? 1 : 0;
+
+            var sb = new StringBuilder();
+            sb.Append("[STATUS] ")
+                .Append($"{inspector.Cycle} ")
+                .Append($"{inspector.PC} ")
+                .Append($"{inspector.SP} ")
+                .Append($"{string.Join(" ", inspector.Registers)} ")
+                .Append($"{zeroFlag} ")
+                .Append($"{carryFlag}");
+            Console.Out.WriteLine(sb.ToString());
         }
     }
 

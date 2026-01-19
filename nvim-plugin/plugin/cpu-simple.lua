@@ -19,16 +19,22 @@ local function ensure_setup()
 end
 
 -- Create commands that auto-setup if needed
-vim.api.nvim_create_user_command("CpuStart", function()
-  ensure_setup().start()
+vim.api.nvim_create_user_command("CpuBackendStart", function()
+  ensure_setup().backend_start()
 end, {
   desc = "Start the CPU backend process",
 })
 
-vim.api.nvim_create_user_command("CpuStop", function()
-  ensure_setup().stop()
+vim.api.nvim_create_user_command("CpuBackendStop", function()
+  ensure_setup().backend_stop()
 end, {
   desc = "Stop the CPU backend process",
+})
+
+vim.api.nvim_create_user_command("CpuBackendStatus", function() 
+  ensure_setup().backend_status()
+end, {
+  desc = "Get the CPU backend status",
 })
 
 vim.api.nvim_create_user_command("CpuAssemble", function()
@@ -61,6 +67,12 @@ vim.api.nvim_create_user_command("CpuReset", function()
   ensure_setup().reset()
 end, {
   desc = "Reset the CPU",
+})
+
+vim.api.nvim_create_user_command("CpuStatus", function()
+  ensure_setup().status()
+end, {
+  desc = "Get the current CPU status",
 })
 
 -- Optional: Create a command to send raw commands

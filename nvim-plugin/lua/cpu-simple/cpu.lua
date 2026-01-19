@@ -39,12 +39,26 @@ function M.reset()
         M.backend = require("cpu-simple.backend")
     end
     
-      if not M.backend.is_running() then
-    vim.notify("Backend is not running. Start it with :CpuStart", vim.log.levels.ERROR)
-    return
-  end
+    if not M.backend.is_running() then
+        vim.notify("Backend is not running. Start it with :CpuStart", vim.log.levels.ERROR)
+        return
+    end
 
-  M.backend.send("reset")
+    M.backend.send("reset")
+end
+
+-- Get the CPU status
+function M.status()
+    if not M.backend then
+        M.backend = require("cpu-simple.backend")
+    end
+    
+    if not M.backend.is_running() then
+        vim.notify("Backend is not running. Start it with :CpuStart", vim.log.levels.ERROR)
+        return
+    end
+    
+    M.backend.send("status")
 end
 
 return M

@@ -12,6 +12,7 @@ M.stdin = nil
 M.stdout = nil
 M.stderr = nil
 M.running = false
+M.status = nil
 
 -- Configuration (set by init.lua)
 M.config = {
@@ -19,6 +20,8 @@ M.config = {
   memory_size = 256,
   stack_size = 16,
   registers = 4,
+  cwd = nil,
+  update_statusline = nil,
 }
 
 --- Start the backend process
@@ -91,6 +94,9 @@ function M.start(config)
 
   vim.schedule(function()
     vim.notify("Backend started (PID: " .. M.pid .. ")", vim.log.levels.INFO)
+    if (M.config.update_statusline) then
+      M.config.update_statusline()
+    end
   end)
 
   return true
@@ -130,6 +136,9 @@ function M.stop()
     if M.handle and M.running then
       M.handle:kill("sigterm")
     end
+    if (M.config.update_statusline) then
+      M.config.update_statusline()
+    end
   end, 500)
 end
 
@@ -142,10 +151,22 @@ function M.on_stdout(data)
     local lines = vim.split(data, "\n", { trimempty = true })
     for _, line in ipairs(lines) do
       if line ~= "" then
-        vim.notify("[CPU] " .. line, vim.log.levels.INFO)
+        M.parse_stdout(line)
       end
     end
   end)
+end
+
+function M.parse_stdout(data)
+    -- if status line, parse and return table
+    -- else display output via notify
+    if data:match("^%[STATUS%] ") then
+        M.set_cpu_status(data)
+    else
+        vim.schedule(function()
+            vim.notify("[CPU] " .. data, vim.log.levels.INFO)
+        end)
+    end
 end
 
 --- Handle stderr data from backend (logs/errors)
@@ -209,6 +230,33 @@ end
 ---@return boolean
 function M.is_running()
   return M.running
+end
+
+function M.set_cpu_status(status_line)
+    -- status_line = "[STATUS] cycles pc sp r0 r1 r2 r3 zero carry"
+    local status = status_line:gsub("^%[STATUS%]%s*", "")
+    local cycles, pc, sp, r0, r1, r2, r3, zero, carry = status:match("^(%d+)%s+(%d+)%s+(%d+)%s+(%d+)%s+(%d+)%s+(%d+)%s+(%d+)%s+(%d+)%s+(%d+)")
+    M.status = {
+        cycles = tonumber(cycles),
+        pc = tonumber(pc),
+        sp = tonumber(sp),
+        registers = {
+            tonumber(r0),
+            tonumber(r1),
+            tonumber(r2),
+            tonumber(r3),
+        },
+        flags = {
+            zero = tonumber(zero),
+            carry = tonumber(carry),
+        }
+    }
+
+    vim.schedule(function()
+        if M.config.update_statusline then
+            M.config.update_statusline()
+        end
+    end)
 end
 
 return M
