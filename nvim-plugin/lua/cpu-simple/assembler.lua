@@ -7,7 +7,11 @@ local uv = vim.loop
 
 -- Configuration (set by init.lua)
 M.config = {
-  assembler_path = "./Assembler/bin/Debug/net9.0/Assembler.exe",
+  assembler_path = "Assembler.exe",
+  assembler_options = {
+    emit_debug = false,
+  },
+  cwd = nil,
 }
 
 -- Last assembled output path (for CpuLoad default)
@@ -36,7 +40,7 @@ function M.assemble_buffer(config, callback)
   vim.fn.mkdir(temp_dir, "p")
 
   -- Temp file paths
-  local input_path = temp_dir .. "/" .. basename .. ".asm"
+  local input_path = temp_dir .. "/" .. basename .. ".csasm" -- csasm -> cpu-simple assembly
   local output_path = temp_dir .. "/" .. basename .. ".bin"
 
   -- Write buffer content to temp file
@@ -58,6 +62,11 @@ function M.assemble_buffer(config, callback)
   local stdout_output = {}
 
   local args = { input_path, "-o", output_path }
+  if M.config.assembler_options.emit_debug then
+    local debug_file_path = temp_dir .. "/" .. basename .. ".dbg"
+    table.insert(args, "-d")
+    table.insert(args, debug_file_path)
+  end
 
   local spawn_opts = {
     args = args,

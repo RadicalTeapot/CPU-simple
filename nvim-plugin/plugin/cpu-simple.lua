@@ -10,7 +10,6 @@ vim.g.loaded_cpu_simple = true
 -- Lazy-load the plugin on first command use
 -- Commands are registered in setup(), but we provide stubs here
 -- so users can call commands before explicit setup()
-
 local function ensure_setup()
   local cpu_simple = require("cpu-simple")
   if vim.tbl_isempty(cpu_simple.config) then
@@ -50,6 +49,18 @@ vim.api.nvim_create_user_command("CpuRun", function()
   ensure_setup().run()
 end, {
   desc = "Run the loaded program",
+})
+
+vim.api.nvim_create_user_command("CpuStep", function()
+  ensure_setup().step()
+end, {
+  desc = "Execute one CPU instruction",
+})
+
+vim.api.nvim_create_user_command("CpuReset", function()
+  ensure_setup().reset()
+end, {
+  desc = "Reset the CPU",
 })
 
 -- Optional: Create a command to send raw commands

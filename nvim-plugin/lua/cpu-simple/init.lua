@@ -5,10 +5,14 @@ local M = {}
 
 -- Default configuration
 M.defaults = {
-  -- Path to Backend executable (relative to project root or absolute)
-  backend_path = "./Main/bin/Debug/net9.0/Backend.exe",
-  -- Path to Assembler executable (relative to project root or absolute)
-  assembler_path = "./Assembler/bin/Debug/net9.0/Assembler.exe",
+  -- Path to Backend executable
+  backend_path = ".Backend.exe",
+  -- Path to Assembler executable
+  assembler_path = "Assembler.exe",
+  -- Assembler options
+  assembler_options = {
+    emit_debug = false,
+  },
   -- CPU configuration
   memory_size = 256,
   stack_size = 16,
@@ -24,6 +28,7 @@ M.config = {}
 M.backend = nil
 M.assembler = nil
 M.display = nil
+M.cpu = nil
 
 --- Setup the plugin with user configuration
 ---@param opts table|nil User configuration options
@@ -34,6 +39,7 @@ function M.setup(opts)
   M.backend = require("cpu-simple.backend")
   M.assembler = require("cpu-simple.assembler")
   M.display = require("cpu-simple.display")
+  M.cpu = require("cpu-simple.cpu")
 
   -- Register commands
   M.register_commands()
@@ -72,6 +78,18 @@ function M.register_commands()
   end, {
     desc = "Run the loaded program",
   })
+
+  vim.api.nvim_create_user_command("CpuStep", function()
+    M.step()
+  end, {
+    desc = "Execute one CPU instruction",
+  })
+
+  vim.api.nvim_create_user_command("CpuReset", function()
+    M.reset()
+  end, {
+    desc = "Reset the CPU",
+  })
 end
 
 --- Start the backend process
@@ -107,6 +125,7 @@ function M.assemble()
 
   M.assembler.assemble_buffer({
     assembler_path = M.config.assembler_path,
+    assembler_options = M.config.assembler_options,
     cwd = M.config.cwd,
   })
 end
@@ -119,8 +138,8 @@ function M.load(path)
   end
 
   if not M.backend.is_running() then
-    vim.notify("Backend is not running. Start it with :CpuStart", vim.log.levels.ERROR)
-    return
+    vim.notify("Backend is not running. Starting it.", vim.log.levels.INFO)
+    M.start()
   end
 
   -- Use provided path or fall back to last assembled
@@ -151,16 +170,29 @@ end
 
 --- Run the loaded program
 function M.run()
-  if not M.backend then
-    M.backend = require("cpu-simple.backend")
+  if not M.cpu then
+    M.cpu = require("cpu-simple.cpu")
   end
 
-  if not M.backend.is_running() then
-    vim.notify("Backend is not running. Start it with :CpuStart", vim.log.levels.ERROR)
-    return
-  end
+  M.cpu.run()
+end
 
-  M.backend.send("run")
+--- Execute one CPU instruction
+function M.step()
+    if not M.cpu then
+        M.cpu = require("cpu-simple.cpu")
+    end
+    
+    M.cpu.step()
+end
+
+--- Reset the CPU
+function M.reset()
+    if not M.cpu then
+        M.cpu = require("cpu-simple.cpu")
+    end
+    
+    M.cpu.reset()
 end
 
 --- Send a raw command to the backend
