@@ -1,5 +1,6 @@
 ﻿using Backend.Commands;
 using CPU;
+using CPU.opcodes;
 using System.Text;
 using System.Xml.Linq;
 
@@ -48,7 +49,6 @@ namespace Backend
 
     internal class RunningState(Run runCommand) : ICpuState
     {
-
         public ICpuState RunCommand(CPU.CPU cpu, string name, string[] args)
         {
             switch (name)
@@ -129,6 +129,64 @@ namespace Backend
         }
     }
 
+    internal class HaltedState : ICpuState
+    {
+        public ICpuState RunCommand(CPU.CPU cpu, string name, string[] args)
+        {
+            switch (name)
+            {
+                case Load.Name:
+                    new Load(args).Execute(cpu);
+                    return new IdleState();
+                case Reset.Name:
+                    Reset.Execute(cpu);
+                    return new IdleState();
+                case "help":
+                case "?":
+                    Logger.Log("Cpu is in Halted state.");
+                    Logger.Log("Available commands in Halted state: load, reset, help / ?");
+                    break;
+                default:
+                    Logger.Error($"Unsupported command '{name}' in Halted state.");
+                    Logger.Log("Available commands in Halted state: load, reset, help / ?");
+                    break;
+            }
+            return this;
+        }
+
+        public ICpuState Tick(CPU.CPU cpu)
+        {
+            return this;
+        }
+    }
+
+    internal class ErrorState : ICpuState
+    {
+        public ICpuState RunCommand(CPU.CPU cpu, string name, string[] args)
+        {
+            switch (name)
+            {
+                case Load.Name:
+                    new Load(args).Execute(cpu);
+                    return new IdleState();
+                case "help":
+                case "?":
+                    Logger.Log("Cpu is in Error state.");
+                    Logger.Log("Available commands in Error state: load, help / ?");
+                    break;
+                default:
+                    Logger.Error($"Unsupported command '{name}' in Error state.");
+                    Logger.Log("Available commands in Error state: load, help / ?");
+                    break;
+            }
+            return this;
+        }
+        public ICpuState Tick(CPU.CPU cpu)
+        {
+            return this;
+        }
+    }
+
     internal class CpuHandler
     {
         public CpuHandler(CPU.Config config)
@@ -157,11 +215,45 @@ namespace Backend
             }
             else
             {
-                _currentState = _currentState.RunCommand(_cpu, name, args);
+                ICpuState nextState;
+                try
+                {
+                    nextState = _currentState.RunCommand(_cpu, name, args);
+                }
+                catch (OpcodeException.HaltException)
+                {
+                    Logger.Log("CPU reached HALT instruction.");
+                    nextState = new HaltedState();
+                }
+                catch (Exception ex)
+                {
+                    Logger.Error($"Failed to run command: {ex.Message}");
+                    nextState = new ErrorState();
+                }
+
+                _currentState = nextState;
             }
         }
 
-public void Tick() => _currentState = _currentState.Tick(_cpu);
+        public void Tick() 
+        {
+            ICpuState nextState;
+            try
+            {
+                nextState = _currentState.Tick(_cpu);
+            }
+            catch (OpcodeException.HaltException)
+            {
+                Logger.Log("CPU reached HALT instruction.");
+                nextState = new HaltedState();
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Failed to run command: {ex.Message}");
+                nextState = new ErrorState();
+            }
+            _currentState = nextState;
+        }
 
         private ICpuState _currentState = new IdleState();
         private readonly CPU.CPU _cpu;

@@ -1,4 +1,5 @@
 ﻿using Backend.Commands;
+using System.Collections.Concurrent;
 using System.Data;
 
 namespace Backend
@@ -49,17 +50,25 @@ namespace Backend
             }
 
             var cpuHandler = new CpuHandler(config);
+
             Logger.Log("Backend application started.");
+
+            using var cts = new CancellationTokenSource();
+            var commandQueue = StartStdinReader(out var readerTask, cts);
+            Logger.Log("STDIN reader started.");
+
             while (true)
             {
                 // Main execution loop
                 // Listen for commands on STDIN and execute them
-                if (Console.In.Peek() >= 0)
+
+                if (commandQueue.TryDequeue(out var command))
                 {
-                    ParseCommand(out var name, out var commandArgs);
+                    ParseCommand(command, out var name, out var commandArgs);
                     if (name == "quit" || name == "exit")
                     {
                         Logger.Log("Quitting backend application.");
+                        cts.Cancel();
                         return 0;
                     }
                     else
@@ -70,6 +79,29 @@ namespace Backend
                 cpuHandler.Tick();
                 Thread.Sleep(100);
             }
+        }
+
+        private static ConcurrentQueue<string> StartStdinReader(out Task readerTask, CancellationTokenSource cts)
+        {
+            var commandQueue = new ConcurrentQueue<string>();
+            readerTask = Task.Run(async () =>
+            {
+                try
+                {
+                    while (!cts.IsCancellationRequested)
+                    {
+                        var line = await Console.In.ReadLineAsync();
+                        if (line is null) break; // EOF
+                        commandQueue.Enqueue(line);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.Error($"STDIN reader error: {ex.Message}");
+                }
+            }, cts.Token);
+
+            return commandQueue;
         }
 
         private static int ParseArgs(string[] args, out CPU.Config config)
@@ -132,13 +164,12 @@ namespace Backend
             return 0;
         }
 
-        private static void ParseCommand(out string name, out string[] args)
+        private static void ParseCommand(string command, out string name, out string[] args)
         {
-            name = "";
+            name = string.Empty;
             args = [];
 
-            var command = Console.ReadLine();
-            if (command == null) return;
+            if (string.IsNullOrEmpty(command)) return;
 
             var parts = command.Split(' ', StringSplitOptions.RemoveEmptyEntries);
             if (parts.Length == 0) return;
@@ -152,6 +183,5 @@ namespace Backend
         private const int DefaultRegisterCount = 4;
         private const int HelpExitCode = 1;
         private const int InvalidArgExitCode = 2;
-
     }
 }

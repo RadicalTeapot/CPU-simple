@@ -1,4 +1,6 @@
-﻿namespace Backend.Commands
+﻿using CPU.opcodes;
+
+namespace Backend.Commands
 {
     internal class Run
     {
@@ -43,8 +45,8 @@
                     // Set IsComplete to true when done
                     break;
             }
-            Logger.Log("Run command executed.");
         }
+
         private enum Mode
         {
             Normal,
