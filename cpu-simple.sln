@@ -7,7 +7,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CPU", "CPU\CPU.csproj", "{4
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CPU.Tests", "CPU.Tests\CPU.Tests.csproj", "{253CF36D-9F9E-4D44-A61C-1FD81B86A3F8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Backend", "Main\Backend.csproj", "{96E7AF47-FED4-4AA1-97E2-F83C1F66B119}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Backend", "Backend\Backend.csproj", "{96E7AF47-FED4-4AA1-97E2-F83C1F66B119}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Assembler", "Assembler\Assembler.csproj", "{63068A69-A5BE-4776-9DE8-1DB82160240B}"
 EndProject
