@@ -1,16 +1,21 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using Backend.CpuStates;
+using CPU;
 using System.Text;
-using System.Threading.Tasks;
-using System.Xml.Linq;
 
-namespace Backend.Commands
+namespace Backend.Commands.GlobalCommands
 {
-    internal class Status
+    [Command(CommandType.Global, "status", ["state"],
+        description: "Display the current CPU state",
+        helpText: "Usage: 'status'")]
+    internal class Status(CommandContext context) : IGlobalCommand
     {
-        public const string Name = "status";
-        public static void Execute(CPU.CpuInspector inspector)
+        public string Name { get => context.Name;  }
+
+        public string Description { get => context.Description; }
+
+        public string HelpText { get => context.HelpText; }
+
+        public GlobalCommandResult Execute(CpuInspector inspector, ICpuState currentState, string[] args)
         {
             var sb = new StringBuilder();
             sb.Append($"Cycle: {inspector.Cycle} ");
@@ -35,6 +40,7 @@ namespace Backend.Commands
                 sb.Append("Last Instruction: N/A ");
             }
             Output.Write(sb.ToString());
+            return new GlobalCommandResult(Success: true);
         }
     }
 }

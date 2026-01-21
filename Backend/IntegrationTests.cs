@@ -3,28 +3,12 @@ using CPU;
 
 namespace Backend
 {
-    public class Trace: IProgress<CpuInspector>
-    {
-        public void Report(CpuInspector value)
-        {
-            Console.WriteLine($"Cycle: {value.Cycle}, PC: {value.PC:X4}, " +
-                $"Last Instruction: {string.Join(' ', value.LastInstruction)}");
-            Console.WriteLine($"Registers: R0={value.Registers[0]:X2}, R1={value.Registers[1]:X2}, " +
-                $"R2={value.Registers[2]:X2}, R3={value.Registers[3]:X2}");
-            Console.WriteLine($"Flags: Z={(value.ZeroFlag ? 1 : 0)}, C={(value.CarryFlag ? 1 : 0)}");
-            Console.WriteLine(new string('-', 40));
-        }
-    }
-
     public class IntegrationTests
     {
         static void Run()
         {
             var program = AssembleProgram(PROG_2);
-            var cpu = new CPU.CPU(new Config())
-            {
-                ProgressInspector = new Trace()
-            };
+            var cpu = new CPU.CPU(new Config());
             cpu.LoadProgram(program);
             cpu.Run();
         }

@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Backend.Commands
+namespace Backend.Commands.GlobalCommands
 {
     internal class ReadStack
     {

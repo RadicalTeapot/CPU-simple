@@ -1,4 +1,4 @@
-﻿namespace Backend.Commands
+﻿namespace Backend.Commands.GlobalCommands
 {
     internal class ReadMemory
     {

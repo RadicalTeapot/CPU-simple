@@ -1,6 +1,8 @@
-﻿using Backend.Commands;
+﻿
+using Backend.Commands.StateCommands;
+using Backend.Commands.GlobalCommands;
 using System.Collections.Concurrent;
-using System.Data;
+using System.Diagnostics;
 using System.Text;
 
 namespace Backend
@@ -66,7 +68,9 @@ namespace Backend
                     return InvalidArgExitCode;
             }
 
-            var cpuHandler = new CpuHandler(config);
+            var globalCommandRegistry = new GlobalCommandRegistry();
+            var stateCommandRegistry = new StateCommandRegistry();
+            var cpuHandler = new CpuHandler(config, stateCommandRegistry);
 
             Logger.Log("Backend application started.");
 
@@ -82,15 +86,22 @@ namespace Backend
                 if (commandQueue.TryDequeue(out var command))
                 {
                     ParseCommand(command, out var name, out var commandArgs);
-                    if (name == "quit" || name == "exit")
+                    if (name == "quit" || name == "exit" || name == "q")
                     {
                         Logger.Log("Quitting backend application.");
                         cts.Cancel();
                         return 0;
                     }
-                    else
+                    
+                    if (globalCommandRegistry.TryGetCommand(name, out var globalCommand))
                     {
-                        cpuHandler.RunCommand(name, commandArgs);
+                        Debug.Assert(globalCommand != null);
+                        cpuHandler.HandleGlobalCommand(globalCommand, commandArgs);
+                    }
+                    else if (stateCommandRegistry.TryGetCommand(name, out var stateCommand))
+                    {
+                        Debug.Assert(stateCommand != null);
+                        cpuHandler.HandleStateCommand(stateCommand, commandArgs);
                     }
                 }
                 cpuHandler.Tick();

@@ -1,4 +1,4 @@
-﻿namespace Backend.Commands
+﻿namespace Backend
 {
     internal class CommandException : Exception
     {

@@ -6,8 +6,6 @@ namespace CPU
 {
     public class CPU
     {
-        public IProgress<CpuInspector>? ProgressInspector { get; set; } = null;
-
         public CPU(Config config) :
             this(new State(config.RegisterCount),
                  new Stack(config.StackSize),
@@ -23,13 +21,13 @@ namespace CPU
             _opcodeFactory = new OpcodeFactory();
         }
 
-        public void Reset()
+        public CpuInspector Reset()
         {
             _state.Reset();
             _stack.Reset();
             _cycle = 0;
             // Note: Memory is not cleared on reset
-            ProgressInspector?.Report(CpuInspector.Create(_cycle, _state, _stack, _memory, []));
+            return CpuInspector.Create(_cycle, _state, _stack, _memory, []);
         }
 
         public void LoadProgram(byte[] program)
@@ -68,7 +66,7 @@ namespace CPU
         /// <summary>
         /// Executes a single instruction cycle: Fetch → Decode → Execute.
         /// </summary>
-        public void Step()
+        public CpuInspector Step()
         {
             var instructionBytes = Fetch();
             var opcodeInstance = Decode(instructionBytes, out var decoded);
@@ -76,7 +74,7 @@ namespace CPU
 
             _cycle++;
 
-            ProgressInspector?.Report(CpuInspector.Create(_cycle, _state, _stack, _memory, decoded.AsStringArray()));
+            return CpuInspector.Create(_cycle, _state, _stack, _memory, decoded.AsStringArray());
         }
 
         private byte[] Fetch()
