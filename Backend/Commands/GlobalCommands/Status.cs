@@ -1,4 +1,5 @@
 ﻿using Backend.CpuStates;
+using Backend.IO;
 using CPU;
 using System.Text;
 
@@ -39,7 +40,7 @@ namespace Backend.Commands.GlobalCommands
             {
                 sb.Append("Last Instruction: N/A ");
             }
-            Output.Write(sb.ToString());
+            new Output().Write(sb.ToString());
             return new GlobalCommandResult(Success: true);
         }
     }

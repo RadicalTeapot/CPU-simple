@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using Backend.IO;
 
 namespace Backend.Commands.GlobalCommands
 {
@@ -17,7 +13,7 @@ namespace Backend.Commands.GlobalCommands
             var data = new byte[length];
             Array.Copy(stack, sp, data, 0, length);
             var hexString = BitConverter.ToString(data).Replace("-", " ");
-            Output.Write($"Stack at SP=0x{sp:X} ({length} bytes): {hexString}");
+            new Output().Write($"Stack at SP=0x{sp:X} ({length} bytes): {hexString}");
         }
     }
 }

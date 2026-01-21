@@ -1,4 +1,5 @@
-﻿using CPU;
+﻿using Backend.IO;
+using CPU;
 
 namespace Backend.CpuStates
 {
@@ -12,7 +13,7 @@ namespace Backend.CpuStates
         public override ICpuState Tick()
         {
             var result = ExecuteStep();
-            Output.WriteStatus(result);
+            new Output().WriteStatus(result);
             if (IsExecutionComplete)
             {
                 return Context.StateFactory.CreateIdleState();

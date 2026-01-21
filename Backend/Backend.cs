@@ -3,68 +3,25 @@ using Backend.Commands.StateCommands;
 using Backend.Commands.GlobalCommands;
 using System.Collections.Concurrent;
 using System.Diagnostics;
-using System.Text;
+using Backend.IO;
 
 namespace Backend
 {
-    // Logging is done on STDERR
-    internal static class Logger
-    {
-        public static void Log(string message)
-        {
-            Console.Error.WriteLine($"[LOG] {message}");
-        }
-
-        public static void LogUsage()
-        {
-            Log("Usage: backend [-m/--memory SIZE] [-s/--stack SIZE] [--registers COUNT] [-h/--help]");
-        }
-
-        public static void Error(string message)
-        {
-            Console.Error.WriteLine($"[ERROR] {message}");
-        }
-    }
-
-    // Output is done on STDOUT
-    internal static class Output
-    {
-        public static void Write(string message)
-        {
-            Console.Out.WriteLine(message);
-        }
-
-        public static void WriteStatus(CPU.CpuInspector inspector)
-        {
-            var zeroFlag = inspector.ZeroFlag ? 1 : 0;
-            var carryFlag = inspector.CarryFlag ? 1 : 0;
-
-            var sb = new StringBuilder();
-            sb.Append("[STATUS] ")
-                .Append($"{inspector.Cycle} ")
-                .Append($"{inspector.PC} ")
-                .Append($"{inspector.SP} ")
-                .Append($"{string.Join(" ", inspector.Registers)} ")
-                .Append($"{zeroFlag} ")
-                .Append($"{carryFlag}");
-            Console.Out.WriteLine(sb.ToString());
-        }
-    }
-
     public class Backend
     {
         public static int Main(string[] args)
         {
             // Output is done on STDOUT
 
+            var logger = new Logger();
             var code = ParseArgs(args, out var config);
             switch (code)
             {
                 case HelpExitCode:
-                    Logger.LogUsage();
+                    logger.LogUsage();
                     return 0;
                 case InvalidArgExitCode:
-                    Logger.LogUsage();
+                    logger.LogUsage();
                     return InvalidArgExitCode;
             }
 
@@ -72,11 +29,11 @@ namespace Backend
             var stateCommandRegistry = new StateCommandRegistry();
             var cpuHandler = new CpuHandler(config, stateCommandRegistry);
 
-            Logger.Log("Backend application started.");
+            logger.Log("Backend application started.");
 
             using var cts = new CancellationTokenSource();
             var commandQueue = StartStdinReader(out var readerTask, cts);
-            Logger.Log("STDIN reader started.");
+            logger.Log("STDIN reader started.");
 
             while (true)
             {
@@ -88,7 +45,7 @@ namespace Backend
                     ParseCommand(command, out var name, out var commandArgs);
                     if (name == "quit" || name == "exit" || name == "q")
                     {
-                        Logger.Log("Quitting backend application.");
+                        logger.Log("Quitting backend application.");
                         cts.Cancel();
                         return 0;
                     }
@@ -111,6 +68,7 @@ namespace Backend
 
         private static ConcurrentQueue<string> StartStdinReader(out Task readerTask, CancellationTokenSource cts)
         {
+            var logger = new Logger();
             var commandQueue = new ConcurrentQueue<string>();
             readerTask = Task.Run(async () =>
             {
@@ -125,7 +83,7 @@ namespace Backend
                 }
                 catch (Exception ex)
                 {
-                    Logger.Error($"STDIN reader error: {ex.Message}");
+                    logger.Error($"STDIN reader error: {ex.Message}");
                 }
             }, cts.Token);
 
@@ -134,6 +92,8 @@ namespace Backend
 
         private static int ParseArgs(string[] args, out CPU.Config config)
         {
+            var logger = new Logger();
+
             int memorySize = DefaultMemorySize;
             int stackSize = DefaultStackSize;
             int registerCount = DefaultRegisterCount;
@@ -147,35 +107,35 @@ namespace Backend
                     case "--memory":
                         if (i + 1 < args.Length && int.TryParse(args[i + 1], out memorySize))
                         {
-                            Logger.Log($"Memory size set to {memorySize}");
+                            logger.Log($"Memory size set to {memorySize}");
                             i++;
                         }
                         else
                         {
-                            Logger.Error("Invalid memory size specified.");
+                            logger.Error("Invalid memory size specified.");
                         }
                         break;
                     case "-s":
                     case "--stack":
                         if (i + 1 < args.Length && int.TryParse(args[i + 1], out stackSize))
                         {
-                            Logger.Log($"Stack size set to {stackSize}");
+                            logger.Log($"Stack size set to {stackSize}");
                             i++;
                         }
                         else
                         {
-                            Logger.Error("Invalid stack size specified.");
+                            logger.Error("Invalid stack size specified.");
                         }
                         break;
                     case "--registers":
                         if (i + 1 < args.Length && int.TryParse(args[i + 1], out registerCount))
                         {
-                            Logger.Log($"Register count set to {registerCount}");
+                            logger.Log($"Register count set to {registerCount}");
                             i++;
                         }
                         else
                         {
-                            Logger.Error("Invalid register count specified.");
+                            logger.Error("Invalid register count specified.");
                         }
                         break;
                     case "-h":
@@ -183,7 +143,7 @@ namespace Backend
                         config = default;
                         return HelpExitCode;
                     default:
-                        Logger.Error($"Unknown argument: {args[i]}");
+                        logger.Error($"Unknown argument: {args[i]}");
                         config = default;
                         return InvalidArgExitCode;
                 }

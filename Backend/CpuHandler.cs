@@ -1,6 +1,7 @@
 ﻿using Backend.Commands.GlobalCommands;
 using Backend.Commands.StateCommands;
 using Backend.CpuStates;
+using Backend.IO;
 using CPU;
 using CPU.opcodes;
 
@@ -28,6 +29,7 @@ namespace Backend
 
         public void Tick() 
         {
+            var logger = new Logger();
             ICpuState nextState;
             try
             {
@@ -35,12 +37,12 @@ namespace Backend
             }
             catch (OpcodeException.HaltException)
             {
-                Logger.Log("CPU reached HALT instruction.");
+                logger.Log("CPU reached HALT instruction.");
                 nextState = _cpuStateFactory.CreateHaltedState();
             }
             catch (Exception ex)
             {
-                Logger.Error($"Failure during CPU tick: {ex.Message}");
+                logger.Error($"Failure during CPU tick: {ex.Message}");
                 nextState = _cpuStateFactory.CreateErrorState(ex.Message);
             }
             _currentState = nextState;
