@@ -13,7 +13,7 @@ namespace Backend.Commands.GlobalCommands
             var data = new byte[length];
             Array.Copy(stack, sp, data, 0, length);
             var hexString = BitConverter.ToString(data).Replace("-", " ");
-            new Output().Write($"Stack at SP=0x{sp:X} ({length} bytes): {hexString}");
+            new ConsoleOutput().Write($"Stack at SP=0x{sp:X} ({length} bytes): {hexString}");
         }
     }
 }

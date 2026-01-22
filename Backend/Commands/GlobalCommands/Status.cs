@@ -16,7 +16,7 @@ namespace Backend.Commands.GlobalCommands
 
         public string HelpText { get => context.HelpText; }
 
-        public GlobalCommandResult Execute(CpuInspector inspector, ICpuState currentState, string[] args)
+        public GlobalCommandResult Execute(CpuInspector inspector, ICpuState currentState, IOutput output, string[] args)
         {
             var sb = new StringBuilder();
             sb.Append($"Cycle: {inspector.Cycle} ");
@@ -40,7 +40,7 @@ namespace Backend.Commands.GlobalCommands
             {
                 sb.Append("Last Instruction: N/A ");
             }
-            new Output().Write(sb.ToString());
+            output.Write(sb.ToString());
             return new GlobalCommandResult(Success: true);
         }
     }

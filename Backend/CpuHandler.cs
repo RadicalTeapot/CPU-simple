@@ -9,17 +9,20 @@ namespace Backend
 {
     internal class CpuHandler
     {
-        public CpuHandler(Config config, StateCommandRegistry cpuCommandRegistry)
+        public CpuHandler(Config config, IOutput output, ILogger logger, StateCommandRegistry cpuCommandRegistry)
         {
+            _logger = logger;
+            _output = output;
             _inspector = new CpuInspector();
             _cpu = new CPU.CPU(config);
-            _cpuStateFactory = new CpuStateFactory(_cpu, cpuCommandRegistry);
+            _cpuStateFactory = new CpuStateFactory(_cpu, _logger, _output, cpuCommandRegistry);
             _currentState = _cpuStateFactory.CreateIdleState();
         }
 
         public void HandleGlobalCommand(IGlobalCommand globalCommand, string[] args)
         {
-            globalCommand.Execute(_inspector, _currentState, args);
+            var inspector = _cpu.GetInspector();
+            globalCommand.Execute(inspector, _currentState, _output, args);
         }
 
         public void HandleStateCommand(IStateCommand cpuCommand, string[] args)
@@ -29,7 +32,6 @@ namespace Backend
 
         public void Tick() 
         {
-            var logger = new Logger();
             ICpuState nextState;
             try
             {
@@ -37,20 +39,22 @@ namespace Backend
             }
             catch (OpcodeException.HaltException)
             {
-                logger.Log("CPU reached HALT instruction.");
+                _logger.Log("CPU reached HALT instruction.");
                 nextState = _cpuStateFactory.CreateHaltedState();
             }
             catch (Exception ex)
             {
-                logger.Error($"Failure during CPU tick: {ex.Message}");
+                _logger.Error($"Failure during CPU tick: {ex.Message}");
                 nextState = _cpuStateFactory.CreateErrorState(ex.Message);
             }
             _currentState = nextState;
         }
 
         private ICpuState _currentState;
-        private CpuInspector _inspector;
+        private readonly CpuInspector _inspector;
         private readonly CPU.CPU _cpu;
         private readonly CpuStateFactory _cpuStateFactory;
+        private readonly ILogger _logger;
+        private readonly IOutput _output;
     }
 }

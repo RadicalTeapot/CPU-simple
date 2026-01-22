@@ -21,13 +21,16 @@ namespace CPU
             _opcodeFactory = new OpcodeFactory();
         }
 
-        public CpuInspector Reset()
+        public CpuInspector GetInspector()
+            => CpuInspector.Create(_cycle, _state, _stack, _memory, _lastInstruction);
+
+        public void Reset()
         {
             _state.Reset();
             _stack.Reset();
             _cycle = 0;
             // Note: Memory is not cleared on reset
-            return CpuInspector.Create(_cycle, _state, _stack, _memory, []);
+            _lastInstruction = [];
         }
 
         public void LoadProgram(byte[] program)
@@ -66,15 +69,13 @@ namespace CPU
         /// <summary>
         /// Executes a single instruction cycle: Fetch → Decode → Execute.
         /// </summary>
-        public CpuInspector Step()
+        public void Step()
         {
             var instructionBytes = Fetch();
-            var opcodeInstance = Decode(instructionBytes, out var decoded);
+            var opcodeInstance = Decode(instructionBytes);
             opcodeInstance.Execute();
 
             _cycle++;
-
-            return CpuInspector.Create(_cycle, _state, _stack, _memory, decoded.AsStringArray());
         }
 
         private byte[] Fetch()
@@ -86,16 +87,18 @@ namespace CPU
             return instructionBytes;
         }
 
-        private IOpcode Decode(byte[] instructionBytes, out DecodedInstruction decoded)
+        private IOpcode Decode(byte[] instructionBytes)
         {
-            decoded = _opcodeFactory.Decode(instructionBytes);
+            var decodedInstruction = _opcodeFactory.Decode(instructionBytes);
             Debug.Assert(
-                decoded.Metadata.OpcodeConstructor != null,
+                decodedInstruction.Metadata.OpcodeConstructor != null,
                 "Opcode constructor should not be null after decoding.");
             Debug.Assert(
-                typeof(IOpcode).IsAssignableFrom(decoded.Metadata.OpcodeConstructor.DeclaringType),
+                typeof(IOpcode).IsAssignableFrom(decodedInstruction.Metadata.OpcodeConstructor.DeclaringType),
                 "Decoded opcode constructor must belong to a type implementing IOpcode.");
-            return (IOpcode)decoded.OpcodeConstructor.Invoke([_state, _memory, _stack, decoded.Args]);
+
+            _lastInstruction = decodedInstruction.AsStringArray();
+            return (IOpcode)decodedInstruction.OpcodeConstructor.Invoke([_state, _memory, _stack, decodedInstruction.Args]);
         }
 
         private void Dump()
@@ -112,6 +115,7 @@ namespace CPU
         private readonly Memory _memory;
         private readonly OpcodeFactory _opcodeFactory;
         private int _cycle = 0;
+        private string[] _lastInstruction = [];
 #if x16
         public const int AddressSize = 2;
 #else

@@ -8,7 +8,7 @@
     }
 
     // Logging is done on STDERR
-    internal class Logger : ILogger
+    internal class ConsoleLogger : ILogger
     {
         public void Log(string message)
         {

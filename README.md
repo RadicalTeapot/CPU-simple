@@ -97,7 +97,7 @@ require("cpu-simple").setup({
     - [x] run
     - [x] read_mem
   - [x] Logging on STDERR
-  - [ ] After each tick output status + memory and stack diffs rather than whole dumps (to be sent on STDOUT)
+  - [ ] Add memory and stack diffs to CpuInspector
 - [/] Implement CPU IDE ([inspiration for some UI](https://github.com/AfaanBilal/NanoCore/blob/master/assets/NanoCoreTUI.gif)) in Neovim
   - [x] Run backend in Lua and communication over STDIN, STDOUT
   - [x] `:CpuLoad` (load on CPU and reset)

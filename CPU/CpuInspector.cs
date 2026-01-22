@@ -84,18 +84,5 @@ namespace CPU
             memory.UpdateCpuInspectorBuilder(builder);
             return builder.Build();
         }
-
-        public void Copy(CpuInspector source)
-        {
-            Cycle = source.Cycle;
-            PC = source.PC;
-            SP = source.SP;
-            Registers = source.Registers;
-            ZeroFlag = source.ZeroFlag;
-            CarryFlag = source.CarryFlag;
-            LastInstruction = source.LastInstruction;
-            StackContents = source.StackContents;
-            MemoryContents = source.MemoryContents;
-        }
     }
 }

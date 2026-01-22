@@ -1,10 +1,12 @@
 ﻿using Backend.Commands.StateCommands;
-using CPU;
+using Backend.IO;
 
 namespace Backend.CpuStates
 {
     internal class CpuStateFactory(
         CPU.CPU cpu,
+        ILogger logger,
+        IOutput output,
         StateCommandRegistry commandRegistry)
     {
         public IdleState CreateIdleState()
@@ -19,17 +21,17 @@ namespace Backend.CpuStates
 
         public ResetState CreateResetState()
         {
-            return new ResetState(GetContextForState(typeof(ResetState)));
+            return new ResetState(GetContextForState(typeof(ResetState)), output);
         }
 
         public RunningState CreateRunningState(Run.Config runConfig)
         {
-            return new RunningState(GetContextForState(typeof(RunningState)), runConfig);
+            return new RunningState(GetContextForState(typeof(RunningState)), output, runConfig);
         }
 
         public SteppingState CreateSteppingState(int numberOfInstructions)
         {
-            return new SteppingState(GetContextForState(typeof(SteppingState)), numberOfInstructions);
+            return new SteppingState(GetContextForState(typeof(SteppingState)), output, numberOfInstructions);
         }
 
         public ErrorState CreateErrorState(string reason)
@@ -47,6 +49,7 @@ namespace Backend.CpuStates
             return new CpuStateContext(
                 StateFactory: this,
                 Cpu: cpu,
+                Logger: logger,
                 commandRegistry.GetAvailableCommandsForState(stateType));
         }
     }

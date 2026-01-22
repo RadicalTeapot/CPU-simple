@@ -13,7 +13,7 @@ namespace Backend.IO
     }
 
     // Output is done on STDOUT
-    internal class Output : IOutput
+    internal class ConsoleOutput : IOutput
     {
         public void Write(string message)
         {

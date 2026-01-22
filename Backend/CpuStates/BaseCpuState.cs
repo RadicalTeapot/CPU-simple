@@ -4,17 +4,16 @@ using Backend.IO;
 namespace Backend.CpuStates
 {
     internal record CpuStateContext(
-        CpuStateFactory StateFactory, CPU.CPU Cpu, string[] ValidCommands)
+        CpuStateFactory StateFactory, CPU.CPU Cpu, ILogger Logger, string[] ValidCommands)
     { }
 
     internal abstract class BaseCpuState(CpuStateContext context, string stateName) : ICpuState
     {
         public ICpuState GetStateForCommand(IStateCommand command, string[] args)
         {
-            var logger = new Logger();
             if (!IsCommandAvailable(command.Name))
             {
-                logger.Error($"Command '{command.Name}' is not available in {stateName} state.");
+                Context.Logger.Error($"Command '{command.Name}' is not available in {stateName} state.");
                 LogHelp();
                 return this;
             }
@@ -22,18 +21,18 @@ namespace Backend.CpuStates
             var result = command.GetStateForCommand(Context.StateFactory, args);
             if (!result.Success)
             {
-                logger.Error(result.Message ?? $"Command '{command.Name}' failed to execute.");
+                Context.Logger.Error(result.Message ?? $"Command '{command.Name}' failed to execute.");
                 return this;
             }
 
-            logger.Log(result.Message ?? $"Command '{command.Name}' executed successfully.");
+            Context.Logger.Log(result.Message ?? $"Command '{command.Name}' executed successfully.");
 
             return result.NextState ?? this;
         }
 
         public virtual void LogHelp()
         {
-            new Logger().Log($"Cpu is in {stateName} state, available commands: {string.Join(',', Context.ValidCommands)}");
+            Context.Logger.Log($"Cpu is in {stateName} state, available commands: {string.Join(',', Context.ValidCommands)}");
         }
 
         public abstract ICpuState Tick();

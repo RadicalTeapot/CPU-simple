@@ -1,25 +1,26 @@
 ﻿using Backend.Commands.StateCommands;
-using CPU;
+using Backend.IO;
 
 namespace Backend.CpuStates
 {
     internal class RunningState(
         CpuStateContext context,
+        IOutput output,
         Run.Config config
-        ) : ExecutingCpuState(context, "running")
+        ) : ExecutingCpuState(context, output, "running")
     {
         protected override bool IsExecutionComplete { get => _isComplete; }
 
-        protected override CpuInspector ExecuteStep()
+        protected override void ExecuteStep()
         {
-            var inspector = Context.Cpu.Step();
+            Context.Cpu.Step();
+            var inspector = Context.Cpu.GetInspector();
             _isComplete = config.Mode switch
             {
                 Run.Mode.ToHalt => false,
                 Run.Mode.ToAddress => inspector.PC == config.Address,
                 _ => throw new NotImplementedException($"Run mode {config.Mode} not implemented.")
             };
-            return inspector;
         }
 
         private bool _isComplete = false;

@@ -1,19 +1,19 @@
-﻿using CPU;
+﻿using Backend.IO;
 
 namespace Backend.CpuStates
 {
     internal class SteppingState(
         CpuStateContext context,
+        IOutput output,
         int numberOfInstructions
-        ) : ExecutingCpuState(context, "stepping")
+        ) : ExecutingCpuState(context, output, "stepping")
     {
         protected override bool IsExecutionComplete { get => _executedSteps >= numberOfInstructions; }
 
-        protected override CpuInspector ExecuteStep()
+        protected override void ExecuteStep()
         {
-            var inspector = Context.Cpu.Step();
+            Context.Cpu.Step();
             _executedSteps++;
-            return inspector;
         }
 
         private int _executedSteps = 0;

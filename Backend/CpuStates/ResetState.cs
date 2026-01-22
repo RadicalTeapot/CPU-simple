@@ -1,15 +1,14 @@
-﻿using CPU;
-
+﻿using Backend.IO;
 namespace Backend.CpuStates
 {
-    internal class ResetState(CpuStateContext context)
-        : ExecutingCpuState(context, "reset")
+    internal class ResetState(CpuStateContext context, IOutput output)
+        : ExecutingCpuState(context, output, "reset")
     {
         protected override bool IsExecutionComplete { get => true; }
 
-        protected override CpuInspector ExecuteStep()
+        protected override void ExecuteStep()
         {
-            return Context.Cpu.Reset();
+            Context.Cpu.Reset();
         }
     }
 }

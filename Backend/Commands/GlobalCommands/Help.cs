@@ -1,4 +1,5 @@
 ﻿using Backend.CpuStates;
+using Backend.IO;
 using CPU;
 
 namespace Backend.Commands.GlobalCommands
@@ -12,7 +13,7 @@ namespace Backend.Commands.GlobalCommands
 
         public string HelpText { get => context.HelpText; }
 
-        public GlobalCommandResult Execute(CpuInspector inspector, ICpuState currentState, string[] args)
+        public GlobalCommandResult Execute(CpuInspector inspector, ICpuState currentState, IOutput output, string[] args)
         {
             currentState.LogHelp();
             return new GlobalCommandResult(Success: true);

@@ -12,7 +12,7 @@ namespace Backend.CpuStates
 
         public override void LogHelp()
         {
-            new Logger().Log($"Cpu is in error state due to: {reason}. Available commands: {string.Join(',', Context.ValidCommands)}");
+            Context.Logger.Log($"Cpu is in error state due to: {reason}. Available commands: {string.Join(',', Context.ValidCommands)}");
         }
     }
 }
