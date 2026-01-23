@@ -27,15 +27,8 @@ namespace Backend
 
             while (true)
             {
-                if (_commandReader.TryGetCommand(out var command))
+                if (TryParseCommand(out var parsedCommand))
                 {
-                    Debug.Assert(command != null, "Command shouldn't be null here");
-                    if (!TryParseCommand(command, out var parsedCommand))
-                    {
-                        _logger.Error($"Could not parse command '{command}'.");
-                        continue;
-                    }
-
                     Debug.Assert(parsedCommand != null, "Parsed command shouldn't be null here");
                     if (parsedCommand.Name == "quit" || parsedCommand.Name == "exit" || parsedCommand.Name == "q")
                     {
@@ -64,9 +57,10 @@ namespace Backend
             }
         }
 
-        private static bool TryParseCommand(string command, out ParsedCommand? parsedCommand)
+        private bool TryParseCommand(out ParsedCommand? parsedCommand)
         {
             parsedCommand = default;
+            if (!_commandReader.TryGetCommand(out var command)) return false;
             if (string.IsNullOrEmpty(command)) return false;
 
             var parts = command.Split(' ', StringSplitOptions.RemoveEmptyEntries);
