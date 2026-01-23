@@ -1,27 +1,15 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Backend.IO
+﻿namespace Backend.IO
 {
-    internal interface IInput
+    public interface IInput
     {
         string? ReadLine();
-        ValueTask<string?> ReadLineAsync(CancellationToken ct);
+        Task<string?> ReadLineAsync();
     }
 
     internal class ConsoleInput : IInput
     {
-        public string? ReadLine()
-        {
-            return Console.In.ReadLine();
-        }
+        public string? ReadLine() => Console.In.ReadLine();
 
-        public ValueTask<string?> ReadLineAsync(CancellationToken ct)
-        {
-            return Console.In.ReadLineAsync(ct);
-        }
+        public Task<string?> ReadLineAsync() => Console.In.ReadLineAsync();
     }
 }

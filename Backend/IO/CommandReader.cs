@@ -15,15 +15,29 @@ namespace Backend.IO
             }
 
             _cts = new CancellationTokenSource();
+
             _readerTask = Task.Run(async () =>
             {
                 try
                 {
+                    // Use a TaskCompletionSource to signal cancellation
+                    TaskCompletionSource tcs = new();
+                    _cts.Token.Register(() => tcs.SetResult());
+
+                    Task<string?> readTask;
                     while (!_cts.IsCancellationRequested)
                     {
-                        var line = await input.ReadLineAsync(_cts.Token); // TODO This still hangs if ct is cancelled
-                        if (line is null) break; // EOF
-                        _commandQueue.Enqueue(line);
+                        // Wrap ReadLineAsync in a task as calls to Console.In.ReadLineAsync may be blocking on some platforms (Windows)
+                        readTask = Task.Run(() => input.ReadLineAsync(), _cts.Token);
+
+                        // Check if the read completed (or was cancelled) or cancellation was requested
+                        if (await Task.WhenAny(readTask, tcs.Task) == readTask)
+                        {
+                            _cts.Token.ThrowIfCancellationRequested();
+                            var line = await readTask;
+                            if (line is null) break; // EOF
+                            _commandQueue.Enqueue(line);
+                        }
                     }
                 }
                 catch (OperationCanceledException)
