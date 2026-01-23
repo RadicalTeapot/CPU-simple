@@ -6,8 +6,11 @@ namespace Backend.Commands.GlobalCommands
 {
     internal interface IGlobalCommand : ICommand
     {
-        GlobalCommandResult Execute(CpuInspector inspector, ICpuState currentState, IOutput output, string[] args);
+        GlobalCommandResult Execute(ExecutionContext executionContext, string[] args);
     }
+    internal record ExecutionContext(
+        CpuInspector Inspector, ICpuState CurrentState, IOutput Output) { }
+
 
     internal record GlobalCommandResult(
         bool Success,

@@ -13,6 +13,8 @@ M.stdout = nil
 M.stderr = nil
 M.running = false
 M.status = nil
+M.stack = nil
+M.memory = nil
 
 -- Configuration (set by init.lua)
 M.config = {
@@ -160,8 +162,12 @@ end
 function M.parse_stdout(data)
     -- if status line, parse and return table
     -- else display output via notify
-    if data:match("^%[STATUS%] ") then
+    if data:match("^%[STATUS%]") then
         M.set_cpu_status(data)
+    elseif data:match("^%[STACK%]") then
+        M.set_cpu_stack(data)
+    elseif data:match("^%[MEMORY%]") then
+        M.set_cpu_memory(data)
     else
         vim.schedule(function()
             vim.notify("[CPU] " .. data, vim.log.levels.INFO)
@@ -257,6 +263,24 @@ function M.set_cpu_status(status_line)
             M.config.update_statusline()
         end
     end)
+end
+
+function M.set_cpu_stack(stack_line)
+    local stack = stack_line:gsub("^%[STACK%]%s*", "")
+    local stack_values = {}
+    for value in stack:gmatch("(%d+)") do
+        table.insert(stack_values, tonumber(value))
+    end
+    M.stack = stack_values
+end
+
+function M.set_cpu_memory(memory_line)
+    local memory = memory_line:gsub("^%[MEMORY%]%s*", "")
+    local memory_values = {}
+    for value in memory:gmatch("(%d+)") do
+        table.insert(memory_values, tonumber(value))
+    end
+    M.memory = memory_values
 end
 
 return M

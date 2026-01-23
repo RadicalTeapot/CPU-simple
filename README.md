@@ -103,7 +103,7 @@ require("cpu-simple").setup({
   - [x] Run backend in Lua and communication over STDIN, STDOUT
   - [x] `:CpuLoad` (load on CPU and reset)
   - [x] `:CpuStep`, `:CpuRun` and `:CpuReset` with simple print of status to a status line
-  - [ ] `:CpuDump` full memory, stack and status dump to a scratch buffer
+  - [x] `:CpuDump` full memory, stack and status dump to a scratch buffer
   - [ ] Highlights (using virtual text) of memory <-> assembly and symbols
   - [ ] `:SetBp address`, `:CpuRunToBp`
   - [ ] `:SetBP symbol`

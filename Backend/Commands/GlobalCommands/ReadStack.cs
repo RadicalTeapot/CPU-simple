@@ -1,15 +1,11 @@
-﻿using Backend.CpuStates;
-using Backend.IO;
-using CPU;
-
-namespace Backend.Commands.GlobalCommands
+﻿namespace Backend.Commands.GlobalCommands
 {
     [Command(CommandType.Global, "readstack", ["rds"],
         description: "Reads parts or whole stack",
         helpText: "Usage: 'readstack [startaddress [length]]'")]
     internal class ReadStack(CommandContext context) : BaseGlobalCommand(context)
     {
-        protected override GlobalCommandResult ExecuteCore(CpuInspector inspector, ICpuState currentState, IOutput output, string[] args)
+        protected override GlobalCommandResult ExecuteCore(ExecutionContext executionContext, string[] args)
         {
             if (args.Length > 2)
             {
@@ -18,8 +14,8 @@ namespace Backend.Commands.GlobalCommands
                     Message: $"Error: '{Name}' command takes at most two arguments: start address (hex) and length (decimal).");
             }
 
-            var sp = inspector.SP;
-            var stack = inspector.StackContents;
+            var sp = executionContext.Inspector.SP;
+            var stack = executionContext.Inspector.StackContents;
 
             var address = args.Length > 0 ? Convert.ToInt32(args[0], 16) : sp;
             var length = args.Length > 1 ? Convert.ToInt32(args[1]) : stack.Length;
@@ -35,9 +31,8 @@ namespace Backend.Commands.GlobalCommands
             var data = new byte[length];
             Array.Copy(stack, address - length + 1, data, 0, length); // Stack grows downwards so we read backwards
             var hexString = BitConverter.ToString(data).Replace("-", " ");
-            output.Write($"[STACK] {hexString}");
 
-            return new GlobalCommandResult(Success: true);
+            return new GlobalCommandResult(Success: true, Message: $"[STACK] SP: {executionContext.Inspector.SP:X2} Address: {address:X2} Content: {hexString}");
         }
     }
 }

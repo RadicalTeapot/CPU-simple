@@ -12,7 +12,7 @@
     {
         public void Log(string message)
         {
-            Console.Error.WriteLine($"[LOG] {message}");
+            Console.Error.WriteLine($"{message}");
         }
 
         public void LogUsage()

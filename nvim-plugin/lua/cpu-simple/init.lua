@@ -104,6 +104,12 @@ function M.register_commands()
   end, {
     desc = "Get the current CPU status",
   })
+
+  vim.api.nvim_create_user_command("CpuDump", function()
+    M.dump()
+  end, {
+    desc = "Get full CPU dump",
+  })
 end
 
 --- Start the backend process
@@ -231,6 +237,14 @@ function M.status()
   end
 
   M.cpu.status()
+end
+
+function M.dump()
+  if not M.cpu then
+    M.cpu = require("cpu-simple.cpu")
+  end
+
+  M.cpu.dump()
 end
 
 --- Send a raw command to the backend

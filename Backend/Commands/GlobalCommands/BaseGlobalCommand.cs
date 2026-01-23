@@ -10,7 +10,7 @@ namespace Backend.Commands.GlobalCommands
         public string Description { get; } = context.Description;
         public string HelpText { get; } = context.HelpText;
 
-        public GlobalCommandResult Execute(CpuInspector inspector, ICpuState currentState, IOutput output, string[] args)
+        public GlobalCommandResult Execute(ExecutionContext executionContext, string[] args)
         {
             if (ShouldPrintHelp(args))
             {
@@ -19,10 +19,10 @@ namespace Backend.Commands.GlobalCommands
                     Message: HelpText ?? $"Usage: '{Name}'\n{Description}"
                 );
             }
-            return ExecuteCore(inspector, currentState, output, args);
+            return ExecuteCore(executionContext, args);
         }
 
-        protected abstract GlobalCommandResult ExecuteCore(CpuInspector inspector, ICpuState currentState, IOutput output, string[] args);
+        protected abstract GlobalCommandResult ExecuteCore(ExecutionContext executionContext, string[] args);
 
         private static bool ShouldPrintHelp(string[] args)
         {

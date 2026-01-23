@@ -75,6 +75,12 @@ end, {
   desc = "Get the current CPU status",
 })
 
+vim.api.nvim_create_user_command("CpuDump", function()
+  ensure_setup().dump()
+end, {
+  desc = "Get full CPU dump",
+})
+
 -- Optional: Create a command to send raw commands
 vim.api.nvim_create_user_command("CpuSend", function(opts)
   ensure_setup().send(opts.args)

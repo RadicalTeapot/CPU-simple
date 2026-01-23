@@ -9,20 +9,21 @@ namespace Backend.Commands.GlobalCommands
         description: "Display the current CPU state")]
     internal class Status(CommandContext context) : BaseGlobalCommand(context)
     {
-        protected override GlobalCommandResult ExecuteCore(CpuInspector inspector, ICpuState currentState, IOutput output, string[] args)
+        protected override GlobalCommandResult ExecuteCore(ExecutionContext executionContext, string[] args)
         {
             if (args.Length != 0)
             {
                 return new GlobalCommandResult(Success: false, Message: $"The '{Name}' command does not take any arguments.");
             }
 
-            var sb = new StringBuilder();
+            var inspector = executionContext.Inspector;
+            var sb = new StringBuilder("[STATUS] ");
             sb.Append($"Cycle: {inspector.Cycle} ");
-            sb.Append($"PC: 0x{inspector.PC:X2} ");
-            sb.Append($"SP: 0x{inspector.SP:X2} ");
+            sb.Append($"PC: {inspector.PC:X2} ");
+            sb.Append($"SP: {inspector.SP:X2} ");
             for (int i = 0; i < inspector.Registers.Length; i++)
             {
-                sb.Append($"R{i}: 0x{inspector.Registers[i]:X2} ");
+                sb.Append($"R{i}: {inspector.Registers[i]:X2} ");
             }
             sb.Append($"Zero: {inspector.ZeroFlag} ");
             sb.Append($"Carry: {inspector.CarryFlag} ");
@@ -38,8 +39,8 @@ namespace Backend.Commands.GlobalCommands
             {
                 sb.Append("Last Instruction: N/A ");
             }
-            output.Write(sb.ToString());
-            return new GlobalCommandResult(Success: true);
+            
+            return new GlobalCommandResult(Success: true, Message: sb.ToString());
         }
     }
 }

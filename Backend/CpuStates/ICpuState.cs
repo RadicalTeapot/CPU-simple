@@ -7,6 +7,7 @@ namespace Backend.CpuStates
         ICpuState GetStateForCommand(IStateCommand command, string[] args);
 
         ICpuState Tick();
+
         void LogHelp();
     }
 }

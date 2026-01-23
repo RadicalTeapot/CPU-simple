@@ -22,7 +22,17 @@ namespace Backend
         public void HandleGlobalCommand(IGlobalCommand globalCommand, string[] args)
         {
             var inspector = _cpu.GetInspector();
-            globalCommand.Execute(inspector, _currentState, _output, args);
+            var context = new Commands.GlobalCommands.ExecutionContext(inspector, _currentState, _output);
+            
+            var result = globalCommand.Execute(context, args);
+            if (!result.Success)
+            {
+                _logger.Error(result.Message ?? $"Global command '{globalCommand.Name} 'failed to execute.");
+            }
+            else if (!string.IsNullOrEmpty(result.Message))
+            {
+                _logger.Log(result.Message);
+            }
         }
 
         public void HandleStateCommand(IStateCommand cpuCommand, string[] args)

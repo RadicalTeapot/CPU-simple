@@ -6,6 +6,8 @@ namespace Backend.IO
     {
         void Write(string message);
         void WriteStatus(CPU.CpuInspector inspector);
+        void WriteMemoryDump(byte[] memoryDump);
+        void WriteStackDump(byte[] stackDump);
     }
 
     // Output is done on STDOUT
@@ -30,6 +32,18 @@ namespace Backend.IO
                 .Append($"{zeroFlag} ")
                 .Append($"{carryFlag}");
             Console.Out.WriteLine(sb.ToString());
+        }
+
+        public void WriteMemoryDump(byte[] memoryDump)
+        {
+            var hexString = BitConverter.ToString(memoryDump).Replace("-", " ");
+            Console.Out.WriteLine($"[MEMORY] {hexString}");
+        }
+
+        public void WriteStackDump(byte[] stackDump)
+        {
+            var hexString = BitConverter.ToString(stackDump).Replace("-", " ");
+            Console.Out.WriteLine($"[STACK] {hexString}");
         }
     }
 }
