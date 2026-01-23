@@ -2,10 +2,11 @@
 using Backend.Commands.StateCommands;
 using Backend.IO;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 
 namespace Backend
 {
-    internal class BackendApplication
+    public class BackendApplication
     {
         public BackendApplication(ILogger logger, IInput input, IOutput output, CPU.Config cpuConfig)
         {
@@ -29,44 +30,55 @@ namespace Backend
                 if (_commandReader.TryGetCommand(out var command))
                 {
                     Debug.Assert(command != null, "Command shouldn't be null here");
-                    ParseCommand(command, out var name, out var commandArgs);
+                    if (!TryParseCommand(command, out var parsedCommand))
+                    {
+                        _logger.Error($"Could not parse command '{command}'.");
+                        continue;
+                    }
 
-                    if (name == "quit" || name == "exit" || name == "q")
+                    Debug.Assert(parsedCommand != null, "Parsed command shouldn't be null here");
+                    if (parsedCommand.Name == "quit" || parsedCommand.Name == "exit" || parsedCommand.Name == "q")
                     {
                         _logger.Log("Quitting backend application.");
                         _commandReader.StopReader();
                         return 0;
                     }
 
-                    if (_globalCommandRegistry.TryGetCommand(name, out var globalCommand))
+                    if (_globalCommandRegistry.TryGetCommand(parsedCommand.Name, out var globalCommand))
                     {
                         Debug.Assert(globalCommand != null);
-                        _cpuHandler.HandleGlobalCommand(globalCommand, commandArgs);
+                        _cpuHandler.HandleGlobalCommand(globalCommand, parsedCommand.Arguments);
                     }
-                    else if (_stateCommandRegistry.TryGetCommand(name, out var stateCommand))
+                    else if (_stateCommandRegistry.TryGetCommand(parsedCommand.Name, out var stateCommand))
                     {
                         Debug.Assert(stateCommand != null);
-                        _cpuHandler.HandleStateCommand(stateCommand, commandArgs);
+                        _cpuHandler.HandleStateCommand(stateCommand, parsedCommand.Arguments);
+                    }
+                    else
+                    {
+                        _logger.Error($"Unknown command: {parsedCommand.Name}");
                     }
                 }
                 _cpuHandler.Tick();
-                Thread.Sleep(100);
+                Thread.Sleep(100); // 10Hz, TODO make it configurable
             }
         }
 
-        private static void ParseCommand(string command, out string name, out string[] args)
+        private static bool TryParseCommand(string command, out ParsedCommand? parsedCommand)
         {
-            name = string.Empty;
-            args = [];
-
-            if (string.IsNullOrEmpty(command)) return;
+            parsedCommand = default;
+            if (string.IsNullOrEmpty(command)) return false;
 
             var parts = command.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-            if (parts.Length == 0) return;
+            if (parts.Length == 0) return false;
 
-            name = parts[0];
-            args = parts.Length > 1 ? parts[1..] : [];
+            parsedCommand = new ParsedCommand(
+                Name: parts[0], 
+                Arguments: parts.Length > 1 ? parts[1..] : []);
+            return true;
         }
+
+        private record ParsedCommand(string Name, string[] Arguments) { }
 
         private readonly ILogger _logger;
         private readonly IInput _input;

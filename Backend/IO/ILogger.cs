@@ -1,6 +1,6 @@
 ﻿namespace Backend.IO
 {
-    internal interface ILogger
+    public interface ILogger
     {
         void Log(string message);
         void LogUsage();

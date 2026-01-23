@@ -1,12 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Text;
 
 namespace Backend.IO
 {
-    internal interface IOutput
+    public interface IOutput
     {
         void Write(string message);
         void WriteStatus(CPU.CpuInspector inspector);

@@ -90,6 +90,7 @@ require("cpu-simple").setup({
 - [ ] Missing assembler unit tests
   - [ ] Analyser
   - [ ] Emitter
+  - [ ] Backend
 - [/] Change the CPU program to act as a backend that listens on STDIN for commands (load_prog(file_path), step(n=1), run(until...), read_mem) and sends back structured responses on STDOUT (lua tables)
   - [x] Commands via STDIN
     - [x] load
