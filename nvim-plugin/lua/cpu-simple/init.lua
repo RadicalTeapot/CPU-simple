@@ -3,10 +3,18 @@
 
 local M = {}
 
+-- Module references (lazy-loaded)
+local backend = nil
+local assembler = nil
+local display = nil
+local state = nil
+local events = nil
+local commands = nil
+
 -- Default configuration
 M.defaults = {
   -- Path to Backend executable
-  backend_path = ".Backend.exe",
+  backend_path = "Backend.exe",
   -- Path to Assembler executable
   assembler_path = "Assembler.exe",
   -- Assembler options
@@ -19,18 +27,10 @@ M.defaults = {
   registers = 4,
   -- Working directory (defaults to cwd)
   cwd = nil,
-  -- Various
-  update_statusline = nil,
 }
 
 -- Current configuration
 M.config = {}
-
--- Module references
-M.backend = nil
-M.assembler = nil
-M.display = nil
-M.cpu = nil
 
 --- Setup the plugin with user configuration
 ---@param opts table|nil User configuration options
@@ -38,13 +38,26 @@ function M.setup(opts)
   M.config = vim.tbl_deep_extend("force", M.defaults, opts or {})
 
   -- Load submodules
-  M.backend = require("cpu-simple.backend")
-  M.assembler = require("cpu-simple.assembler")
-  M.display = require("cpu-simple.display")
-  M.cpu = require("cpu-simple.cpu")
+  backend = require("cpu-simple.backend")
+  assembler = require("cpu-simple.assembler")
+  display = require("cpu-simple.display")
+  state = require("cpu-simple.state")
+  events = require("cpu-simple.events")
+  commands = require("cpu-simple.commands")
 
   -- Register commands
   M.register_commands()
+
+  -- Subscribe to status updates for statusline
+  events.on(events.STATUS_UPDATED, function()
+    vim.cmd("redrawstatus")
+  end)
+  events.on(events.BACKEND_STARTED, function()
+    vim.cmd("redrawstatus")
+  end)
+  events.on(events.BACKEND_STOPPED, function()
+    vim.cmd("redrawstatus")
+  end)
 end
 
 --- Register user commands
@@ -114,28 +127,26 @@ end
 
 --- Start the backend process
 function M.backend_start()
-  if not M.backend then
-    M.backend = require("cpu-simple.backend")
+  if not backend then
+    backend = require("cpu-simple.backend")
   end
 
-  M.backend.start({
+  backend.start({
     backend_path = M.config.backend_path,
     memory_size = M.config.memory_size,
     stack_size = M.config.stack_size,
     registers = M.config.registers,
     cwd = M.config.cwd,
-    update_statusline = M.config.update_statusline,
   })
 end
 
--- Report backend status
-function M.status()
-  if not M.backend then
-    vim.notify("Backend module not loaded", vim.log.levels.ERROR)
-    return
+--- Report backend status
+function M.backend_status()
+  if not backend then
+    backend = require("cpu-simple.backend")
   end
 
-  if M.backend.is_running() then
+  if backend.is_running() then
     vim.notify("CPU backend is running", vim.log.levels.INFO)
   else
     vim.notify("CPU backend is not running", vim.log.levels.WARN)
@@ -144,21 +155,21 @@ end
 
 --- Stop the backend process
 function M.backend_stop()
-  if not M.backend then
+  if not backend then
     vim.notify("Backend module not loaded", vim.log.levels.ERROR)
     return
   end
 
-  M.backend.stop()
+  backend.stop()
 end
 
 --- Assemble the current buffer
 function M.assemble()
-  if not M.assembler then
-    M.assembler = require("cpu-simple.assembler")
+  if not assembler then
+    assembler = require("cpu-simple.assembler")
   end
 
-  M.assembler.assemble_buffer({
+  assembler.assemble_buffer({
     assembler_path = M.config.assembler_path,
     assembler_options = M.config.assembler_options,
     cwd = M.config.cwd,
@@ -168,11 +179,14 @@ end
 --- Load machine code into the CPU
 ---@param path string|nil Path to the binary file (defaults to last assembled)
 function M.load(path)
-  if not M.backend then
-    M.backend = require("cpu-simple.backend")
+  if not backend then
+    backend = require("cpu-simple.backend")
+  end
+  if not commands then
+    commands = require("cpu-simple.commands")
   end
 
-  if not M.backend.is_running() then
+  if not backend.is_running() then
     vim.notify("Backend is not running. Starting it.", vim.log.levels.INFO)
     M.backend_start()
   end
@@ -180,10 +194,10 @@ function M.load(path)
   -- Use provided path or fall back to last assembled
   local file_path = path
   if not file_path then
-    if not M.assembler then
-      M.assembler = require("cpu-simple.assembler")
+    if not assembler then
+      assembler = require("cpu-simple.assembler")
     end
-    file_path = M.assembler.get_last_output()
+    file_path = assembler.get_last_output()
   end
 
   if not file_path then
@@ -200,94 +214,147 @@ function M.load(path)
   file_path = vim.fn.fnamemodify(file_path, ":p")
 
   -- Send load command to backend
-  M.backend.send("load " .. file_path)
+  backend.send(commands.LOAD .. " " .. file_path)
+end
+
+--- Helper to ensure backend is running before executing a command
+---@param fn function Function to execute if backend is running
+---@return function Wrapped function
+local function with_running_backend(fn)
+  return function(...)
+    if not backend then
+      backend = require("cpu-simple.backend")
+    end
+    if not backend.is_running() then
+      vim.notify("Backend is not running. Start it with :CpuBackendStart", vim.log.levels.ERROR)
+      return
+    end
+    return fn(...)
+  end
 end
 
 --- Run the loaded program
-function M.run()
-  if not M.cpu then
-    M.cpu = require("cpu-simple.cpu")
+M.run = with_running_backend(function()
+  if not commands then
+    commands = require("cpu-simple.commands")
   end
-
-  M.cpu.run()
-end
+  backend.send(commands.RUN)
+end)
 
 --- Execute one CPU instruction
-function M.step()
-    if not M.cpu then
-        M.cpu = require("cpu-simple.cpu")
-    end
-    
-    M.cpu.step()
-end
+M.step = with_running_backend(function()
+  if not commands then
+    commands = require("cpu-simple.commands")
+  end
+  backend.send(commands.STEP)
+end)
 
 --- Reset the CPU
-function M.reset()
-    if not M.cpu then
-        M.cpu = require("cpu-simple.cpu")
+M.reset = with_running_backend(function()
+  if not commands then
+    commands = require("cpu-simple.commands")
+  end
+  backend.send(commands.RESET)
+end)
+
+--- Get the CPU status
+M.status = with_running_backend(function()
+  if not commands then
+    commands = require("cpu-simple.commands")
+  end
+  backend.send(commands.STATUS)
+end)
+
+--- Get full CPU dump
+M.dump = with_running_backend(function()
+  if not commands then
+    commands = require("cpu-simple.commands")
+  end
+  if not state then
+    state = require("cpu-simple.state")
+  end
+  if not display then
+    display = require("cpu-simple.display")
+  end
+
+  backend.send(commands.DUMP)
+
+  -- Display dump in floating window after a short delay to allow response
+  vim.defer_fn(function()
+    local lines = {}
+
+    if state.status then
+      table.insert(lines, "=== CPU STATUS ===")
+      table.insert(lines, string.format("Cycles: %d  PC: %d  SP: %d",
+        state.status.cycles, state.status.pc, state.status.sp))
+      table.insert(lines, string.format("Flags - Z: %d  C: %d",
+        state.status.flags.zero, state.status.flags.carry))
+      table.insert(lines, string.format("R0: %d  R1: %d  R2: %d  R3: %d",
+        state.status.registers[1], state.status.registers[2],
+        state.status.registers[3], state.status.registers[4]))
+      table.insert(lines, "")
     end
-    
-    M.cpu.reset()
-end
 
--- Get the CPU status
-function M.status()
-  if not M.cpu then
-    M.cpu = require("cpu-simple.cpu")
-  end
+    if state.stack then
+      table.insert(lines, "=== STACK ===")
+      for i, val in ipairs(state.stack) do
+        table.insert(lines, string.format("[%d]: %d", i - 1, val))
+      end
+      table.insert(lines, "")
+    end
 
-  M.cpu.status()
-end
+    if state.memory then
+      table.insert(lines, "=== MEMORY ===")
+      for addr, val in ipairs(state.memory) do
+        table.insert(lines, string.format("[%d]: %d", addr - 1, val))
+      end
+    end
 
-function M.dump()
-  if not M.cpu then
-    M.cpu = require("cpu-simple.cpu")
-  end
+    if #lines == 0 then
+      table.insert(lines, "No CPU state available. Run a program first.")
+    end
 
-  M.cpu.dump()
-end
+    display.show(lines, { split = "float", title = "CPU Dump" })
+  end, 100)
+end)
 
 --- Send a raw command to the backend
 ---@param cmd string Command to send
-function M.send(cmd)
-  if not M.backend then
-    M.backend = require("cpu-simple.backend")
-  end
-
-  if not M.backend.is_running() then
-    vim.notify("Backend is not running. Start it with :CpuBackendStart", vim.log.levels.ERROR)
-    return
-  end
-
-  M.backend.send(cmd)
-end
+M.send = with_running_backend(function(cmd)
+  backend.send(cmd)
+end)
 
 --- Check if the backend is running
 ---@return boolean
 function M.is_running()
-  if not M.backend then
+  if not backend then
     return false
   end
-  return M.backend.is_running()
+  return backend.is_running()
 end
 
+--- Get formatted status line for display
+---@return string Status line text
 function M.get_statusline()
-  if (M.config.update_statusline == nil) or (M.config.update_statusline == false) then
-    return "NA"
-  end
-
-  if not M.backend then
+  if not backend then
     return "Backend not loaded"
   end
-  if not M.backend.is_running() then
-    return "Backend stopped"
-  else
-    local status = M.backend.status
-    if not status then
-      return "Backend running: no status"
-    end
-    return "Cyc:" .. status.cycles .. " PC:" .. status.pc .. " SP:" .. status.sp .. " Z:" .. status.flags.zero .. " C:" .. status.flags.carry .. " R0:" .. status.registers[1] .. " R1:" .. status.registers[2] .. " R2:" .. status.registers[3] .. " R3:" .. status.registers[4]
+  if not state then
+    state = require("cpu-simple.state")
   end
+
+  if not backend.is_running() then
+    return "Backend stopped"
+  end
+
+  local s = state.status
+  if not s then
+    return "Backend running: no status"
+  end
+
+  return string.format("Cyc:%d PC:%d SP:%d Z:%d C:%d R0:%d R1:%d R2:%d R3:%d",
+    s.cycles, s.pc, s.sp, s.flags.zero, s.flags.carry,
+    s.registers[1], s.registers[2], s.registers[3], s.registers[4])
 end
 
 return M

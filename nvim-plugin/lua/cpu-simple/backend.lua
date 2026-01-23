@@ -4,6 +4,9 @@
 local M = {}
 
 local uv = vim.loop
+local state = require("cpu-simple.state")
+local events = require("cpu-simple.events")
+local commands = require("cpu-simple.commands")
 
 -- Process state
 M.handle = nil
@@ -12,19 +15,28 @@ M.stdin = nil
 M.stdout = nil
 M.stderr = nil
 M.running = false
-M.status = nil
-M.stack = nil
-M.memory = nil
 
--- Configuration (set by init.lua)
+-- Configuration (set by start())
 M.config = {
   backend_path = "Backend.exe",
   memory_size = 256,
   stack_size = 16,
   registers = 4,
   cwd = nil,
-  update_statusline = nil,
 }
+
+--- Helper to wrap functions with backend running check
+---@param fn function Function to wrap
+---@return function Wrapped function that checks backend is running
+function M.with_running_backend(fn)
+  return function(...)
+    if not M.is_running() then
+      vim.notify("Backend is not running. Start it with :CpuBackendStart", vim.log.levels.ERROR)
+      return nil
+    end
+    return fn(...)
+  end
+end
 
 --- Start the backend process
 ---@param config table Configuration options
@@ -96,9 +108,7 @@ function M.start(config)
 
   vim.schedule(function()
     vim.notify("Backend started (PID: " .. M.pid .. ")", vim.log.levels.INFO)
-    if (M.config.update_statusline) then
-      M.config.update_statusline()
-    end
+    events.emit(events.BACKEND_STARTED, { pid = M.pid })
   end)
 
   return true
@@ -131,15 +141,12 @@ function M.stop()
   end
 
   -- Send quit command gracefully
-  M.send("quit")
+  M.send(commands.QUIT)
 
   -- Give it a moment to exit gracefully, then force kill if needed
   vim.defer_fn(function()
     if M.handle and M.running then
       M.handle:kill("sigterm")
-    end
-    if (M.config.update_statusline) then
-      M.config.update_statusline()
     end
   end, 500)
 end
@@ -159,20 +166,21 @@ function M.on_stdout(data)
   end)
 end
 
+--- Parse stdout line and update state/emit events
+---@param data string Single line of output
 function M.parse_stdout(data)
-    -- if status line, parse and return table
-    -- else display output via notify
-    if data:match("^%[STATUS%]") then
-        M.set_cpu_status(data)
-    elseif data:match("^%[STACK%]") then
-        M.set_cpu_stack(data)
-    elseif data:match("^%[MEMORY%]") then
-        M.set_cpu_memory(data)
-    else
-        vim.schedule(function()
-            vim.notify("[CPU] " .. data, vim.log.levels.INFO)
-        end)
-    end
+  if data:match("^%[STATUS%]") then
+    state.update_status(data)
+    events.emit(events.STATUS_UPDATED, state.status)
+  elseif data:match("^%[STACK%]") then
+    state.update_stack(data)
+    events.emit(events.STACK_UPDATED, state.stack)
+  elseif data:match("^%[MEMORY%]") then
+    state.update_memory(data)
+    events.emit(events.MEMORY_UPDATED, state.memory)
+  else
+    vim.notify("[CPU] " .. data, vim.log.levels.INFO)
+  end
 end
 
 --- Handle stderr data from backend (logs/errors)
@@ -202,6 +210,9 @@ function M.on_exit(code, signal)
   vim.schedule(function()
     M.running = false
     M.cleanup()
+    state.clear()
+    events.emit(events.BACKEND_STOPPED, { code = code, signal = signal })
+
     if code == 0 then
       vim.notify("Backend exited", vim.log.levels.INFO)
     else
@@ -236,51 +247,6 @@ end
 ---@return boolean
 function M.is_running()
   return M.running
-end
-
-function M.set_cpu_status(status_line)
-    -- status_line = "[STATUS] cycles pc sp r0 r1 r2 r3 zero carry"
-    local status = status_line:gsub("^%[STATUS%]%s*", "")
-    local cycles, pc, sp, r0, r1, r2, r3, zero, carry = status:match("^(%d+)%s+(%d+)%s+(%d+)%s+(%d+)%s+(%d+)%s+(%d+)%s+(%d+)%s+(%d+)%s+(%d+)")
-    M.status = {
-        cycles = tonumber(cycles),
-        pc = tonumber(pc),
-        sp = tonumber(sp),
-        registers = {
-            tonumber(r0),
-            tonumber(r1),
-            tonumber(r2),
-            tonumber(r3),
-        },
-        flags = {
-            zero = tonumber(zero),
-            carry = tonumber(carry),
-        }
-    }
-
-    vim.schedule(function()
-        if M.config.update_statusline then
-            M.config.update_statusline()
-        end
-    end)
-end
-
-function M.set_cpu_stack(stack_line)
-    local stack = stack_line:gsub("^%[STACK%]%s*", "")
-    local stack_values = {}
-    for value in stack:gmatch("(%d+)") do
-        table.insert(stack_values, tonumber(value))
-    end
-    M.stack = stack_values
-end
-
-function M.set_cpu_memory(memory_line)
-    local memory = memory_line:gsub("^%[MEMORY%]%s*", "")
-    local memory_values = {}
-    for value in memory:gmatch("(%d+)") do
-        table.insert(memory_values, tonumber(value))
-    end
-    M.memory = memory_values
 end
 
 return M
