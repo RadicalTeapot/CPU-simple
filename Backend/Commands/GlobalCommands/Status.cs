@@ -6,18 +6,16 @@ using System.Text;
 namespace Backend.Commands.GlobalCommands
 {
     [Command(CommandType.Global, "status", ["state"],
-        description: "Display the current CPU state",
-        helpText: "Usage: 'status'")]
-    internal class Status(CommandContext context) : IGlobalCommand
+        description: "Display the current CPU state")]
+    internal class Status(CommandContext context) : BaseGlobalCommand(context)
     {
-        public string Name { get => context.Name;  }
-
-        public string Description { get => context.Description; }
-
-        public string HelpText { get => context.HelpText; }
-
-        public GlobalCommandResult Execute(CpuInspector inspector, ICpuState currentState, IOutput output, string[] args)
+        protected override GlobalCommandResult ExecuteCore(CpuInspector inspector, ICpuState currentState, IOutput output, string[] args)
         {
+            if (args.Length != 0)
+            {
+                return new GlobalCommandResult(Success: false, Message: $"The '{Name}' command does not take any arguments.");
+            }
+
             var sb = new StringBuilder();
             sb.Append($"Cycle: {inspector.Cycle} ");
             sb.Append($"PC: 0x{inspector.PC:X2} ");

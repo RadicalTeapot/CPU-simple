@@ -16,7 +16,7 @@ M.status = nil
 
 -- Configuration (set by init.lua)
 M.config = {
-  backend_path = "./Main/bin/Debug/net9.0/Backend.exe",
+  backend_path = "Backend.exe",
   memory_size = 256,
   stack_size = 16,
   registers = 4,

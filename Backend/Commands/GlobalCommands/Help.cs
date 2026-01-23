@@ -4,17 +4,16 @@ using CPU;
 
 namespace Backend.Commands.GlobalCommands
 {
-    [Command(CommandType.Global, "help", ["?"], "Displays help information.", "Usage: help\nDisplays this help information.")]
-    internal class Help(CommandContext context) : IGlobalCommand
+    [Command(CommandType.Global, "help", ["?"], "Displays help information.")]
+    internal class Help(CommandContext context) : BaseGlobalCommand(context)
     {
-        public string Name { get => context.Name; }
-
-        public string Description { get => context.Description; }
-
-        public string HelpText { get => context.HelpText; }
-
-        public GlobalCommandResult Execute(CpuInspector inspector, ICpuState currentState, IOutput output, string[] args)
+        protected override GlobalCommandResult ExecuteCore(CpuInspector inspector, ICpuState currentState, IOutput output, string[] args)
         {
+            if (args.Length != 0)
+            {
+                return new GlobalCommandResult(Success: false, Message: $"The '{Name}' command does not take any arguments.");
+            }
+
             currentState.LogHelp();
             return new GlobalCommandResult(Success: true);
         }
