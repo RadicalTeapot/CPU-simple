@@ -30,7 +30,9 @@ namespace Backend.IO
                 .Append($"{inspector.SP} ")
                 .Append($"{string.Join(" ", inspector.Registers)} ")
                 .Append($"{zeroFlag} ")
-                .Append($"{carryFlag}");
+                .Append($"{carryFlag} ")
+                .Append($"({string.Join(" ", inspector.MemoryChanges)}) ")
+                .Append($"({string.Join(" ", inspector.StackChanges)})");
             Console.Out.WriteLine(sb.ToString());
         }
 

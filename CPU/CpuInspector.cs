@@ -1,10 +1,4 @@
 ﻿using CPU.components;
-using CPU.opcodes;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace CPU
 {
@@ -19,6 +13,8 @@ namespace CPU
         public string[] LastInstruction { get; private set; } = [];
         public byte[] StackContents { get; private set; } = [];
         public byte[] MemoryContents { get; private set; } = [];
+        public KeyValuePair<int, byte>[] MemoryChanges { get; private set; } = [];
+        public KeyValuePair<int, byte>[] StackChanges { get; private set; } = [];
 
         internal class Builder()
         {
@@ -68,17 +64,29 @@ namespace CPU
                 _inspector.MemoryContents = memory;
                 return this;
             }
+            public Builder SetMemoryChanges(KeyValuePair<int, byte>[] changes)
+            {
+                _inspector.MemoryChanges = [..changes];
+                return this;
+            }
+            public Builder SetStackChanges(KeyValuePair<int, byte>[] changes)
+            {
+                _inspector.StackChanges = [..changes];
+                return this;
+            }
             public CpuInspector Build()
             {
                 return _inspector;
             }
         }
 
-        public static CpuInspector Create(int cycle, State state, Stack stack, Memory memory, string[] lastInstruction)
+        internal static CpuInspector Create(int cycle, State state, Stack stack, Memory memory, ExecutionContext executionContext)
         {
             var builder = new Builder()
                 .SetCycle(cycle)
-                .SetLastInstruction(lastInstruction);
+                .SetLastInstruction(executionContext.LastInstruction)
+                .SetMemoryChanges([..executionContext.MemoryChanges])
+                .SetStackChanges([..executionContext.StackChanges]);
             state.UpdateCpuInspectorBuilder(builder);
             stack.UpdateCpuInspectorBuilder(builder);
             memory.UpdateCpuInspectorBuilder(builder);

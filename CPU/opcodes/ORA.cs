@@ -5,7 +5,7 @@ namespace CPU.opcodes
     [Opcode(OpcodeBaseCode.ORA, OpcodeGroupBaseCode.SingleRegisterLogicOne, RegisterArgsCount.One, OperandType.Address)]
     internal class ORA(State cpuState, Memory memory, Stack stack, OpcodeArgs args) : IOpcode
     {
-        public void Execute()
+        public void Execute(ExecutionContext executionContext)
         {
             var currentValue = cpuState.GetRegister(args.LowRegisterIdx);
             var valueAtAddress = memory.ReadByte(args.AddressValue);

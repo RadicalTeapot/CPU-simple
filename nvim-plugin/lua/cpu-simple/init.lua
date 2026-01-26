@@ -280,6 +280,7 @@ M.dump = with_running_backend(function()
   backend.send(commands.DUMP)
 
   -- Display dump in floating window after a short delay to allow response
+  -- TODO Use event/callback when dump response is received instead of delay
   vim.defer_fn(function()
     local lines = {}
 

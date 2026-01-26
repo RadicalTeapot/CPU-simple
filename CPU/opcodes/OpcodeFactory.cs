@@ -135,9 +135,11 @@ namespace CPU.opcodes
                 // Standard constructor signature: (State, Memory, Stack, OpcodeArgs)
                 var constructor = type.GetConstructor([typeof(State), typeof(Memory), typeof(Stack), typeof(OpcodeArgs)]) 
                     ?? throw new InvalidOperationException($"Opcode {type.Name} must have a constructor with signature (State, Memory, Stack, OpcodeArgs)");
+                Debug.Assert(typeof(IOpcode).IsAssignableFrom(constructor.DeclaringType),
+                    "Decoded opcode constructor must belong to a type implementing IOpcode.");
 
                 var metadata = new OpcodeMetadata(
-                    constructor,
+                    (state, memory, stack, args) => (IOpcode)constructor.Invoke([state, memory, stack, args]),
                     attribute.BaseCode,
                     attribute.GroupCode,
                     attribute.RegisterArgsCount,

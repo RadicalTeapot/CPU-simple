@@ -5,7 +5,7 @@ namespace CPU.opcodes
     [Opcode(OpcodeBaseCode.CMP, OpcodeGroupBaseCode.TwoRegistersCompare, RegisterArgsCount.Two, OperandType.None)]
     internal class CMP(State cpuState, Memory memory, Stack stack, OpcodeArgs args) : IOpcode
     {
-        public void Execute()
+        public void Execute(ExecutionContext executionContext)
         {
             var source = cpuState.GetRegister(args.HighRegisterIdx);
             var destination = cpuState.GetRegister(args.LowRegisterIdx);            

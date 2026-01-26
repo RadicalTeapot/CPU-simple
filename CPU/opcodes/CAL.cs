@@ -5,11 +5,11 @@ namespace CPU.opcodes
     [Opcode(OpcodeBaseCode.CAL, OpcodeGroupBaseCode.SystemAndJump, RegisterArgsCount.Zero, OperandType.Address)]
     internal class CAL(State cpuState, Memory memory, Stack stack, OpcodeArgs args) : IOpcode
     {
-        public void Execute()
+        public void Execute(ExecutionContext executionContext)
         {
             // Push return address (current PC, which is already past the instruction and operand)
             var returnAddress = cpuState.GetPC();
-            stack.PushAddress(returnAddress);
+            stack.PushAddress(returnAddress, executionContext);
 
             // Jump to target
             cpuState.SetPC(args.AddressValue);

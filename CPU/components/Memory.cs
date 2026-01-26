@@ -1,14 +1,8 @@
 ﻿namespace CPU.components
 {
-    public class Memory
+    public class Memory(int size)
     {
-        public int Size { get; }
-        
-        public Memory(int size)
-        {
-            _memory = new byte[size];
-            Size = size;
-        }
+        public int Size { get; } = size;
 
 #if x16
         public byte ReadByte(ushort address)
@@ -28,12 +22,14 @@
             return result;
         }
 
-        public void WriteByte(ushort address, byte value)
+        public void WriteByte(ushort address, byte value) => WriteByte(address, value, null);
+        public void WriteByte(ushort address, byte value, ExecutionContext executionContext)
         {
             if (address >= Size)
                 throw new ArgumentOutOfRangeException(nameof(address), $"Memory write address out of bounds: {address}.");
 
             _memory[address] = value;
+            executionContext.RecordMemoryChange(address, value);
         }
 #else
         public byte ReadByte(byte address)
@@ -52,11 +48,13 @@
             return result;
         }
 
-        public void WriteByte(byte address, byte value)
+        public void WriteByte(byte address, byte value) => WriteByte(address, value, null);
+        public void WriteByte(byte address, byte value, ExecutionContext? executionContext)
         {
             if (address >= Size)
                 throw new ArgumentOutOfRangeException(nameof(address), $"Memory write address out of bounds: {address}.");
             _memory[address] = value;
+            executionContext?.RecordMemoryChange(address, value);
         }
 #endif
 
@@ -87,7 +85,7 @@
             inspectorBuilder.SetMemory(memory);
         }
 
-        private readonly byte[] _memory;
+        private readonly byte[] _memory = new byte[size];
     }
 
     internal static class MemoryDebugExtensions

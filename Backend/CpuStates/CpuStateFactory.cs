@@ -16,7 +16,7 @@ namespace Backend.CpuStates
 
         public LoadingState CreateLoadingState(byte[] program)
         {
-            return new LoadingState(GetContextForState(typeof(LoadingState)), program);
+            return new LoadingState(GetContextForState(typeof(LoadingState)), output, program);
         }
 
         public ResetState CreateResetState()

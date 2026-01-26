@@ -5,7 +5,7 @@ namespace CPU.opcodes
     [Opcode(OpcodeBaseCode.XOR, OpcodeGroupBaseCode.And, RegisterArgsCount.Two, OperandType.None)]
     internal class XOR(State cpuState, Memory memory, Stack stack, OpcodeArgs args) : IOpcode
     {
-        public void Execute()
+        public void Execute(ExecutionContext executionContext)
         {
             var firstValue = cpuState.GetRegister(args.HighRegisterIdx);
             var secondValue = cpuState.GetRegister(args.LowRegisterIdx);

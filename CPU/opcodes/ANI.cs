@@ -5,7 +5,7 @@ namespace CPU.opcodes
     [Opcode(OpcodeBaseCode.ANI, OpcodeGroupBaseCode.SingleRegisterLogicOne, RegisterArgsCount.One, OperandType.Immediate)]
     internal class ANI(State cpuState, Memory memory, Stack stack, OpcodeArgs args) : IOpcode
     {
-        public void Execute()
+        public void Execute(ExecutionContext executionContext)
         {
             var currentValue = cpuState.GetRegister(args.LowRegisterIdx);
             var immediateValue = args.ImmediateValue;

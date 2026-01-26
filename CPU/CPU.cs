@@ -22,7 +22,7 @@ namespace CPU
         }
 
         public CpuInspector GetInspector()
-            => CpuInspector.Create(_cycle, _state, _stack, _memory, _lastInstruction);
+            => CpuInspector.Create(_cycle, _state, _stack, _memory, _executionContext);
 
         public void Reset()
         {
@@ -30,7 +30,7 @@ namespace CPU
             _stack.Reset();
             _cycle = 0;
             // Note: Memory is not cleared on reset
-            _lastInstruction = [];
+            _executionContext = new();
         }
 
         public void LoadProgram(byte[] program)
@@ -71,9 +71,10 @@ namespace CPU
         /// </summary>
         public void Step()
         {
+            _executionContext = new();
             var instructionBytes = Fetch();
             var opcodeInstance = Decode(instructionBytes);
-            opcodeInstance.Execute();
+            opcodeInstance.Execute(_executionContext);
 
             _cycle++;
         }
@@ -90,15 +91,8 @@ namespace CPU
         private IOpcode Decode(byte[] instructionBytes)
         {
             var decodedInstruction = _opcodeFactory.Decode(instructionBytes);
-            Debug.Assert(
-                decodedInstruction.Metadata.OpcodeConstructor != null,
-                "Opcode constructor should not be null after decoding.");
-            Debug.Assert(
-                typeof(IOpcode).IsAssignableFrom(decodedInstruction.Metadata.OpcodeConstructor.DeclaringType),
-                "Decoded opcode constructor must belong to a type implementing IOpcode.");
-
-            _lastInstruction = decodedInstruction.AsStringArray();
-            return (IOpcode)decodedInstruction.OpcodeConstructor.Invoke([_state, _memory, _stack, decodedInstruction.Args]);
+            _executionContext.SetLastInstruction(decodedInstruction.AsStringArray());
+            return decodedInstruction.CreateOpcode(_state, _memory, _stack);
         }
 
         private void Dump()
@@ -115,7 +109,7 @@ namespace CPU
         private readonly Memory _memory;
         private readonly OpcodeFactory _opcodeFactory;
         private int _cycle = 0;
-        private string[] _lastInstruction = [];
+        private ExecutionContext _executionContext;
 #if x16
         public const int AddressSize = 2;
 #else

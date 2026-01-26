@@ -5,7 +5,7 @@ namespace CPU.opcodes
     [Opcode(OpcodeBaseCode.LDX, OpcodeGroupBaseCode.StoreAndIndirect, RegisterArgsCount.One, OperandType.RegAndImmediate)]
     internal class LDX(State cpuState, Memory memory, Stack stack, OpcodeArgs args) : IOpcode
     {
-        public void Execute()
+        public void Execute(ExecutionContext executionContext)
         {
             var immediateValue = args.ImmediateValue;
             var registerValue = cpuState.GetRegister(args.LowRegisterIdx);

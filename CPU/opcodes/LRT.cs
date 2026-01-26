@@ -5,7 +5,7 @@ namespace CPU.opcodes
     [Opcode(OpcodeBaseCode.LRT, OpcodeGroupBaseCode.BitsManipulation, RegisterArgsCount.One, OperandType.None)]
     internal class LRT(State cpuState, Memory memory, Stack stack, OpcodeArgs args) : IOpcode
     {
-        public void Execute()
+        public void Execute(ExecutionContext executionContext)
         {
             var value = cpuState.GetRegister(args.LowRegisterIdx);
             var msb = (byte)(value & 0x80);

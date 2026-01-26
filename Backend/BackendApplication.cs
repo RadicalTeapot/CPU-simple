@@ -2,7 +2,6 @@
 using Backend.Commands.StateCommands;
 using Backend.IO;
 using System.Diagnostics;
-using System.Runtime.CompilerServices;
 
 namespace Backend
 {

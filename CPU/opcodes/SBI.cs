@@ -5,7 +5,7 @@ namespace CPU.opcodes
     [Opcode(OpcodeBaseCode.SBI, OpcodeGroupBaseCode.SingleRegisterALU, RegisterArgsCount.One, OperandType.Immediate)]
     internal class SBI(State cpuState, Memory memory, Stack stack, OpcodeArgs args) : IOpcode
     {
-        public void Execute()
+        public void Execute(ExecutionContext executionContext)
         {
             var currentValue = cpuState.GetRegister(args.LowRegisterIdx);
             var result = currentValue - args.ImmediateValue - (1 - cpuState.GetCarryFlagAsInt());

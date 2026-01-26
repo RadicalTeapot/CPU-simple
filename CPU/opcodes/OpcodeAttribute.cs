@@ -1,5 +1,6 @@
-using System.Reflection;
-using System.Text;
+using CPU.components;
+
+using OpcodeConstrutor = System.Func<CPU.components.State, CPU.components.Memory, CPU.components.Stack, CPU.opcodes.OpcodeArgs, CPU.opcodes.IOpcode>;
 
 namespace CPU.opcodes
 {
@@ -43,32 +44,24 @@ namespace CPU.opcodes
     /// <summary>
     /// Cached metadata for an opcode, built from <see cref="OpcodeAttribute"/> at startup.
     /// </summary>
-    internal readonly struct OpcodeMetadata(
-        ConstructorInfo constructor,
-        OpcodeBaseCode baseCode,
-        OpcodeGroupBaseCode groupCode,
-        RegisterArgsCount registerArgsCount,
-        OperandType operandType)
-    {
-        public ConstructorInfo OpcodeConstructor { get; } = constructor;
-        public OpcodeBaseCode BaseCode { get; } = baseCode;
-        public OpcodeGroupBaseCode GroupCode { get; } = groupCode;
-        public RegisterArgsCount RegisterArgsCount { get; } = registerArgsCount;
-        public OperandType OperandType { get; } = operandType;
-    }
+    internal record class OpcodeMetadata(
+        OpcodeConstrutor Constructor,
+        OpcodeBaseCode BaseCode,
+        OpcodeGroupBaseCode GroupCode,
+        RegisterArgsCount RegisterArgsCount,
+        OperandType OperandType)
+    { }
 
     /// <summary>
     /// Result of the decode phase: contains the opcode, its metadata, and parsed arguments.
     /// </summary>
-    internal class DecodedInstruction(
-        OpcodeMetadata metadata,
-        OpcodeArgs args,
-        byte rawInstruction)
+    internal record class DecodedInstruction(
+        OpcodeMetadata Metadata,
+        OpcodeArgs Args,
+        byte RawInstruction)
     {
-        public OpcodeMetadata Metadata { get; } = metadata;
-        public OpcodeArgs Args { get; } = args;
-        public byte RawInstruction { get; } = rawInstruction;
-        public ConstructorInfo OpcodeConstructor => Metadata.OpcodeConstructor;
+        public IOpcode CreateOpcode(State cpuState, Memory memory, Stack stack)
+            => Metadata.Constructor(cpuState, memory, stack, Args);
 
         public string[] AsStringArray()
         {
@@ -97,7 +90,7 @@ namespace CPU.opcodes
                 parts.Add($"[R{Args.IndirectRegisterIdx}+#0x{Args.ImmediateValue:X2}]");
             }
 
-            return parts.ToArray();
+            return [.. parts];
         }
     }
 }

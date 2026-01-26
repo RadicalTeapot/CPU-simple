@@ -83,6 +83,6 @@
         /// <summary>
         /// Executes the opcode.
         /// </summary>
-        void Execute();
+        void Execute(ExecutionContext executionContext);
     }
 }

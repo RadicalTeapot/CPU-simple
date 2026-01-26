@@ -10,11 +10,10 @@ namespace Assembler.Tests
         public void Emitter_EmptyProgram_EmptyOutput()
         {
             var result = new Emitter().Emit(new List<IEmitNode>());
-            Assert.That(result, Is.All.EqualTo(0x00));
 #if x16
-            Assert.That(result.Length, Is.EqualTo(65536));
+            Assert.That(result.Length, Is.EqualTo(0));
 #else
-            Assert.That(result.Length, Is.EqualTo(256));
+            Assert.That(result.Length, Is.EqualTo(0));
 #endif
         }
 
