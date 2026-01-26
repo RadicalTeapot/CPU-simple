@@ -11,6 +11,9 @@ local PANEL_ID = "assembled"
 -- Buffer state (window is managed by sidebar)
 M.bufnr = nil
 
+-- Namespace for highlighting
+local highlight_ns = vim.api.nvim_create_namespace("cpu_simple_assembled_highlight")
+
 --- Get or create the assembled buffer
 ---@return number bufnr
 local function get_or_create_buffer()
@@ -96,6 +99,41 @@ end
 ---@return number|nil winnr
 function M.get_winnr()
   return sidebar.get_panel_winnr(PANEL_ID)
+end
+
+--- Clear all byte range highlights
+function M.clear_highlights()
+  if M.bufnr and vim.api.nvim_buf_is_valid(M.bufnr) then
+    vim.api.nvim_buf_clear_namespace(M.bufnr, highlight_ns, 0, -1)
+  end
+end
+
+--- Highlight a range of bytes in the assembled buffer
+--- Bytes are displayed as "XX " (3 chars each), 16 per row
+---@param start_byte number 0-based start byte offset
+---@param end_byte number 0-based end byte offset (inclusive)
+function M.highlight_byte_range(start_byte, end_byte)
+  if not M.bufnr or not vim.api.nvim_buf_is_valid(M.bufnr) then
+    return
+  end
+
+  -- Clear previous highlights
+  vim.api.nvim_buf_clear_namespace(M.bufnr, highlight_ns, 0, -1)
+
+  -- Constants: 16 bytes per row, 3 characters per byte ("XX ")
+  local BYTES_PER_ROW = 16
+  local CHARS_PER_BYTE = 3
+
+  -- Highlight each byte in the range
+  for byte_offset = start_byte, end_byte do
+    local row = math.floor(byte_offset / BYTES_PER_ROW)
+    local col_byte = byte_offset % BYTES_PER_ROW
+    local col_start = col_byte * CHARS_PER_BYTE
+    local col_end = col_start + 2 -- Just the "XX" part, not the space
+
+    -- Add highlight (row is 0-based for nvim_buf_add_highlight)
+    vim.api.nvim_buf_add_highlight(M.bufnr, highlight_ns, "CpuSimpleCurrentSpan", row, col_start, col_end)
+  end
 end
 
 -- Legacy alias for backward compatibility

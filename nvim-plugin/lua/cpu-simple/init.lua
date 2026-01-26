@@ -67,6 +67,73 @@ function M.setup(opts)
   events.on(events.BACKEND_STOPPED, function()
     vim.cmd("redrawstatus")
   end)
+
+  -- Setup CursorMoved autocmd for assembled panel highlighting
+  M.setup_cursor_highlight()
+end
+
+-- Track last highlighted line to avoid redundant updates
+local last_highlighted_line = nil
+
+--- Setup CursorMoved autocmd to highlight assembled bytes for current source line
+function M.setup_cursor_highlight()
+  vim.api.nvim_create_autocmd("CursorMoved", {
+    group = vim.api.nvim_create_augroup("CpuSimpleCursorHighlight", { clear = true }),
+    callback = function()
+      if not assembler then
+        return
+      end
+
+      local current_bufnr = vim.api.nvim_get_current_buf()
+      local source_bufnr = assembler.get_last_source_bufnr()
+
+      -- Only process if we're in the source buffer that was assembled
+      if not source_bufnr or current_bufnr ~= source_bufnr then
+        return
+      end
+
+      -- Get current line (0-based)
+      local cursor_line = vim.api.nvim_win_get_cursor(0)[1] - 1
+
+      -- Guard: skip if line hasn't changed
+      if cursor_line == last_highlighted_line then
+        return
+      end
+      last_highlighted_line = cursor_line
+
+      local debug_info = assembler.get_last_debug_info()
+      if not debug_info or not debug_info.spans then
+        display.assembled.clear_highlights()
+        return
+      end
+
+      -- Find all span matching the current line
+      local matching_spans = {}
+      for _, span in ipairs(debug_info.spans) do
+        if span.line == cursor_line then
+          table.insert(matching_spans, span)
+        end
+      end
+
+      -- Find start and end byte range
+      local start_byte = nil
+      local end_byte = nil
+      for _, span in ipairs(matching_spans) do
+        if not start_byte or span.start < start_byte then
+          start_byte = span.start
+        end
+        if not end_byte or span.ending > end_byte then
+          end_byte = span.ending
+        end
+      end
+
+      if #matching_spans > 0 then
+        display.assembled.highlight_byte_range(start_byte, end_byte)
+      else
+        display.assembled.clear_highlights()
+      end
+    end,
+  })
 end
 
 --- Register user commands

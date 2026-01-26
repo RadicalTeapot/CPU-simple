@@ -9,7 +9,7 @@ local uv = vim.loop
 M.config = {
   assembler_path = "Assembler.exe",
   assembler_options = {
-    emit_debug = false,
+    emit_debug = true,
   },
   cwd = nil,
 }
@@ -17,6 +17,13 @@ M.config = {
 -- Last assembled output path (for CpuLoad default)
 M.last_output_path = nil
 M.last_output_content = {}
+
+-- Debug info from the .dbg file (spans and symbols)
+M.last_debug_info = nil
+
+-- Source buffer info for matching cursor events
+M.last_source_bufnr = nil
+M.last_source_path = nil
 
 local function store_last_output(path)
   M.last_output_path = path
@@ -53,6 +60,10 @@ function M.assemble_buffer(config, callback)
   local bufnr = vim.api.nvim_get_current_buf()
   local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
   local content = table.concat(lines, "\n")
+
+  -- Store source buffer info for cursor-based highlighting
+  M.last_source_bufnr = bufnr
+  M.last_source_path = vim.api.nvim_buf_get_name(bufnr)
 
   -- Get buffer name for temp file naming
   local bufname = vim.api.nvim_buf_get_name(bufnr)
@@ -110,6 +121,17 @@ function M.assemble_buffer(config, callback)
       if code == 0 then
         vim.notify("Assembled successfully: " .. output_path, vim.log.levels.INFO)
         store_last_output(output_path)
+        -- Load debug info if available
+        if debug_file_path then
+          local ok, debug_info = pcall(dofile, debug_file_path)
+          if ok and debug_info then
+            M.last_debug_info = debug_info
+          else
+            M.last_debug_info = nil
+          end
+        else
+          M.last_debug_info = nil
+        end
         if callback then callback(true, output_path, debug_file_path, nil) end
       else
         local err_msg = table.concat(stderr_output, "")
@@ -155,6 +177,24 @@ end
 ---@return string[]|nil
 function M.get_last_output_content()
   return M.last_output_content
+end
+
+--- Get the last debug info (spans and symbols)
+---@return table|nil
+function M.get_last_debug_info()
+  return M.last_debug_info
+end
+
+--- Get the source buffer number that was last assembled
+---@return number|nil
+function M.get_last_source_bufnr()
+  return M.last_source_bufnr
+end
+
+--- Get the source file path that was last assembled
+---@return string|nil
+function M.get_last_source_path()
+  return M.last_source_path
 end
 
 return M
