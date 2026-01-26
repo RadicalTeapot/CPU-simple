@@ -27,6 +27,12 @@ M.defaults = {
   registers = 4,
   -- Working directory (defaults to cwd)
   cwd = nil,
+  -- Sidebar configuration
+  sidebar = {
+    width = 0.5, -- Ratio of editor width (0.5 = half), or absolute columns if > 1
+    position = "right", -- "left" or "right"
+    panels = {}, -- Panel-specific config: { [panel_id] = { height = 0 } }
+  },
 }
 
 -- Current configuration
@@ -44,6 +50,9 @@ function M.setup(opts)
   state = require("cpu-simple.state")
   events = require("cpu-simple.events")
   commands = require("cpu-simple.commands")
+
+  -- Setup sidebar with configuration
+  display.setup(M.config.sidebar)
 
   -- Register commands
   M.register_commands()
@@ -122,6 +131,43 @@ function M.register_commands()
     M.dump()
   end, {
     desc = "Get full CPU dump",
+  })
+
+  -- Panel toggle commands
+  vim.api.nvim_create_user_command("CpuToggleDump", function()
+    if not display then
+      display = require("cpu-simple.display")
+    end
+    display.toggle_dump()
+  end, {
+    desc = "Toggle the CPU dump panel",
+  })
+
+  vim.api.nvim_create_user_command("CpuToggleAssembled", function()
+    if not display then
+      display = require("cpu-simple.display")
+    end
+    display.toggle_assembled()
+  end, {
+    desc = "Toggle the assembled code panel",
+  })
+
+  vim.api.nvim_create_user_command("CpuOpenSidebar", function()
+    if not display then
+      display = require("cpu-simple.display")
+    end
+    display.open_sidebar()
+  end, {
+    desc = "Open the sidebar",
+  })
+
+  vim.api.nvim_create_user_command("CpuCloseSidebar", function()
+    if not display then
+      display = require("cpu-simple.display")
+    end
+    display.close_sidebar()
+  end, {
+    desc = "Close all sidebar panels",
   })
 end
 
@@ -327,7 +373,7 @@ M.dump = with_running_backend(function()
       table.insert(lines, "No CPU state available. Run a program first.")
     end
 
-    display.show(lines, { split = "float", title = "CPU Dump" })
+    display.dump.set_content(lines)
   end, 100)
 end)
 
