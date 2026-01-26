@@ -293,6 +293,18 @@ M.dump = with_running_backend(function()
       table.insert(lines, string.format("R0: %d  R1: %d  R2: %d  R3: %d",
         state.status.registers[1], state.status.registers[2],
         state.status.registers[3], state.status.registers[4]))
+      if state.status.memory_changes then
+        table.insert(lines, "Memory Changes:")
+        for addr, val in pairs(state.status.memory_changes) do
+          table.insert(lines, string.format("  [%d] = %d", addr, val))
+        end
+      end
+      if state.status.stack_changes then
+        table.insert(lines, "Stack Changes:")
+        for addr, val in pairs(state.status.stack_changes) do
+          table.insert(lines, string.format("  [%d] = %d", addr, val))
+        end
+      end
       table.insert(lines, "")
     end
 

@@ -13,14 +13,29 @@ M.breakpoints = {}  -- { [address] = true }
 M.is_halted = false
 
 --- Update CPU status from backend response
----@param status_line string "[STATUS] cycles pc sp r0 r1 r2 r3 zero carry"
+---@param status_line string "[STATUS] cycles pc sp r0 r1 r2 r3 zero carry memoryChanges stackChanges"
 function M.update_status(status_line)
   local status = status_line:gsub("^%[STATUS%]%s*", "")
-  local cycles, pc, sp, r0, r1, r2, r3, zero, carry = status:match(
-    "^(%d+)%s+(%d+)%s+(%d+)%s+(%d+)%s+(%d+)%s+(%d+)%s+(%d+)%s+(%d+)%s+(%d+)"
+
+  local cycles, pc, sp, r0, r1, r2, r3, zero, carry, memoryChanges, stackChanges = status:match(
+    "^(%d+)%s+(%d+)%s+(%d+)%s+(%d+)%s+(%d+)%s+(%d+)%s+(%d+)%s+(%d+)%s+(%d+)%s+%((.*)%)%s+%((.*)%)%s*$"
   )
 
   if cycles then
+    local memory_changes = {}
+    if memoryChanges then
+      for addr, val in memoryChanges:gmatch("(%d+)%s+(%d+)") do
+        memory_changes[tonumber(addr)] = tonumber(val)
+      end
+    end
+
+    local stack_changes = {}
+    if stackChanges then
+      for addr, val in stackChanges:gmatch("(%d+)%s+(%d+)") do
+        stack_changes[tonumber(addr)] = tonumber(val)
+      end
+    end
+
     M.status = {
       cycles = tonumber(cycles),
       pc = tonumber(pc),
@@ -35,6 +50,8 @@ function M.update_status(status_line)
         zero = tonumber(zero),
         carry = tonumber(carry),
       },
+      memory_changes = memory_changes,
+      stack_changes = stack_changes,
     }
     return true
   end
