@@ -49,12 +49,12 @@
         }
 
         public void WriteByte(byte address, byte value) => WriteByte(address, value, null);
-        public void WriteByte(byte address, byte value, ExecutionContext? executionContext)
+        public void WriteByte(byte address, byte value, Action<int, byte>? reporter)
         {
             if (address >= Size)
                 throw new ArgumentOutOfRangeException(nameof(address), $"Memory write address out of bounds: {address}.");
             _memory[address] = value;
-            executionContext?.RecordMemoryChange(address, value);
+            reporter?.Invoke(address, value);
         }
 #endif
 

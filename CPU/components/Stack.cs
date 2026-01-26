@@ -28,15 +28,13 @@ namespace CPU.components
         {
             if (SP == 0)
                 throw new InvalidOperationException("Stack overflow");
-            executionContext.RecordStackChange(SP, value);
-            _memory.WriteByte(SP--, value);
+            _memory.WriteByte(SP--, value, executionContext.RecordStackChange);
         }
 
-        public byte PopByte(ExecutionContext executionContext)
+        public byte PopByte()
         {
             if (SP == _pointerStartAddress)
                 throw new InvalidOperationException("Stack underflow");
-            executionContext.RecordStackChange(SP, 0);
             return _memory.ReadByte(++SP);
         }
 
@@ -52,19 +50,15 @@ namespace CPU.components
         {
             if (SP < 2)
                 throw new InvalidOperationException("Stack overflow");
-            executionContext.RecordStackChange(SP, (byte)((value >> 8) & 0xFF));
-            _memory.WriteByte(SP--, (byte)((value >> 8) & 0xFF));
-            executionContext.RecordStackChange(SP, (byte)(value & 0xFF));
-            _memory.WriteByte(SP--, (byte)(value & 0xFF));            
+            _memory.WriteByte(SP--, (byte)((value >> 8) & 0xFF), executionContext.RecordStackChange);
+            _memory.WriteByte(SP--, (byte)(value & 0xFF), executionContext.RecordStackChange);            
         }
 
-        private ushort PopWord(ExecutionContext executionContext)
+        private ushort PopWord()
         {
             if (SP > _pointerStartAddress - 2)
                 throw new InvalidOperationException("Stack underflow");
-            executionContext.RecordStackChange(SP, 0);
             ushort low = _memory.ReadByte(++SP);
-            executionContext.RecordStackChange(SP, 0);
             ushort high = _memory.ReadByte(++SP);            
             return (ushort)(low | (high << 8));
         }
@@ -83,7 +77,7 @@ namespace CPU.components
         public ushort PeekAddress() => PeekWord();
 #else
         public void PushAddress(byte value, ExecutionContext executionContext) => PushByte(value, executionContext);
-        public byte PopAddress(ExecutionContext executionContext) => PopByte(executionContext);
+        public byte PopAddress() => PopByte();
         public byte PeekAddress() => PeekByte();
 #endif
 

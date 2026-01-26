@@ -7,7 +7,7 @@ namespace CPU.opcodes
     {
         public void Execute(ExecutionContext executionContext)
         {
-            var returnAddress = stack.PopAddress(executionContext);
+            var returnAddress = stack.PopAddress();
             cpuState.SetPC(returnAddress);
         }
     }

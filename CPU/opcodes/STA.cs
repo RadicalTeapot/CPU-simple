@@ -7,7 +7,7 @@ namespace CPU.opcodes
     {
         public void Execute(ExecutionContext executionContext)
         {
-            memory.WriteByte(args.AddressValue, cpuState.GetRegister(args.LowRegisterIdx), executionContext);
+            memory.WriteByte(args.AddressValue, cpuState.GetRegister(args.LowRegisterIdx), executionContext.RecordMemoryChange);
         }
     }
 }

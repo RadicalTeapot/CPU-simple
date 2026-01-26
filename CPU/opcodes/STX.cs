@@ -11,7 +11,7 @@ namespace CPU.opcodes
             var indirectRegisterValue = cpuState.GetRegister(args.IndirectRegisterIdx);
             var registerValue = cpuState.GetRegister(args.LowRegisterIdx);
             var effectiveAddress = (byte)(indirectRegisterValue + immediateValue);
-            memory.WriteByte(effectiveAddress, registerValue, executionContext);
+            memory.WriteByte(effectiveAddress, registerValue, executionContext.RecordMemoryChange);
         }
     }
 }

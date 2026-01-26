@@ -107,7 +107,7 @@ namespace CPU.Tests
             stack.PushAddress(testAddress, new ExecutionContext()); // Push without recording to avoid interference
 
             // Act
-            var poppedAddress = stack.PopAddress(executionContext);
+            var poppedAddress = stack.PopAddress();
 
             // Assert
             Assert.Multiple(() =>
@@ -171,7 +171,7 @@ namespace CPU.Tests
             stack.PushByte(testAddress, new ExecutionContext()); // Push without recording to avoid interference
 
             // Act
-            var poppedAddress = stack.PopByte(executionContext);
+            var poppedAddress = stack.PopByte();
 
             // Assert
             Assert.Multiple(() =>

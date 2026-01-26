@@ -7,7 +7,7 @@ namespace CPU.opcodes
     {
         public void Execute(ExecutionContext executionContext)
         {
-            var value = stack.PopByte(executionContext);
+            var value = stack.PopByte();
             cpuState.SetRegister(args.LowRegisterIdx, value);
         }
     }
