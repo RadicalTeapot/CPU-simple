@@ -19,6 +19,7 @@ namespace CPU
             _memory = memory;
             _cycle = 0;
             _opcodeFactory = new OpcodeFactory();
+            _executionContext = new();
         }
 
         public CpuInspector GetInspector()
