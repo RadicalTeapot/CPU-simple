@@ -15,11 +15,37 @@ M.config = {
 }
 
 -- Last assembled output path (for CpuLoad default)
-M.last_output = nil
+M.last_output_path = nil
+M.last_output_content = {}
+
+local function store_last_output(path)
+  M.last_output_path = path
+  M.last_output_content = {}
+
+  -- Read binary content and store as hex lines
+  local file = io.open(path, "rb")
+  if file then
+    local content = file:read("*a")
+    file:close()
+    -- Convert binary content to hex representation
+    local hex_lines = {}
+    for i = 1, #content do
+      local byte = string.byte(content, i)
+      table.insert(hex_lines, string.format("%02X", byte))
+    end
+    -- Group hex bytes into lines of 16 bytes
+    local formatted_lines = {}
+    for i = 1, #hex_lines, 16 do
+      local line = table.concat(vim.list_slice(hex_lines, i, i + 15), " ")
+      table.insert(formatted_lines, line)
+    end
+    M.last_output_content = formatted_lines
+  end
+end
 
 --- Assemble the current buffer to machine code
 ---@param config table Configuration options
----@param callback function|nil Optional callback(success, output_path, error_msg)
+---@param callback function|nil Optional callback(success, output_path, debug_path, error_msg)
 function M.assemble_buffer(config, callback)
   M.config = vim.tbl_extend("force", M.config, config or {})
 
@@ -48,7 +74,7 @@ function M.assemble_buffer(config, callback)
   if not input_file then
     local msg = "Failed to create temp file: " .. input_path
     vim.notify(msg, vim.log.levels.ERROR)
-    if callback then callback(false, nil, msg) end
+    if callback then callback(false, nil, nil, msg) end
     return
   end
   input_file:write(content)
@@ -62,8 +88,9 @@ function M.assemble_buffer(config, callback)
   local stdout_output = {}
 
   local args = { input_path, "-o", output_path }
+  local debug_file_path = nil
   if M.config.assembler_options.emit_debug then
-    local debug_file_path = temp_dir .. "/" .. basename .. ".dbg"
+    debug_file_path = temp_dir .. "/" .. basename .. ".dbg"
     table.insert(args, "-d")
     table.insert(args, debug_file_path)
   end
@@ -81,16 +108,16 @@ function M.assemble_buffer(config, callback)
 
     vim.schedule(function()
       if code == 0 then
-        M.last_output = output_path
         vim.notify("Assembled successfully: " .. output_path, vim.log.levels.INFO)
-        if callback then callback(true, output_path, nil) end
+        store_last_output(output_path)
+        if callback then callback(true, output_path, debug_file_path, nil) end
       else
         local err_msg = table.concat(stderr_output, "")
         if err_msg == "" then
           err_msg = "Assembler exited with code " .. code
         end
         vim.notify("Assembly failed: " .. err_msg, vim.log.levels.ERROR)
-        if callback then callback(false, nil, err_msg) end
+        if callback then callback(false, nil, nil, err_msg) end
       end
     end)
   end)
@@ -99,7 +126,7 @@ function M.assemble_buffer(config, callback)
     vim.notify("Failed to start assembler: " .. tostring(pid), vim.log.levels.ERROR)
     stdout:close()
     stderr:close()
-    if callback then callback(false, nil, "Failed to start assembler") end
+    if callback then callback(false, nil, nil, "Failed to start assembler") end
     return
   end
 
@@ -120,8 +147,14 @@ end
 
 --- Get the last assembled output path
 ---@return string|nil
-function M.get_last_output()
-  return M.last_output
+function M.get_last_output_path()
+  return M.last_output_path
+end
+
+--- Get the last assembled output content as hex lines
+---@return string[]|nil
+function M.get_last_output_content()
+  return M.last_output_content
 end
 
 return M

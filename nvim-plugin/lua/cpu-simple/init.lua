@@ -214,12 +214,21 @@ function M.assemble()
   if not assembler then
     assembler = require("cpu-simple.assembler")
   end
+  if not display then
+    display = require("cpu-simple.display")
+  end
 
   assembler.assemble_buffer({
     assembler_path = M.config.assembler_path,
     assembler_options = M.config.assembler_options,
     cwd = M.config.cwd,
-  })
+  }, function(success, output_path, debug_file_path, err_msg)
+    if success then
+      -- Read output path as binary and display in assembled panel
+      display.assembled.set_content(assembler.get_last_output_content())
+      display.assembled.show()
+    end
+  end)
 end
 
 --- Load machine code into the CPU
@@ -243,7 +252,7 @@ function M.load(path)
     if not assembler then
       assembler = require("cpu-simple.assembler")
     end
-    file_path = assembler.get_last_output()
+    file_path = assembler.get_last_output_path()
   end
 
   if not file_path then
