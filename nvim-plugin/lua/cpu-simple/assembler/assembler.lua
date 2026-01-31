@@ -52,12 +52,12 @@ end
 
 --- Assemble the current buffer to machine code
 ---@param config table Configuration options
+---@param bufnr number|nil Buffer number to assemble
 ---@param callback function|nil Optional callback(success, output_path, debug_path, error_msg)
-function M.assemble_buffer(config, callback)
+function M.assemble_buffer(config, bufnr, callback)
   M.config = vim.tbl_extend("force", M.config, config or {})
 
-  -- Get current buffer content
-  local bufnr = vim.api.nvim_get_current_buf()
+  -- Get buffer content
   local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
   local content = table.concat(lines, "\n")
 
@@ -165,36 +165,6 @@ function M.assemble_buffer(config, callback)
       table.insert(stderr_output, data)
     end
   end)
-end
-
---- Get the last assembled output path
----@return string|nil
-function M.get_last_output_path()
-  return M.last_output_path
-end
-
---- Get the last assembled output content as hex lines
----@return string[]|nil
-function M.get_last_output_content()
-  return M.last_output_content
-end
-
---- Get the last debug info (spans and symbols)
----@return table|nil
-function M.get_last_debug_info()
-  return M.last_debug_info
-end
-
---- Get the source buffer number that was last assembled
----@return number|nil
-function M.get_last_source_bufnr()
-  return M.last_source_bufnr
-end
-
---- Get the source file path that was last assembled
----@return string|nil
-function M.get_last_source_path()
-  return M.last_source_path
 end
 
 return M

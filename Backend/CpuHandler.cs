@@ -15,14 +15,15 @@ namespace Backend
             _output = output;
             _inspector = new CpuInspector();
             _cpu = new CPU.CPU(config);
-            _cpuStateFactory = new CpuStateFactory(_cpu, _logger, _output, cpuCommandRegistry);
+            _breakpointContainer = new BreakpointContainer();
+            _cpuStateFactory = new CpuStateFactory(_cpu, _logger, _output, _breakpointContainer, cpuCommandRegistry);
             _currentState = _cpuStateFactory.CreateIdleState();
         }
 
         public void HandleGlobalCommand(IGlobalCommand globalCommand, string[] args)
         {
             var inspector = _cpu.GetInspector();
-            var context = new Commands.GlobalCommands.ExecutionContext(inspector, _currentState, _output);
+            var context = new GlobalCommandExecutionContext(inspector, _currentState, _breakpointContainer, _output);
             
             var result = globalCommand.Execute(context, args);
             if (!result.Success)
@@ -66,5 +67,6 @@ namespace Backend
         private readonly CpuStateFactory _cpuStateFactory;
         private readonly ILogger _logger;
         private readonly IOutput _output;
+        private readonly BreakpointContainer _breakpointContainer;
     }
 }

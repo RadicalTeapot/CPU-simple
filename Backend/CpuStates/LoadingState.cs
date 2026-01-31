@@ -2,8 +2,8 @@
 
 namespace Backend.CpuStates
 {
-    internal class LoadingState(CpuStateContext context, IOutput output, byte[] program)
-        : ExecutingCpuState(context, output, "loading")
+    internal class LoadingState(CpuStateContext context, BreakpointContainer breakpointContainer, IOutput output, byte[] program)
+        : ExecutingCpuState(context, breakpointContainer, output, "loading")
     {
         protected override bool IsExecutionComplete { get => true; }
 

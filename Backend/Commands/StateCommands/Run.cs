@@ -12,8 +12,6 @@ namespace Backend.Commands.StateCommands
         {
             ToHalt,
             ToAddress,
-            //ToBreakpoint,
-            //ToSymbol,
         }
 
         public record Config(Mode Mode, int Address);

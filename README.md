@@ -1,22 +1,17 @@
 # CPU Simple
 
-A minimal educational 8-bit CPU implemented in C# with a small runtime, opcode set, and tests. This repository contains the CPU core, an opcode table, a test suite, a simple console entry point and a terminal UI client to visualize the CPU state.
+A minimal educational 8-bit CPU implemented in C# with a small runtime, opcode set, and tests. 
+This repository contains the CPU core, a backend server acting a simple debugger, a test suite, a compiler and a Neovim plugin to serve as the IDE.
 
 ## Repository Structure
 
-- `CPU/CPU.cs`: Core CPU implementation
-- `CPU/opcodes/`: Opcode abstractions, table, and exceptions
-- `CPU/components/`: Memory, Stack and State
+- `CPU/`: Core CPU implementation
 - `CPU.Tests/`: Unit tests for CPU and opcodes
-- `Assembler/`: Convert assembly files into machine code
+- `Assembler/`: Compiler to convert assembly files into machine code
 - `Assembler.Tests/` : Unit test for the assembler code
-- `Main/`: Console application that hosts/runs the CPU
-- `TUI/`: Console application to visualize the CPU state while running a program
+- `Backend/`: Console application that hosts/runs the CPU to be used for debugging
+- `nvim-plugin/`: Neovim plugin to serve as the IDE
 - `docs/`: Design and specification documents
-
-## Documentation
-
-Documentation can be found in the `docs` folder.
 
 ## Architectures
 
@@ -59,8 +54,8 @@ Copy the content of `nvim-plugin` folder into your neovim config folder and requ
 
 ```lua
 require("cpu-simple").setup({
-  backend_path = "../Main/bin/Debug/net9.0/Backend.exe",
-  assembler_path = "../Assembler/bin/Debug/net9.0/Assembler.exe",
+  backend_path = "/path/to/Backend.exe",
+  assembler_path = "/path/to/Assembler.exe",
   memory_size = 256,
   stack_size = 16,
   registers = 4,
@@ -75,6 +70,7 @@ require("cpu-simple").setup({
 - `:CpuLoad`: Load machine code into the CPU
 - `:CpuRun`: Run the loaded program
 - `:CpuSend`: Send a raw command to the CPU backend
+- `:CpuDump`: Dump CPU state, memory and stack contents
 
 ## Project Goals
 
@@ -82,6 +78,12 @@ require("cpu-simple").setup({
 - Clear opcode definitions and mapping
 - Simple and useable assembly language
 - Test-driven verification of CPU and assembler behavior
+
+## AI use disclamer
+
+I used Github copilot to help brainstorm the general architecture and write some unit tests, the vast majority of the functional code was written by hand.
+The notable exception for this is the Neovim plugin, which is written almost entirely by AI as this is far from my area of expertise.
+I did review the code but exercise caution when using it.
 
 ## To do (in no particular order)
 
@@ -98,17 +100,20 @@ require("cpu-simple").setup({
     - [x] run
     - [x] read_mem
   - [x] Logging on STDERR
-  - [ ] Add memory and stack diffs to CpuInspector
+  - [x] Add memory and stack diffs to CpuInspector
 - [/] Implement CPU IDE ([inspiration for some UI](https://github.com/AfaanBilal/NanoCore/blob/master/assets/NanoCoreTUI.gif)) in Neovim
   - [x] Run backend in Lua and communication over STDIN, STDOUT
   - [x] `:CpuLoad` (load on CPU and reset)
   - [x] `:CpuStep`, `:CpuRun` and `:CpuReset` with simple print of status to a status line
   - [x] `:CpuDump` full memory, stack and status dump to a scratch buffer
-  - [ ] Highlights (using virtual text) of memory <-> assembly and symbols
-  - [ ] `:SetBp address`, `:CpuRunToBp`
-  - [ ] `:SetBP symbol`
+  - [x] Highlight (using virtual text) of source -> machine code
+  - [ ] Nicer CPU dump that auto-updates on step / run (split in 3 panels: status, memory, stack)
+  - [ ] `:CpuToggletBp address`, `:CpuToggleBp` (set on cursor) (and virtual text highlight for BP position in source / machine code)
+  - [ ] `:CpuToggleBP symbol` (and virtual text highlight for BP position in source / machine code)
   - [ ] `:StepOver`, `:StepIn`, `:StepOut`
-  - [ ] Nice buffer UIs
+  - [ ] `:CpuRunToCursor`
+  - [ ] Cleanup buffer UIs
+  - [ ] Handle assembler errors
 - [ ] Write grammar for tree-sitter
 - [ ] Write LSP server
 - [ ] Implement PPU and map some memory for it (for 16-bit version)

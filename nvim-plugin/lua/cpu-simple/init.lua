@@ -38,6 +38,9 @@ M.defaults = {
 -- Current configuration
 M.config = {}
 
+-- Highlight namespaces
+local breakpoint_ns = vim.api.nvim_create_namespace("cpu_simple_source_breakpoint")
+
 --- Setup the plugin with user configuration
 ---@param opts table|nil User configuration options
 function M.setup(opts)
@@ -83,15 +86,6 @@ function M.setup_cursor_highlight()
       if not assembler then
         return
       end
-
-      local current_bufnr = vim.api.nvim_get_current_buf()
-      local source_bufnr = assembler.get_last_source_bufnr()
-
-      -- Only process if we're in the source buffer that was assembled
-      if not source_bufnr or current_bufnr ~= source_bufnr then
-        return
-      end
-
       -- Get current line (0-based)
       local cursor_line = vim.api.nvim_win_get_cursor(0)[1] - 1
 
@@ -101,34 +95,10 @@ function M.setup_cursor_highlight()
       end
       last_highlighted_line = cursor_line
 
-      local debug_info = assembler.get_last_debug_info()
-      if not debug_info or not debug_info.spans then
-        display.assembled.clear_highlights()
-        return
-      end
+      local span = assembler.get_address_span_from_current_line()
 
-      -- Find all span matching the current line
-      local matching_spans = {}
-      for _, span in ipairs(debug_info.spans) do
-        if span.line == cursor_line then
-          table.insert(matching_spans, span)
-        end
-      end
-
-      -- Find start and end byte range
-      local start_byte = nil
-      local end_byte = nil
-      for _, span in ipairs(matching_spans) do
-        if not start_byte or span.start < start_byte then
-          start_byte = span.start
-        end
-        if not end_byte or span.ending > end_byte then
-          end_byte = span.ending
-        end
-      end
-
-      if #matching_spans > 0 then
-        display.assembled.highlight_byte_range(start_byte, end_byte)
+      if span then
+        display.assembled.highlight_byte_range(span.start_address, span.end_address)
       else
         display.assembled.clear_highlights()
       end
@@ -192,6 +162,23 @@ function M.register_commands()
     M.status()
   end, {
     desc = "Get the current CPU status",
+  })
+
+  vim.api.nvim_create_user_command("CpuBreakToggle", function(cmd_opts)
+    if (#cmd_opts.args == 0) then
+      M.set_breakpoint_at_cursor()
+      return
+    end
+
+    local address = tonumber(cmd_opts.args)
+    if not address then
+      vim.notify("Invalid address: " .. cmd_opts.args, vim.log.levels.ERROR)
+      return
+    end
+    M.set_breakpoint(address)
+  end, {
+    desc = "Toggle breakpoint at the given address (or at cursor line if no address given)",
+    nargs = "?", -- 0 or 1 argument
   })
 
   vim.api.nvim_create_user_command("CpuDump", function()
@@ -285,7 +272,7 @@ function M.assemble()
     display = require("cpu-simple.display")
   end
 
-  assembler.assemble_buffer({
+  assembler.assemble_current_buffer({
     assembler_path = M.config.assembler_path,
     assembler_options = M.config.assembler_options,
     cwd = M.config.cwd,
@@ -385,6 +372,39 @@ M.status = with_running_backend(function()
     commands = require("cpu-simple.commands")
   end
   backend.send(commands.STATUS)
+end)
+
+-- Set a breakpoint at the given address
+M.set_breakpoint = with_running_backend(function(address)
+  if not commands then
+    commands = require("cpu-simple.commands")
+  end
+  backend.send(string.format("%s %d", commands.BREAK_TGL, address))
+  display.assembled.highlight_breakpoint(address)
+end)
+
+-- Set a breakpoint at the address of the current cursor line
+M.set_breakpoint_at_cursor = with_running_backend(function()
+  if not assembler then
+    assembler = require("cpu-simple.assembler")
+  end
+  local span = assembler.get_address_span_from_current_line()
+  if not span then
+    vim.notify("No debug info available to set breakpoint", vim.log.levels.ERROR)
+    return
+  end
+  local address = span.start_address
+  if not address then
+    vim.notify("No address mapped to current line", vim.log.levels.ERROR)
+    return
+  end
+
+  -- Highlight the breakpoint line in the current buffer
+  local cursor_line = vim.api.nvim_win_get_cursor(0)[1]
+  local bufnr = vim.api.nvim_get_current_buf()
+  vim.api.nvim_buf_add_highlight(bufnr, breakpoint_ns, "CpuSimpleBreakpoint", cursor_line - 1, 0, -1)
+
+  M.set_breakpoint(address)
 end)
 
 --- Get full CPU dump

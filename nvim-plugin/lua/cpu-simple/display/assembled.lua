@@ -11,8 +11,9 @@ local PANEL_ID = "assembled"
 -- Buffer state (window is managed by sidebar)
 M.bufnr = nil
 
--- Namespace for highlighting
+-- Namespaces for highlighting
 local highlight_ns = vim.api.nvim_create_namespace("cpu_simple_assembled_highlight")
+local breakpoint_ns = vim.api.nvim_create_namespace("cpu_simple_assembled_breakpoint")
 
 --- Get or create the assembled buffer
 ---@return number bufnr
@@ -101,10 +102,11 @@ function M.get_winnr()
   return sidebar.get_panel_winnr(PANEL_ID)
 end
 
---- Clear all byte range highlights
+--- Clear all highlights
 function M.clear_highlights()
   if M.bufnr and vim.api.nvim_buf_is_valid(M.bufnr) then
     vim.api.nvim_buf_clear_namespace(M.bufnr, highlight_ns, 0, -1)
+    vim.api.nvim_buf_clear_namespace(M.bufnr, breakpoint_ns, 0, -1)
   end
 end
 
@@ -134,6 +136,24 @@ function M.highlight_byte_range(start_byte, end_byte)
     -- Add highlight (row is 0-based for nvim_buf_add_highlight)
     vim.api.nvim_buf_add_highlight(M.bufnr, highlight_ns, "CpuSimpleCurrentSpan", row, col_start, col_end)
   end
+end
+
+--- Highlight a breakpoint line in the assembled buffer
+---@param address number Address of the breakpoint
+function M.highlight_breakpoint(address)
+  if not M.bufnr or not vim.api.nvim_buf_is_valid(M.bufnr) then
+    return
+  end
+
+  -- Clear previous breakpoint highlights
+  vim.api.nvim_buf_clear_namespace(M.bufnr, breakpoint_ns, 0, -1)
+
+  -- Calculate row for the address
+  local BYTES_PER_ROW = 16
+  local row = math.floor(address / BYTES_PER_ROW)
+
+  -- Add highlight for the entire line
+  vim.api.nvim_buf_add_highlight(M.bufnr, breakpoint_ns, "CpuSimpleBreakpoint", row, 0, -1)
 end
 
 -- Legacy alias for backward compatibility

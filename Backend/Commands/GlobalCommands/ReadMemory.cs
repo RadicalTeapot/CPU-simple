@@ -9,7 +9,7 @@ namespace Backend.Commands.GlobalCommands
         helpText: "Usage: 'readmem [startaddress [length]]'")]
     internal class ReadMemory(CommandContext context) : BaseGlobalCommand(context)
     {
-        protected override GlobalCommandResult ExecuteCore(ExecutionContext executionContext, string[] args)
+        protected override GlobalCommandResult ExecuteCore(GlobalCommandExecutionContext executionContext, string[] args)
         {
             if (args.Length > 2)
             {

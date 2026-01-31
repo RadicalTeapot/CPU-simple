@@ -3,7 +3,7 @@
     [Command(CommandType.Global, "help", ["?"], "Displays help information.")]
     internal class Help(CommandContext context) : BaseGlobalCommand(context)
     {
-        protected override GlobalCommandResult ExecuteCore(ExecutionContext executionContext, string[] args)
+        protected override GlobalCommandResult ExecuteCore(GlobalCommandExecutionContext executionContext, string[] args)
         {
             if (args.Length != 0)
             {

@@ -9,7 +9,7 @@ namespace Backend.Commands.GlobalCommands
         description: "Display the current CPU state")]
     internal class Status(CommandContext context) : BaseGlobalCommand(context)
     {
-        protected override GlobalCommandResult ExecuteCore(ExecutionContext executionContext, string[] args)
+        protected override GlobalCommandResult ExecuteCore(GlobalCommandExecutionContext executionContext, string[] args)
         {
             if (args.Length != 0)
             {

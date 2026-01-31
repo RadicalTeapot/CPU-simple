@@ -5,7 +5,7 @@
         helpText: "Usage: 'readstack [startaddress [length]]'")]
     internal class ReadStack(CommandContext context) : BaseGlobalCommand(context)
     {
-        protected override GlobalCommandResult ExecuteCore(ExecutionContext executionContext, string[] args)
+        protected override GlobalCommandResult ExecuteCore(GlobalCommandExecutionContext executionContext, string[] args)
         {
             if (args.Length > 2)
             {

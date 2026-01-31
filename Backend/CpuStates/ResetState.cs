@@ -1,8 +1,8 @@
 ﻿using Backend.IO;
 namespace Backend.CpuStates
 {
-    internal class ResetState(CpuStateContext context, IOutput output)
-        : ExecutingCpuState(context, output, "reset")
+    internal class ResetState(CpuStateContext context, BreakpointContainer breakpointContainer, IOutput output)
+        : ExecutingCpuState(context, breakpointContainer, output, "reset")
     {
         protected override bool IsExecutionComplete { get => true; }
 

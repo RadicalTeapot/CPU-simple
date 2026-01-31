@@ -10,7 +10,7 @@ namespace Backend.Commands.GlobalCommands
         helpText: "Usage: 'dump [status] [memory] [stack]'")]
     internal class Dump(CommandContext context) : BaseGlobalCommand(context)
     {
-        protected override GlobalCommandResult ExecuteCore(ExecutionContext executionContext, string[] args)
+        protected override GlobalCommandResult ExecuteCore(GlobalCommandExecutionContext executionContext, string[] args)
         {
             if (args.Length > 3)
             {

@@ -10,7 +10,7 @@ namespace Backend.Commands.GlobalCommands
         public string Description { get; } = context.Description;
         public string HelpText { get; } = context.HelpText;
 
-        public GlobalCommandResult Execute(ExecutionContext executionContext, string[] args)
+        public GlobalCommandResult Execute(GlobalCommandExecutionContext executionContext, string[] args)
         {
             if (ShouldPrintHelp(args))
             {
@@ -22,7 +22,7 @@ namespace Backend.Commands.GlobalCommands
             return ExecuteCore(executionContext, args);
         }
 
-        protected abstract GlobalCommandResult ExecuteCore(ExecutionContext executionContext, string[] args);
+        protected abstract GlobalCommandResult ExecuteCore(GlobalCommandExecutionContext executionContext, string[] args);
 
         private static bool ShouldPrintHelp(string[] args)
         {

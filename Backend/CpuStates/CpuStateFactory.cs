@@ -7,6 +7,7 @@ namespace Backend.CpuStates
         CPU.CPU cpu,
         ILogger logger,
         IOutput output,
+        BreakpointContainer breakpoints,
         StateCommandRegistry commandRegistry)
     {
         public IdleState CreateIdleState()
@@ -16,22 +17,22 @@ namespace Backend.CpuStates
 
         public LoadingState CreateLoadingState(byte[] program)
         {
-            return new LoadingState(GetContextForState(typeof(LoadingState)), output, program);
+            return new LoadingState(GetContextForState(typeof(LoadingState)), breakpoints, output, program);
         }
 
         public ResetState CreateResetState()
         {
-            return new ResetState(GetContextForState(typeof(ResetState)), output);
+            return new ResetState(GetContextForState(typeof(ResetState)), breakpoints, output);
         }
 
         public RunningState CreateRunningState(Run.Config runConfig)
         {
-            return new RunningState(GetContextForState(typeof(RunningState)), output, runConfig);
+            return new RunningState(GetContextForState(typeof(RunningState)), breakpoints, output, runConfig);
         }
 
         public SteppingState CreateSteppingState(int numberOfInstructions)
         {
-            return new SteppingState(GetContextForState(typeof(SteppingState)), output, numberOfInstructions);
+            return new SteppingState(GetContextForState(typeof(SteppingState)), breakpoints, output, numberOfInstructions);
         }
 
         public ErrorState CreateErrorState(string reason)
