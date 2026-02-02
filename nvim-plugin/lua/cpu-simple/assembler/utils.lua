@@ -29,4 +29,18 @@ function M.get_address_span_from_line(line, debug_info)
     return {start_address = start_address, end_address = end_address}
 end
 
+function M.get_source_line_from_address(address, debug_info)
+    if not debug_info or not debug_info.spans then
+        return nil
+    end
+    
+    for _, span in ipairs(debug_info.spans) do
+        if address >= span.start and address <= span.ending then -- inclusive as ending is last byte (not one past)
+            return span.line + 1 -- return 1-based line number
+        end
+    end
+    
+    return nil
+end
+
 return M

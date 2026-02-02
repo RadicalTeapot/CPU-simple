@@ -8,6 +8,7 @@
 
 # Build results
 [Dd]ebug/
+!nvim-plugin/**/debug/
 [Rr]elease/
 [Bb]in/
 [Oo]bj/

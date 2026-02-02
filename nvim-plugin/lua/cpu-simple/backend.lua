@@ -155,8 +155,6 @@ end
 ---@param data string Data received
 function M.on_stdout(data)
   vim.schedule(function()
-    -- For now, display output via notify
-    -- Future: parse and route to display buffer
     local lines = vim.split(data, "\n", { trimempty = true })
     for _, line in ipairs(lines) do
       if line ~= "" then
@@ -178,7 +176,14 @@ function M.parse_stdout(data)
   elseif data:match("^%[MEMORY%]") then
     state.update_memory(data)
     events.emit(events.MEMORY_UPDATED, state.memory)
+  elseif data:match("^%[BP%]") then
+    state.set_breakpoints(data)
+    events.emit(events.BREAKPOINT_UPDATED, {})
+  elseif data:match("^%[BP-HIT%]") then
+    vim.notify("Breakpoint hit!", vim.log.levels.INFO) -- Only notify user for now, can be improved later
+    events.emit(events.BREAKPOINT_HIT, {})
   else
+    -- Fallback to generic log
     vim.notify("[CPU] " .. data, vim.log.levels.INFO)
   end
 end

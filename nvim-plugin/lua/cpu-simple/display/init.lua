@@ -8,6 +8,7 @@ M.sidebar = require("cpu-simple.display.sidebar")
 -- Panel modules
 M.assembled = require("cpu-simple.display.assembled")
 M.dump = require("cpu-simple.display.dump")
+M.utils = require("cpu-simple.display.utils")
 
 --- Setup the display module with configuration
 ---@param opts table|nil Configuration options

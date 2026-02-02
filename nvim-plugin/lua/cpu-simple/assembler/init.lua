@@ -35,6 +35,22 @@ function M.get_address_span_from_current_line()
     return M.utils.get_address_span_from_line(line, debug_info)
 end
 
+--- Get the source line for a given address
+---@param address number Address to look up
+function M.get_source_line_from_address(address)
+    local debug_info = M.assembler.last_debug_info
+    if not debug_info or not debug_info.spans then
+        vim.notify("No debug info available", vim.log.levels.ERROR)
+        return nil
+    end
+    
+    return M.utils.get_source_line_from_address(address, debug_info)
+end
+
+function M.has_debug_info()
+    return M.assembler.last_debug_info ~= nil
+end
+
 --- Get the last assembled output path
 ---@return string|nil
 function M.get_last_output_path()

@@ -11,6 +11,9 @@ local state = nil
 local events = nil
 local commands = nil
 
+-- Track last highlighted line to avoid redundant updates
+local last_highlighted_line = nil
+
 -- Default configuration
 M.defaults = {
   -- Path to Backend executable
@@ -38,14 +41,11 @@ M.defaults = {
 -- Current configuration
 M.config = {}
 
--- Highlight namespaces
-local breakpoint_ns = vim.api.nvim_create_namespace("cpu_simple_source_breakpoint")
-
 --- Setup the plugin with user configuration
 ---@param opts table|nil User configuration options
 function M.setup(opts)
   M.config = vim.tbl_deep_extend("force", M.defaults, opts or {})
-
+  
   -- Load submodules
   backend = require("cpu-simple.backend")
   assembler = require("cpu-simple.assembler")
@@ -53,15 +53,16 @@ function M.setup(opts)
   state = require("cpu-simple.state")
   events = require("cpu-simple.events")
   commands = require("cpu-simple.commands")
-
+  
   -- Setup sidebar with configuration
   display.setup(M.config.sidebar)
-
+  
   -- Register commands
   M.register_commands()
-
+  
   -- Subscribe to status updates for statusline
   events.on(events.STATUS_UPDATED, function()
+    -- Also highlight source and assembled panels based on PC
     vim.cmd("redrawstatus")
   end)
   events.on(events.BACKEND_STARTED, function()
@@ -70,13 +71,13 @@ function M.setup(opts)
   events.on(events.BACKEND_STOPPED, function()
     vim.cmd("redrawstatus")
   end)
-
+  events.on(events.BREAKPOINT_UPDATED, function()
+    M.highlight_breakpoints()
+  end)
+  
   -- Setup CursorMoved autocmd for assembled panel highlighting
   M.setup_cursor_highlight()
 end
-
--- Track last highlighted line to avoid redundant updates
-local last_highlighted_line = nil
 
 --- Setup CursorMoved autocmd to highlight assembled bytes for current source line
 function M.setup_cursor_highlight()
@@ -88,15 +89,15 @@ function M.setup_cursor_highlight()
       end
       -- Get current line (0-based)
       local cursor_line = vim.api.nvim_win_get_cursor(0)[1] - 1
-
+      
       -- Guard: skip if line hasn't changed
       if cursor_line == last_highlighted_line then
         return
       end
       last_highlighted_line = cursor_line
-
+      
       local span = assembler.get_address_span_from_current_line()
-
+      
       if span then
         display.assembled.highlight_byte_range(span.start_address, span.end_address)
       else
@@ -113,25 +114,25 @@ function M.register_commands()
   end, {
     desc = "Start the CPU backend process",
   })
-
+  
   vim.api.nvim_create_user_command("CpuBackendStop", function()
     M.backend_stop()
   end, {
     desc = "Stop the CPU backend process",
   })
-
+  
   vim.api.nvim_create_user_command("CpuBackendStatus", function() 
     M.status()
   end, {
     desc = "Get the CPU backend status",
   })
-
+  
   vim.api.nvim_create_user_command("CpuAssemble", function()
     M.assemble()
   end, {
     desc = "Assemble the current buffer to machine code",
   })
-
+  
   vim.api.nvim_create_user_command("CpuLoad", function(cmd_opts)
     M.load(cmd_opts.args ~= "" and cmd_opts.args or nil)
   end, {
@@ -139,37 +140,37 @@ function M.register_commands()
     nargs = "?",
     complete = "file",
   })
-
+  
   vim.api.nvim_create_user_command("CpuRun", function()
     M.run()
   end, {
     desc = "Run the loaded program",
   })
-
+  
   vim.api.nvim_create_user_command("CpuStep", function()
     M.step()
   end, {
     desc = "Execute one CPU instruction",
   })
-
+  
   vim.api.nvim_create_user_command("CpuReset", function()
     M.reset()
   end, {
     desc = "Reset the CPU",
   })
-
+  
   vim.api.nvim_create_user_command("CpuStatus", function()
     M.status()
   end, {
     desc = "Get the current CPU status",
   })
-
+  
   vim.api.nvim_create_user_command("CpuBreakToggle", function(cmd_opts)
     if (#cmd_opts.args == 0) then
       M.set_breakpoint_at_cursor()
       return
     end
-
+    
     local address = tonumber(cmd_opts.args)
     if not address then
       vim.notify("Invalid address: " .. cmd_opts.args, vim.log.levels.ERROR)
@@ -181,12 +182,18 @@ function M.register_commands()
     nargs = "?", -- 0 or 1 argument
   })
 
+  vim.api.nvim_create_user_command("CpuBreakClear", function()
+    M.clear_all_breakpoints()
+  end, {
+    desc = "Clear all breakpoints",
+  })
+  
   vim.api.nvim_create_user_command("CpuDump", function()
     M.dump()
   end, {
     desc = "Get full CPU dump",
   })
-
+  
   -- Panel toggle commands
   vim.api.nvim_create_user_command("CpuToggleDump", function()
     if not display then
@@ -196,7 +203,7 @@ function M.register_commands()
   end, {
     desc = "Toggle the CPU dump panel",
   })
-
+  
   vim.api.nvim_create_user_command("CpuToggleAssembled", function()
     if not display then
       display = require("cpu-simple.display")
@@ -205,7 +212,7 @@ function M.register_commands()
   end, {
     desc = "Toggle the assembled code panel",
   })
-
+  
   vim.api.nvim_create_user_command("CpuOpenSidebar", function()
     if not display then
       display = require("cpu-simple.display")
@@ -214,7 +221,7 @@ function M.register_commands()
   end, {
     desc = "Open the sidebar",
   })
-
+  
   vim.api.nvim_create_user_command("CpuCloseSidebar", function()
     if not display then
       display = require("cpu-simple.display")
@@ -230,7 +237,7 @@ function M.backend_start()
   if not backend then
     backend = require("cpu-simple.backend")
   end
-
+  
   backend.start({
     backend_path = M.config.backend_path,
     memory_size = M.config.memory_size,
@@ -245,7 +252,7 @@ function M.backend_status()
   if not backend then
     backend = require("cpu-simple.backend")
   end
-
+  
   if backend.is_running() then
     vim.notify("CPU backend is running", vim.log.levels.INFO)
   else
@@ -259,7 +266,7 @@ function M.backend_stop()
     vim.notify("Backend module not loaded", vim.log.levels.ERROR)
     return
   end
-
+  
   backend.stop()
 end
 
@@ -271,7 +278,7 @@ function M.assemble()
   if not display then
     display = require("cpu-simple.display")
   end
-
+  
   assembler.assemble_current_buffer({
     assembler_path = M.config.assembler_path,
     assembler_options = M.config.assembler_options,
@@ -294,12 +301,12 @@ function M.load(path)
   if not commands then
     commands = require("cpu-simple.commands")
   end
-
+  
   if not backend.is_running() then
     vim.notify("Backend is not running. Starting it.", vim.log.levels.INFO)
     M.backend_start()
   end
-
+  
   -- Use provided path or fall back to last assembled
   local file_path = path
   if not file_path then
@@ -308,20 +315,20 @@ function M.load(path)
     end
     file_path = assembler.get_last_output_path()
   end
-
+  
   if not file_path then
     vim.notify("No file to load. Provide a path or run :CpuAssemble first", vim.log.levels.ERROR)
     return
   end
-
+  
   if vim.fn.filereadable(file_path) == 0 then
     vim.notify("File not found: " .. file_path, vim.log.levels.ERROR)
     return
   end
-
+  
   -- Convert to absolute path
   file_path = vim.fn.fnamemodify(file_path, ":p")
-
+  
   -- Send load command to backend
   backend.send(commands.LOAD .. " " .. file_path)
 end
@@ -374,38 +381,81 @@ M.status = with_running_backend(function()
   backend.send(commands.STATUS)
 end)
 
--- Set a breakpoint at the given address
+--- Set a breakpoint at the given address
+---@param address number Address to set breakpoint at
 M.set_breakpoint = with_running_backend(function(address)
   if not commands then
     commands = require("cpu-simple.commands")
   end
   backend.send(string.format("%s %d", commands.BREAK_TGL, address))
-  display.assembled.highlight_breakpoint(address)
 end)
 
--- Set a breakpoint at the address of the current cursor line
+--- Set a breakpoint at the address of the current cursor line
 M.set_breakpoint_at_cursor = with_running_backend(function()
+  -- Assembler is required to map source lines to addresses
   if not assembler then
     assembler = require("cpu-simple.assembler")
   end
+
+  -- Get address span for current line
   local span = assembler.get_address_span_from_current_line()
   if not span then
     vim.notify("No debug info available to set breakpoint", vim.log.levels.ERROR)
     return
   end
+
+  -- Set breakpoint at start address of span
   local address = span.start_address
   if not address then
     vim.notify("No address mapped to current line", vim.log.levels.ERROR)
     return
   end
-
-  -- Highlight the breakpoint line in the current buffer
-  local cursor_line = vim.api.nvim_win_get_cursor(0)[1]
-  local bufnr = vim.api.nvim_get_current_buf()
-  vim.api.nvim_buf_add_highlight(bufnr, breakpoint_ns, "CpuSimpleBreakpoint", cursor_line - 1, 0, -1)
-
   M.set_breakpoint(address)
 end)
+
+--- Clear all breakpoints
+M.clear_all_breakpoints = with_running_backend(function()
+  if not commands then
+    commands = require("cpu-simple.commands")
+  end
+  backend.send(commands.BREAK_CLEAR_ALL)
+end)
+
+function M.highlight_breakpoints()
+  if not assembler then
+    assembler = require("cpu-simple.assembler")
+  end
+  if not state then
+    state = require("cpu-simple.state")
+  end
+  if not display then
+    display = require("cpu-simple.display")
+  end
+
+  if not assembler.has_debug_info() then
+    vim.notify("No debug info available to highlight breakpoints", vim.log.levels.WARN)
+    return
+  end
+  
+  local bufnr = vim.api.nvim_get_current_buf()
+
+  -- Clear existing highlights
+  display.utils.clear_breakpoint_highlights(bufnr)
+  if display.assembled.is_visible() then
+    display.assembled.clear_breakpoint_highlights()
+  end
+  
+  -- Highlight breakpoints in source and assembled panels
+  for _, bp in ipairs(state.breakpoints) do
+    local source_line = assembler.get_source_line_from_address(bp.address)
+    if source_line then
+      display.utils.highlight_breakpoint_line(bufnr, source_line)
+    end
+    if display.assembled.is_visible() then
+      display.assembled.highlight_breakpoint(bp.address)
+    end
+  end
+end
 
 --- Get full CPU dump
 M.dump = with_running_backend(function()
@@ -418,23 +468,23 @@ M.dump = with_running_backend(function()
   if not display then
     display = require("cpu-simple.display")
   end
-
+  
   backend.send(commands.DUMP)
-
+  
   -- Display dump in floating window after a short delay to allow response
   -- TODO Use event/callback when dump response is received instead of delay
   vim.defer_fn(function()
     local lines = {}
-
+    
     if state.status then
       table.insert(lines, "=== CPU STATUS ===")
       table.insert(lines, string.format("Cycles: %d  PC: %d  SP: %d",
-        state.status.cycles, state.status.pc, state.status.sp))
+      state.status.cycles, state.status.pc, state.status.sp))
       table.insert(lines, string.format("Flags - Z: %d  C: %d",
-        state.status.flags.zero, state.status.flags.carry))
+      state.status.flags.zero, state.status.flags.carry))
       table.insert(lines, string.format("R0: %d  R1: %d  R2: %d  R3: %d",
-        state.status.registers[1], state.status.registers[2],
-        state.status.registers[3], state.status.registers[4]))
+      state.status.registers[1], state.status.registers[2],
+      state.status.registers[3], state.status.registers[4]))
       if state.status.memory_changes then
         table.insert(lines, "Memory Changes:")
         for addr, val in pairs(state.status.memory_changes) do
@@ -449,7 +499,7 @@ M.dump = with_running_backend(function()
       end
       table.insert(lines, "")
     end
-
+    
     if state.stack then
       table.insert(lines, "=== STACK ===")
       for i, val in ipairs(state.stack) do
@@ -457,18 +507,18 @@ M.dump = with_running_backend(function()
       end
       table.insert(lines, "")
     end
-
+    
     if state.memory then
       table.insert(lines, "=== MEMORY ===")
       for addr, val in ipairs(state.memory) do
         table.insert(lines, string.format("[%d]: %d", addr - 1, val))
       end
     end
-
+    
     if #lines == 0 then
       table.insert(lines, "No CPU state available. Run a program first.")
     end
-
+    
     display.dump.set_content(lines)
   end, 100)
 end)
@@ -497,19 +547,19 @@ function M.get_statusline()
   if not state then
     state = require("cpu-simple.state")
   end
-
+  
   if not backend.is_running() then
     return "Backend stopped"
   end
-
+  
   local s = state.status
   if not s then
     return "Backend running: no status"
   end
-
+  
   return string.format("Cyc:%d PC:%d SP:%d Z:%d C:%d R0:%d R1:%d R2:%d R3:%d",
-    s.cycles, s.pc, s.sp, s.flags.zero, s.flags.carry,
-    s.registers[1], s.registers[2], s.registers[3], s.registers[4])
+  s.cycles, s.pc, s.sp, s.flags.zero, s.flags.carry,
+  s.registers[1], s.registers[2], s.registers[3], s.registers[4])
 end
 
 return M

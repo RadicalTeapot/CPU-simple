@@ -4,8 +4,8 @@ using System.Net;
 namespace Backend.Commands.GlobalCommands
 {
     [Command(CommandType.Global, "breakpoint",
-    description: "Toggle or remove brakpoint(s)",
-    helpText: "Usage: 'breakpoint [toggle/clear/list] [address]'")]
+        description: "Toggle or remove brakpoint(s)",
+        helpText: "Usage: 'breakpoint [toggle/clear/list] [address]'")]
     internal class Breakpoint(CommandContext context) : BaseGlobalCommand(context)
     {
         protected override GlobalCommandResult ExecuteCore(GlobalCommandExecutionContext executionContext, string[] args)
@@ -16,6 +16,7 @@ namespace Backend.Commands.GlobalCommands
             }
             var action = args[0].ToLower();
 
+            string resultMessage;
             switch (action)
             {
                 case "toggle":
@@ -27,33 +28,38 @@ namespace Backend.Commands.GlobalCommands
                     if (executionContext.Breakpoints.Contains(address))
                     {
                         executionContext.Breakpoints.Remove(address);
-                        return new GlobalCommandResult(Success: true, Message: $"Breakpoint removed at address 0x{address:X4}.");
+                        resultMessage = $"Breakpoint removed at address 0x{address:X4}.";
                     }
                     else
                     {
                         executionContext.Breakpoints.Add(address);
-                        return new GlobalCommandResult(Success: true, Message: $"Breakpoint added at address 0x{address:X4}.");
+                        resultMessage = $"Breakpoint added at address 0x{address:X4}.";
                     }
+                    break;
                 case "clear":
                     executionContext.Breakpoints.Clear();
-                    return new GlobalCommandResult(Success: true, Message: $"All breakpoints have been removed.");
+                    resultMessage = $"All breakpoints have been removed.";
+                    break;
                 case "list":
-                    var breakpoints = executionContext.Breakpoints.GetAll();
-                    var breakpointList = string.Join(" ", breakpoints.Select(bp => bp.Address));
-                    executionContext.Output.Write($"[BP] ${breakpointList}");
-
-                    if (breakpoints.Length == 0)
+                    if (executionContext.Breakpoints.Count == 0)
                     {
-                        return new GlobalCommandResult(Success: true, Message: "No breakpoints set.");
+                        resultMessage = "No breakpoints set.";
                     }
                     else
                     {
-                        breakpointList = string.Join(", ", breakpoints.Select(bp => $"0x{bp.Address:X4}"));
-                        return new GlobalCommandResult(Success: true, Message: $"Current breakpoints at addresses: {breakpointList}");
+                        var breakpointAddresses = executionContext.Breakpoints.GetAll().Select(bp => $"0x{bp.Address:X4}");
+                        resultMessage = $"Current breakpoints at addresses: {string.Join(", ", breakpointAddresses)}";
                     }
+                    break;
                 default:
                     return new GlobalCommandResult(Success: false, Message: $"The action '{action}' is not valid for the '{Name}' command. Use 'toggle' or 'remove'.");
             }
+
+            var breakpoints = executionContext.Breakpoints.GetAll();
+            var outputBreakpointList = string.Join(" ", breakpoints.Select(bp => bp.Address));
+            executionContext.Output.Write($"[BP] ${outputBreakpointList}");
+
+            return new GlobalCommandResult(Success: true, Message: resultMessage);
         }
     }
 }

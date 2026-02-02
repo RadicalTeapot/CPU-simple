@@ -7,9 +7,7 @@ local M = {}
 M.status = nil   -- { cycles, pc, sp, registers, flags }
 M.stack = nil    -- Array of stack values
 M.memory = nil   -- Array of memory values
-
--- Future debugging state
-M.breakpoints = {}  -- { [address] = true }
+M.breakpoints = {}  -- Array of breakpoint objects (just { address = number } for now)
 M.is_halted = false
 
 --- Update CPU status from backend response
@@ -88,28 +86,15 @@ function M.clear()
   M.is_halted = false
 end
 
---- Add a breakpoint at the given address
----@param address number Memory address
-function M.add_breakpoint(address)
-  M.breakpoints[address] = true
-end
-
---- Remove a breakpoint at the given address
----@param address number Memory address
-function M.remove_breakpoint(address)
-  M.breakpoints[address] = nil
-end
-
---- Check if a breakpoint exists at the given address
----@param address number Memory address
----@return boolean
-function M.has_breakpoint(address)
-  return M.breakpoints[address] == true
-end
-
---- Clear all breakpoints
-function M.clear_breakpoints()
-  M.breakpoints = {}
+--- Update breakpoint list from backend response
+---@param breakpoint_line string "[BP] addr1 addr2 ..."
+function M.set_breakpoints(breakpoint_line)
+  local bp_list = breakpoint_line:gsub("^%[BP%]%s*", "")
+  local breakpoints = {}
+  for addr in bp_list:gmatch("(%d+)") do
+    table.insert(breakpoints, { address = tonumber(addr) })
+  end
+  M.breakpoints = breakpoints
 end
 
 return M
