@@ -270,8 +270,33 @@ function M.backend_stop()
   backend.stop()
 end
 
+--- Helper to ensure backend is running before executing a command
+---@param fn function Function to execute if backend is running
+---@return function Wrapped function
+local function with_running_backend(fn)
+  return function(...)
+    if not backend then
+      backend = require("cpu-simple.backend")
+    end
+    if not events then
+      events = require("cpu-simple.events")
+    end
+
+    if not backend.is_running() then
+      vim.notify("Backend is not running. Starting it.", vim.log.levels.INFO)
+      events.on(events.BACKEND_STARTED, function(...)
+        fn(...)
+      end, { once = true })
+      M.backend_start()
+      return
+    end
+    
+    return fn(...)
+  end
+end
+
 --- Assemble the current buffer
-function M.assemble()
+M.assemble = with_running_backend(function()
   if not assembler then
     assembler = require("cpu-simple.assembler")
   end
@@ -279,22 +304,21 @@ function M.assemble()
     display = require("cpu-simple.display")
   end
   
+  events.on(events.ASSEMBLED, function(data)
+    -- Show assembled panel when assembly is done
+    display.assembled.set_content(assembler.get_last_output_content())
+    display.assembled.show()
+  end, { once = true })
   assembler.assemble_current_buffer({
     assembler_path = M.config.assembler_path,
     assembler_options = M.config.assembler_options,
     cwd = M.config.cwd,
-  }, function(success, output_path, debug_file_path, err_msg)
-    if success then
-      -- Read output path as binary and display in assembled panel
-      display.assembled.set_content(assembler.get_last_output_content())
-      display.assembled.show()
-    end
-  end)
-end
+  })
+end)
 
 --- Load machine code into the CPU
 ---@param path string|nil Path to the binary file (defaults to last assembled)
-function M.load(path)
+M.load = with_running_backend(function(path)
   if not backend then
     backend = require("cpu-simple.backend")
   end
@@ -331,29 +355,14 @@ function M.load(path)
   
   -- Send load command to backend
   backend.send(commands.LOAD .. " " .. file_path)
-end
-
---- Helper to ensure backend is running before executing a command
----@param fn function Function to execute if backend is running
----@return function Wrapped function
-local function with_running_backend(fn)
-  return function(...)
-    if not backend then
-      backend = require("cpu-simple.backend")
-    end
-    if not backend.is_running() then
-      vim.notify("Backend is not running. Start it with :CpuBackendStart", vim.log.levels.ERROR)
-      return
-    end
-    return fn(...)
-  end
-end
+end)
 
 --- Run the loaded program
 M.run = with_running_backend(function()
   if not commands then
     commands = require("cpu-simple.commands")
   end
+  
   backend.send(commands.RUN)
 end)
 

@@ -25,19 +25,6 @@ M.config = {
   cwd = nil,
 }
 
---- Helper to wrap functions with backend running check
----@param fn function Function to wrap
----@return function Wrapped function that checks backend is running
-function M.with_running_backend(fn)
-  return function(...)
-    if not M.is_running() then
-      vim.notify("Backend is not running. Start it with :CpuBackendStart", vim.log.levels.ERROR)
-      return nil
-    end
-    return fn(...)
-  end
-end
-
 --- Start the backend process
 ---@param config table Configuration options
 ---@return boolean success

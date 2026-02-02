@@ -5,6 +5,8 @@ local M = {}
 
 local uv = vim.loop
 
+local events = require("cpu-simple.events")
+
 -- Configuration (set by init.lua)
 M.config = {
   assembler_path = "Assembler.exe",
@@ -53,8 +55,7 @@ end
 --- Assemble the current buffer to machine code
 ---@param config table Configuration options
 ---@param bufnr number|nil Buffer number to assemble
----@param callback function|nil Optional callback(success, output_path, debug_path, error_msg)
-function M.assemble_buffer(config, bufnr, callback)
+function M.assemble_buffer(config, bufnr)
   M.config = vim.tbl_extend("force", M.config, config or {})
 
   -- Get buffer content
@@ -85,7 +86,6 @@ function M.assemble_buffer(config, bufnr, callback)
   if not input_file then
     local msg = "Failed to create temp file: " .. input_path
     vim.notify(msg, vim.log.levels.ERROR)
-    if callback then callback(false, nil, nil, msg) end
     return
   end
   input_file:write(content)
@@ -132,14 +132,17 @@ function M.assemble_buffer(config, bufnr, callback)
         else
           M.last_debug_info = nil
         end
-        if callback then callback(true, output_path, debug_file_path, nil) end
+        events.emit(events.ASSEMBLED, {
+          source_bufnr = bufnr,
+          output_path = output_path,
+          debug_path = debug_file_path,
+        })
       else
         local err_msg = table.concat(stderr_output, "")
         if err_msg == "" then
           err_msg = "Assembler exited with code " .. code
         end
         vim.notify("Assembly failed: " .. err_msg, vim.log.levels.ERROR)
-        if callback then callback(false, nil, nil, err_msg) end
       end
     end)
   end)
@@ -148,7 +151,6 @@ function M.assemble_buffer(config, bufnr, callback)
     vim.notify("Failed to start assembler: " .. tostring(pid), vim.log.levels.ERROR)
     stdout:close()
     stderr:close()
-    if callback then callback(false, nil, nil, "Failed to start assembler") end
     return
   end
 

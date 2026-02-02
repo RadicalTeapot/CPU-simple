@@ -8,10 +8,9 @@ M.utils = require("cpu-simple.assembler.utils")
 
 --- Assemble the current buffer to machine code
 ---@param config table Configuration options
----@param callback function|nil Optional callback(success, output_path, debug_path, error_msg)
-function M.assemble_current_buffer(config, callback)
+function M.assemble_current_buffer(config)
     local bufnr = vim.api.nvim_get_current_buf()
-    M.assembler.assemble_buffer(config, bufnr, callback)
+    M.assembler.assemble_buffer(config, bufnr)
 end
 
 --- Get the address span for the current cursor line
