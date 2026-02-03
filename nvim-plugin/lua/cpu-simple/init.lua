@@ -10,9 +10,7 @@ local display = nil
 local state = nil
 local events = nil
 local commands = nil
-
--- Track last highlighted line to avoid redundant updates
-local last_highlighted_line = nil
+local highlights = nil
 
 -- Default configuration
 M.defaults = {
@@ -53,16 +51,20 @@ function M.setup(opts)
   state = require("cpu-simple.state")
   events = require("cpu-simple.events")
   commands = require("cpu-simple.commands")
+  highlights = require("cpu-simple.display.highlights")
   
   -- Setup sidebar with configuration
   display.setup(M.config.sidebar)
+
+  -- Register highlight groups
+  highlights.define_highlight_groups()
   
   -- Register commands
   M.register_commands()
   
   -- Subscribe to status updates for statusline
   events.on(events.STATUS_UPDATED, function()
-    -- Also highlight source and assembled panels based on PC
+    M.highlight_pc()
     vim.cmd("redrawstatus")
   end)
   events.on(events.BACKEND_STARTED, function()
@@ -81,30 +83,23 @@ end
 
 --- Setup CursorMoved autocmd to highlight assembled bytes for current source line
 function M.setup_cursor_highlight()
-  vim.api.nvim_create_autocmd("CursorMoved", {
-    group = vim.api.nvim_create_augroup("CpuSimpleCursorHighlight", { clear = true }),
-    callback = function()
+  if not highlights then
+    highlights = require("cpu-simple.display.highlights")
+  end
+  highlights.setup_cursor_highlight(
+    function()
       if not assembler then
-        return
+        return nil
       end
-      -- Get current line (0-based)
-      local cursor_line = vim.api.nvim_win_get_cursor(0)[1] - 1
-      
-      -- Guard: skip if line hasn't changed
-      if cursor_line == last_highlighted_line then
-        return
-      end
-      last_highlighted_line = cursor_line
-      
-      local span = assembler.get_address_span_from_current_line()
-      
-      if span then
-        display.assembled.highlight_byte_range(span.start_address, span.end_address)
-      else
-        display.assembled.clear_highlights()
-      end
+      return assembler.get_address_span_from_current_line()
     end,
-  })
+    function()
+      if not display then
+        return nil
+      end
+      return display.assembled.get_buffer()
+    end
+  )
 end
 
 --- Register user commands
@@ -362,7 +357,7 @@ M.run = with_running_backend(function()
   if not commands then
     commands = require("cpu-simple.commands")
   end
-  
+
   backend.send(commands.RUN)
 end)
 
@@ -440,6 +435,9 @@ function M.highlight_breakpoints()
   if not display then
     display = require("cpu-simple.display")
   end
+  if not highlights then
+    highlights = require("cpu-simple.display.highlights")
+  end
 
   if not assembler.has_debug_info() then
     vim.notify("No debug info available to highlight breakpoints", vim.log.levels.WARN)
@@ -447,23 +445,43 @@ function M.highlight_breakpoints()
   end
   
   local bufnr = vim.api.nvim_get_current_buf()
+  local assembled_bufnr = display.assembled.is_visible() and display.assembled.get_buffer() or nil
 
-  -- Clear existing highlights
-  display.utils.clear_breakpoint_highlights(bufnr)
-  if display.assembled.is_visible() then
-    display.assembled.clear_breakpoint_highlights()
+  highlights.highlight_all_breakpoints(
+    bufnr,
+    state.breakpoints,
+    assembled_bufnr,
+    assembler.get_source_line_from_address
+  )
+end
+
+function M.highlight_pc()
+  if not assembler then
+    assembler = require("cpu-simple.assembler")
+  end
+  if not state then
+    state = require("cpu-simple.state")
+  end
+  if not display then
+    display = require("cpu-simple.display")
+  end
+  if not highlights then
+    highlights = require("cpu-simple.display.highlights")
+  end
+
+  if not assembler.has_debug_info() then
+    vim.notify("No debug info available to highlight PC", vim.log.levels.WARN)
+    return
   end
   
-  -- Highlight breakpoints in source and assembled panels
-  for _, bp in ipairs(state.breakpoints) do
-    local source_line = assembler.get_source_line_from_address(bp.address)
-    if source_line then
-      display.utils.highlight_breakpoint_line(bufnr, source_line)
-    end
-    if display.assembled.is_visible() then
-      display.assembled.highlight_breakpoint(bp.address)
-    end
-  end
+  local bufnr = vim.api.nvim_get_current_buf()
+  local pc_address = state.status and state.status.pc
+
+  highlights.highlight_program_counter(
+    bufnr,
+    pc_address,
+    assembler.get_source_line_from_address
+  )
 end
 
 --- Get full CPU dump

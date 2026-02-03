@@ -7,11 +7,6 @@ if vim.g.loaded_cpu_simple then
 end
 vim.g.loaded_cpu_simple = true
 
--- Define highlight group for current span in assembled panel
-vim.api.nvim_set_hl(0, "CpuSimpleCurrentSpan", { link = "Visual" })
--- Define highlight group for breakpoints in source panel and assembled panel (name should match usage in display.utils.lua)
-vim.api.nvim_set_hl(0, "CpuSimpleBreakpoint", { link = "Error" })
-
 -- Lazy-load the plugin on first command use
 local function ensure_setup()
   local cpu_simple = require("cpu-simple")

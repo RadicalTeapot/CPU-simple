@@ -3,11 +3,6 @@
 
 local M = {}
 
-local BREAKPOINT_HL_GROUP = "CpuSimpleBreakpoint"
-
--- Highlight namespaces
-local breakpoint_ns = vim.api.nvim_create_namespace("cpu_simple_source_breakpoint")
-
 --- Get or create a scratch buffer
 ---@param opts table|nil Options { name?: string, modifiable?: true|false }
 ---@return number bufnr
@@ -79,14 +74,6 @@ function M.create_window(bufnr, opts)
     vim.api.nvim_set_option_value("wrap", false, { win = winnr })
 
     return winnr
-end
-
-function M.highlight_breakpoint_line(bufnr, line_nr)
-    vim.api.nvim_buf_add_highlight(bufnr, breakpoint_ns, BREAKPOINT_HL_GROUP, line_nr - 1, 0, -1)
-end
-
-function M.clear_breakpoint_highlights(bufnr)
-    vim.api.nvim_buf_clear_namespace(bufnr, breakpoint_ns, 0, -1)
 end
 
 return M

@@ -108,9 +108,11 @@ I did review the code but exercise caution when using it.
   - [x] `:CpuDump` full memory, stack and status dump to a scratch buffer
   - [x] Highlight (using virtual text) of source -> machine code
   - [ ] Nicer CPU dump that auto-updates on step / run (split in 3 panels: status, memory, stack)
-  - [/] `:CpuToggletBp address`, `:CpuToggleBp` (set on cursor) (and virtual text highlight for BP position in source / machine code)
-    - [ ] Test it
-    - [ ] Refine IDE handling (send whole bp list when toggling from backend and update all highlights once somehting changes)
+  - [x] `:CpuToggletBp address`, `:CpuToggleBp` (set on cursor) (and virtual text highlight for BP position in source / machine code)
+    - [x] Test it
+    - [x] Refine IDE handling (send whole bp list when toggling from backend and update all highlights once something changes)
+  - [x] Highlight PC
+  - [ ] Test gutter for PC and breakpoint rather than highlight (and virtual underline in disassembled view)
   - [ ] Transition all output (STDOUT and symbols file) to use JSON and use `vim.json` for parsing
   - [ ] `:CpuToggleBP symbol` (and virtual text highlight for BP position in source / machine code)
   - [ ] `:StepOver`, `:StepIn`, `:StepOut`

@@ -11,10 +11,6 @@ local PANEL_ID = "assembled"
 -- Buffer state (window is managed by sidebar)
 M.bufnr = nil
 
--- Namespaces for highlighting
-local highlight_ns = vim.api.nvim_create_namespace("cpu_simple_assembled_highlight")
-local breakpoint_ns = vim.api.nvim_create_namespace("cpu_simple_assembled_breakpoint") -- TODO What happens if we use the same ns as utils?
-
 --- Get or create the assembled buffer
 ---@return number bufnr
 local function get_or_create_buffer()
@@ -100,68 +96,6 @@ end
 ---@return number|nil winnr
 function M.get_winnr()
   return sidebar.get_panel_winnr(PANEL_ID)
-end
-
---- Clear all highlights
-function M.clear_highlights()
-  if M.bufnr and vim.api.nvim_buf_is_valid(M.bufnr) then
-    vim.api.nvim_buf_clear_namespace(M.bufnr, highlight_ns, 0, -1)
-    vim.api.nvim_buf_clear_namespace(M.bufnr, breakpoint_ns, 0, -1)
-  end
-end
-
---- Clear breakpoint highlights
-function M.clear_breakpoint_highlights()
-  if M.bufnr and vim.api.nvim_buf_is_valid(M.bufnr) then
-    vim.api.nvim_buf_clear_namespace(M.bufnr, breakpoint_ns, 0, -1)
-  end
-end
-
---- Highlight a range of bytes in the assembled buffer
---- Bytes are displayed as "XX " (3 chars each), 16 per row
----@param start_byte number 0-based start byte offset
----@param end_byte number 0-based end byte offset (inclusive)
-function M.highlight_byte_range(start_byte, end_byte)
-  if not M.bufnr or not vim.api.nvim_buf_is_valid(M.bufnr) then
-    return
-  end
-
-  -- Clear previous highlights
-  vim.api.nvim_buf_clear_namespace(M.bufnr, highlight_ns, 0, -1)
-
-  -- Constants: 16 bytes per row, 3 characters per byte ("XX ")
-  local BYTES_PER_ROW = 16
-  local CHARS_PER_BYTE = 3
-
-  -- Highlight each byte in the range
-  for byte_offset = start_byte, end_byte do
-    local row = math.floor(byte_offset / BYTES_PER_ROW)
-    local col_byte = byte_offset % BYTES_PER_ROW
-    local col_start = col_byte * CHARS_PER_BYTE
-    local col_end = col_start + 2 -- Just the "XX" part, not the space
-
-    -- Add highlight (row is 0-based for nvim_buf_add_highlight)
-    vim.api.nvim_buf_add_highlight(M.bufnr, highlight_ns, "CpuSimpleCurrentSpan", row, col_start, col_end)
-  end
-end
-
---- Highlight a breakpoint line in the assembled buffer
----@param address number Address of the breakpoint
-function M.highlight_breakpoint(address)
-  if not M.bufnr or not vim.api.nvim_buf_is_valid(M.bufnr) then
-    return
-  end
-
-  -- Calculate row and col for the address
-  local BYTES_PER_ROW = 16
-  local CHARS_PER_BYTE = 3
-  local row = math.floor(address / BYTES_PER_ROW)
-  local col_byte = address % BYTES_PER_ROW
-  local col_start = col_byte * CHARS_PER_BYTE
-  local col_end = col_start + 2
-
-  -- Add highlight for the entire line
-  vim.api.nvim_buf_add_highlight(M.bufnr, breakpoint_ns, "CpuSimpleBreakpoint", row, col_start, col_end)
 end
 
 -- Legacy alias for backward compatibility
