@@ -57,7 +57,7 @@ function M.get_last_output_path()
 end
 
 --- Get the last assembled output content as hex lines
----@return string[]|nil
+---@return string[]
 function M.get_last_output_content()
     return M.assembler.last_output_content
 end

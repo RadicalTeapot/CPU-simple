@@ -306,6 +306,12 @@ M.assemble = with_running_backend(function()
   if not display then
     display = require("cpu-simple.display")
   end
+  if not events then
+    events = require("cpu-simple.events")
+  end
+  if not assembler then
+    assembler = require("cpu-simple.assembler")
+  end
   
   events.on(events.ASSEMBLED, function(data)
     -- Show assembled panel when assembly is done
@@ -331,6 +337,9 @@ M.load = with_running_backend(function(path)
   end
   if not state then
     state = require("cpu-simple.state")
+  end
+  if not backend then
+    backend = require("cpu-simple.backend")
   end
   
   -- Use provided path or fall back to last assembled
@@ -370,6 +379,9 @@ M.run = with_running_backend(function()
   if not state then
     state = require("cpu-simple.state")
   end
+  if not backend then
+    backend = require("cpu-simple.backend")
+  end
   
   if not state.loaded_program then
     vim.notify("No program loaded. Use :CpuLoad or :CpuAssemble first.", vim.log.levels.ERROR)
@@ -387,6 +399,9 @@ M.step = with_running_backend(function()
   if not state then
     state = require("cpu-simple.state")
   end
+  if not backend then
+    backend = require("cpu-simple.backend")
+  end
   
   if not state.loaded_program then
     vim.notify("No program loaded. Use :CpuLoad or :CpuAssemble first.", vim.log.levels.ERROR)
@@ -401,6 +416,9 @@ M.reset = with_running_backend(function()
   if not commands then
     commands = require("cpu-simple.commands")
   end
+  if not backend then
+    backend = require("cpu-simple.backend")
+  end
   backend.send(commands.RESET)
 end)
 
@@ -408,6 +426,9 @@ end)
 M.status = with_running_backend(function()
   if not commands then
     commands = require("cpu-simple.commands")
+  end
+  if not backend then
+    backend = require("cpu-simple.backend")
   end
   backend.send(commands.STATUS)
 end)
@@ -417,6 +438,9 @@ end)
 M.set_breakpoint = with_running_backend(function(address)
   if not commands then
     commands = require("cpu-simple.commands")
+  end
+  if not backend then
+    backend = require("cpu-simple.backend")
   end
   backend.send(string.format("%s %d", commands.BREAK_TGL, address))
 end)
@@ -448,6 +472,9 @@ end)
 M.clear_all_breakpoints = with_running_backend(function()
   if not commands then
     commands = require("cpu-simple.commands")
+  end
+  if not backend then
+    backend = require("cpu-simple.backend")
   end
   backend.send(commands.BREAK_CLR)
 end)
@@ -501,6 +528,9 @@ M.dump = with_running_backend(function()
   end
   if not display then
     display = require("cpu-simple.display")
+  end
+  if not backend then
+    backend = require("cpu-simple.backend")
   end
   
   backend.send(commands.DUMP)
@@ -560,6 +590,9 @@ end)
 --- Send a raw command to the backend
 ---@param cmd string Command to send
 M.send = with_running_backend(function(cmd)
+  if not backend then
+    backend = require("cpu-simple.backend")
+  end
   backend.send(cmd)
 end)
 
