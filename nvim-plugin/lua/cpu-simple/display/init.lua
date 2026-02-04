@@ -7,7 +7,9 @@ M.sidebar = require("cpu-simple.display.sidebar")
 
 -- Panel modules
 M.assembled = require("cpu-simple.display.assembled")
-M.dump = require("cpu-simple.display.dump")
+M.status_panel = require("cpu-simple.display.status")
+M.stack = require("cpu-simple.display.stack")
+M.memory = require("cpu-simple.display.memory")
 M.utils = require("cpu-simple.display.utils")
 
 -- Highlighting modules
@@ -28,6 +30,15 @@ function M.setup(opts)
   M.sidebar.setup(config.sidebar)
   M.highlights.define_highlight_groups()
   M.signs.setup(config.signs)
+
+  -- Forward panel-specific config
+  local panels = config.sidebar and config.sidebar.panels or {}
+  if panels.stack then
+    M.stack.setup(panels.stack)
+  end
+  if panels.memory then
+    M.memory.setup(panels.memory)
+  end
 end
 
 --- Show the assembled panel in the sidebar
@@ -35,19 +46,24 @@ function M.show_assembled()
   M.assembled.show()
 end
 
---- Show the dump panel in the sidebar
-function M.show_dump()
-  M.dump.show()
-end
-
 --- Toggle the assembled panel
 function M.toggle_assembled()
   M.assembled.toggle()
 end
 
---- Toggle the dump panel
-function M.toggle_dump()
-  M.dump.toggle()
+--- Toggle the status panel
+function M.toggle_status()
+  M.status_panel.toggle()
+end
+
+--- Toggle the stack panel
+function M.toggle_stack()
+  M.stack.toggle()
+end
+
+--- Toggle the memory panel
+function M.toggle_memory()
+  M.memory.toggle()
 end
 
 -- Open the sidebar

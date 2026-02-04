@@ -31,7 +31,10 @@ M.defaults = {
   sidebar = {
     width = 0.5, -- Ratio of editor width (0.5 = half), or absolute columns if > 1
     position = "right", -- "left" or "right"
-    panels = {}, -- Panel-specific config: { [panel_id] = { height = 0 } }
+    panels = { -- Panel-specific config: { [panel_id] = { height = 0 } }
+      stack = { bytes_per_line = 16 },
+      memory = { bytes_per_line = 16 },
+    },
   },
   -- Signs configuration (alternative to line highlighting)
   signs = {
@@ -81,7 +84,19 @@ function M.setup(opts)
   events.on(events.BREAKPOINT_UPDATED, function()
     M.highlight_breakpoints()
   end)
-  
+
+  -- Auto-request dump when stack/memory panels are visible but have no data
+  events.on(events.STATUS_UPDATED, function()
+    if not display then
+      display = require("cpu-simple.display")
+    end
+    local needs_dump = (display.stack.is_visible() and not state.stack)
+      or (display.memory.is_visible() and not state.memory)
+    if needs_dump and backend and backend.is_running() then
+      backend.send(commands.DUMP)
+    end
+  end)
+
   -- Setup CursorMoved autocmd for assembled panel highlighting
   M.setup_cursor_highlight()
 end
@@ -191,22 +206,34 @@ function M.register_commands()
     desc = "Clear all breakpoints",
   })
   
-  vim.api.nvim_create_user_command("CpuDump", function()
-    M.dump()
-  end, {
-    desc = "Get full CPU dump",
-  })
-  
   -- Panel toggle commands
-  vim.api.nvim_create_user_command("CpuToggleDump", function()
+  vim.api.nvim_create_user_command("CpuToggleStatus", function()
     if not display then
       display = require("cpu-simple.display")
     end
-    display.toggle_dump()
+    display.toggle_status()
   end, {
-    desc = "Toggle the CPU dump panel",
+    desc = "Toggle the CPU status panel",
   })
-  
+
+  vim.api.nvim_create_user_command("CpuToggleStack", function()
+    if not display then
+      display = require("cpu-simple.display")
+    end
+    display.toggle_stack()
+  end, {
+    desc = "Toggle the CPU stack panel",
+  })
+
+  vim.api.nvim_create_user_command("CpuToggleMemory", function()
+    if not display then
+      display = require("cpu-simple.display")
+    end
+    display.toggle_memory()
+  end, {
+    desc = "Toggle the CPU memory panel",
+  })
+
   vim.api.nvim_create_user_command("CpuToggleAssembled", function()
     if not display then
       display = require("cpu-simple.display")
@@ -517,75 +544,6 @@ function M.highlight_pc()
   local pc_address = state.status and state.status.pc
   display.highlight_pc(pc_address, assembler.get_source_line_from_address)
 end
-
---- Get full CPU dump
-M.dump = with_running_backend(function()
-  if not commands then
-    commands = require("cpu-simple.commands")
-  end
-  if not state then
-    state = require("cpu-simple.state")
-  end
-  if not display then
-    display = require("cpu-simple.display")
-  end
-  if not backend then
-    backend = require("cpu-simple.backend")
-  end
-  
-  backend.send(commands.DUMP)
-  
-  -- Display dump in floating window after a short delay to allow response
-  -- TODO Use event/callback when dump response is received instead of delay
-  vim.defer_fn(function()
-    local lines = {}
-    
-    if state.status then
-      table.insert(lines, "=== CPU STATUS ===")
-      table.insert(lines, string.format("Cycles: %d  PC: %d  SP: %d",
-      state.status.cycles, state.status.pc, state.status.sp))
-      table.insert(lines, string.format("Flags - Z: %d  C: %d",
-      state.status.flags.zero, state.status.flags.carry))
-      table.insert(lines, string.format("R0: %d  R1: %d  R2: %d  R3: %d",
-      state.status.registers[1], state.status.registers[2],
-      state.status.registers[3], state.status.registers[4]))
-      if state.status.memory_changes then
-        table.insert(lines, "Memory Changes:")
-        for addr, val in pairs(state.status.memory_changes) do
-          table.insert(lines, string.format("  [%d] = %d", addr, val))
-        end
-      end
-      if state.status.stack_changes then
-        table.insert(lines, "Stack Changes:")
-        for addr, val in pairs(state.status.stack_changes) do
-          table.insert(lines, string.format("  [%d] = %d", addr, val))
-        end
-      end
-      table.insert(lines, "")
-    end
-    
-    if state.stack then
-      table.insert(lines, "=== STACK ===")
-      for i, val in ipairs(state.stack) do
-        table.insert(lines, string.format("[%d]: %d", i - 1, val))
-      end
-      table.insert(lines, "")
-    end
-    
-    if state.memory then
-      table.insert(lines, "=== MEMORY ===")
-      for addr, val in ipairs(state.memory) do
-        table.insert(lines, string.format("[%d]: %d", addr - 1, val))
-      end
-    end
-    
-    if #lines == 0 then
-      table.insert(lines, "No CPU state available. Run a program first.")
-    end
-    
-    display.dump.set_content(lines)
-  end, 100)
-end)
 
 --- Send a raw command to the backend
 ---@param cmd string Command to send

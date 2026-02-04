@@ -56,6 +56,21 @@ function M.update_status(json)
     stack_changes = stack_changes,
     loaded_program = json.loaded_program == "True",
   }
+
+  -- Apply incremental changes to existing memory/stack arrays
+  if M.memory then
+    for addr, val in pairs(memory_changes) do
+      -- addr is 0-based, M.memory is 1-based
+      M.memory[addr + 1] = val
+    end
+  end
+
+  if M.stack then
+    for index, val in pairs(stack_changes) do
+      -- index is 0-based, M.stack is 1-based
+      M.stack[index + 1] = val
+    end
+  end
 end
 
 --- Update stack from backend response

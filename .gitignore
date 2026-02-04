@@ -32,6 +32,7 @@ nvim-plugin/shada
 nvim-plugin/log
 nvim-plugin-data/
 nvim-plugin/init.lua
+nvim-plugin/swap
 
 # Other
 $null

@@ -94,14 +94,12 @@ I did review the code but exercise caution when using it.
   - [ ] Emitter
   - [ ] Backend
 - [] Implement CPU IDE ([inspiration for some UI](https://github.com/AfaanBilal/NanoCore/blob/master/assets/NanoCoreTUI.gif)) in Neovim
-  - [ ] Nicer CPU dump that auto-updates on step / run (split in 3 panels: status, memory, stack)
-  - [ ] On step (or first call after run), dump and show CPU status, then use diffs in progress report to update (or dump again on each step)
+  - [ ] On load, dump and show CPU status, memory and stack panels
   - [ ] `:CpuToggleBp symbol` (and virtual text highlight for BP position in source / machine code)
   - [ ] `:StepOver`, `:StepIn`, `:StepOut`
   - [ ] `:CpuRunToCursor`
   - [ ] Add commands to navigate to next or previous breakpoint (keymap to `[b` and `]b`)
   - [ ] Add command to navigate to symbol under cursor
-  - [ ] Cleanup buffer UIs
   - [ ] Handle assembler errors
 - [ ] Write grammar for tree-sitter
 - [ ] Write LSP server
