@@ -9,6 +9,7 @@ M.stack = nil    -- Array of stack values
 M.memory = nil   -- Array of memory values
 M.breakpoints = {}  -- Array of breakpoint objects (just { address = number } for now)
 M.is_halted = false
+M.loaded_program = nil  -- Optional metadata about the loaded program
 
 --- Update CPU status from backend response
 ---@param status_line string "[STATUS] cycles pc sp r0 r1 r2 r3 zero carry memoryChanges stackChanges"
@@ -84,6 +85,7 @@ function M.clear()
   M.stack = nil
   M.memory = nil
   M.is_halted = false
+  M.loaded_program = nil
 end
 
 --- Update breakpoint list from backend response

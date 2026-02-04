@@ -55,7 +55,7 @@ function M.setup(opts)
   
   -- Setup sidebar with configuration
   display.setup(M.config.sidebar)
-
+  
   -- Register highlight groups
   highlights.define_highlight_groups()
   
@@ -87,19 +87,22 @@ function M.setup_cursor_highlight()
     highlights = require("cpu-simple.display.highlights")
   end
   highlights.setup_cursor_highlight(
-    function()
-      if not assembler then
-        return nil
-      end
-      return assembler.get_address_span_from_current_line()
-    end,
-    function()
-      if not display then
-        return nil
-      end
-      return display.assembled.get_buffer()
+  function()
+    if not assembler then
+      return nil
     end
-  )
+    if not assembler.has_debug_info() then
+      return nil
+    end
+    return assembler.get_address_span_from_current_line()
+  end,
+  function()
+    if not display then
+      return nil
+    end
+    return display.assembled.get_buffer()
+  end
+)
 end
 
 --- Register user commands
@@ -176,7 +179,7 @@ function M.register_commands()
     desc = "Toggle breakpoint at the given address (or at cursor line if no address given)",
     nargs = "?", -- 0 or 1 argument
   })
-
+  
   vim.api.nvim_create_user_command("CpuBreakClear", function()
     M.clear_all_breakpoints()
   end, {
@@ -276,7 +279,7 @@ local function with_running_backend(fn)
     if not events then
       events = require("cpu-simple.events")
     end
-
+    
     if not backend.is_running() then
       vim.notify("Backend is not running. Starting it.", vim.log.levels.INFO)
       events.on(events.BACKEND_STARTED, function(...)
@@ -290,7 +293,7 @@ local function with_running_backend(fn)
   end
 end
 
---- Assemble the current buffer
+--- Assemble the current buffer, shows the assembled code in the sidebar, and auto-loads it into the CPU
 M.assemble = with_running_backend(function()
   if not assembler then
     assembler = require("cpu-simple.assembler")
@@ -303,6 +306,7 @@ M.assemble = with_running_backend(function()
     -- Show assembled panel when assembly is done
     display.assembled.set_content(assembler.get_last_output_content())
     display.assembled.show()
+    M.load() -- Auto-load assembled code into CPU
   end, { once = true })
   assembler.assemble_current_buffer({
     assembler_path = M.config.assembler_path,
@@ -314,24 +318,19 @@ end)
 --- Load machine code into the CPU
 ---@param path string|nil Path to the binary file (defaults to last assembled)
 M.load = with_running_backend(function(path)
-  if not backend then
-    backend = require("cpu-simple.backend")
+  if not assembler then
+    assembler = require("cpu-simple.assembler")
   end
   if not commands then
     commands = require("cpu-simple.commands")
   end
-  
-  if not backend.is_running() then
-    vim.notify("Backend is not running. Starting it.", vim.log.levels.INFO)
-    M.backend_start()
+  if not state then
+    state = require("cpu-simple.state")
   end
   
   -- Use provided path or fall back to last assembled
   local file_path = path
   if not file_path then
-    if not assembler then
-      assembler = require("cpu-simple.assembler")
-    end
     file_path = assembler.get_last_output_path()
   end
   
@@ -350,12 +349,26 @@ M.load = with_running_backend(function(path)
   
   -- Send load command to backend
   backend.send(commands.LOAD .. " " .. file_path)
+
+  -- For now we optimistically set the loaded program immediately, but ideally this should be done in response to a backend event confirming the load was successful
+  vim.schedule(function()
+    state.loaded_program = file_path
+    vim.notify("Loaded program: " .. state.loaded_program, vim.log.levels.INFO)
+  end)
 end)
 
 --- Run the loaded program
 M.run = with_running_backend(function()
   if not commands then
     commands = require("cpu-simple.commands")
+  end
+  if not state then
+    state = require("cpu-simple.state")
+  end
+  
+  if not state.loaded_program then
+    vim.notify("No program loaded. Use :CpuLoad or :CpuAssemble first.", vim.log.levels.ERROR)
+    return
   end
 
   backend.send(commands.RUN)
@@ -366,6 +379,15 @@ M.step = with_running_backend(function()
   if not commands then
     commands = require("cpu-simple.commands")
   end
+  if not state then
+    state = require("cpu-simple.state")
+  end
+  
+  if not state.loaded_program then
+    vim.notify("No program loaded. Use :CpuLoad or :CpuAssemble first.", vim.log.levels.ERROR)
+    return
+  end
+
   backend.send(commands.STEP)
 end)
 
@@ -400,14 +422,14 @@ M.set_breakpoint_at_cursor = with_running_backend(function()
   if not assembler then
     assembler = require("cpu-simple.assembler")
   end
-
+  
   -- Get address span for current line
   local span = assembler.get_address_span_from_current_line()
   if not span then
     vim.notify("No debug info available to set breakpoint", vim.log.levels.ERROR)
     return
   end
-
+  
   -- Set breakpoint at start address of span
   local address = span.start_address
   if not address then
@@ -422,7 +444,7 @@ M.clear_all_breakpoints = with_running_backend(function()
   if not commands then
     commands = require("cpu-simple.commands")
   end
-  backend.send(commands.BREAK_CLEAR_ALL)
+  backend.send(commands.BREAK_CLR)
 end)
 
 function M.highlight_breakpoints()
@@ -438,7 +460,7 @@ function M.highlight_breakpoints()
   if not highlights then
     highlights = require("cpu-simple.display.highlights")
   end
-
+  
   if not assembler.has_debug_info() then
     vim.notify("No debug info available to highlight breakpoints", vim.log.levels.WARN)
     return
@@ -446,13 +468,13 @@ function M.highlight_breakpoints()
   
   local bufnr = vim.api.nvim_get_current_buf()
   local assembled_bufnr = display.assembled.is_visible() and display.assembled.get_buffer() or nil
-
+  
   highlights.highlight_all_breakpoints(
-    bufnr,
-    state.breakpoints,
-    assembled_bufnr,
-    assembler.get_source_line_from_address
-  )
+  bufnr,
+  state.breakpoints,
+  assembled_bufnr,
+  assembler.get_source_line_from_address
+)
 end
 
 function M.highlight_pc()
@@ -468,7 +490,7 @@ function M.highlight_pc()
   if not highlights then
     highlights = require("cpu-simple.display.highlights")
   end
-
+  
   if not assembler.has_debug_info() then
     vim.notify("No debug info available to highlight PC", vim.log.levels.WARN)
     return
@@ -476,12 +498,12 @@ function M.highlight_pc()
   
   local bufnr = vim.api.nvim_get_current_buf()
   local pc_address = state.status and state.status.pc
-
+  
   highlights.highlight_program_counter(
-    bufnr,
-    pc_address,
-    assembler.get_source_line_from_address
-  )
+  bufnr,
+  pc_address,
+  assembler.get_source_line_from_address
+)
 end
 
 --- Get full CPU dump

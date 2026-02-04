@@ -5,6 +5,7 @@ local M = {}
 
 -- Event names
 M.ASSEMBLED = "program_assembled"
+M.LOADED = "program_loaded"
 M.STATUS_UPDATED = "status_updated"
 M.STACK_UPDATED = "stack_updated"
 M.MEMORY_UPDATED = "memory_updated"

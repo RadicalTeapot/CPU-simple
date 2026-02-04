@@ -182,12 +182,13 @@ function M.on_stderr(data)
     local lines = vim.split(data, "\n", { trimempty = true })
     for _, line in ipairs(lines) do
       if line ~= "" then
-        -- Parse log level from backend format: [LOG] or [ERROR]
+        -- Parse log level from backend format: [ERROR] only for now
         local level = vim.log.levels.DEBUG
         if line:match("^%[ERROR%]") then
           level = vim.log.levels.ERROR
-        elseif line:match("^%[LOG%]") then
+        else
           level = vim.log.levels.DEBUG
+          line = "[LOG] " .. line
         end
         vim.notify(line, level)
       end

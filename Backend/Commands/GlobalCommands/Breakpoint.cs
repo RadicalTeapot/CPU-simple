@@ -1,18 +1,15 @@
-﻿using Backend.IO;
-using System.Net;
-
-namespace Backend.Commands.GlobalCommands
+﻿namespace Backend.Commands.GlobalCommands
 {
-    [Command(CommandType.Global, "breakpoint",
+    [Command(CommandType.Global, "breakpoint", ["bp"],
         description: "Toggle or remove brakpoint(s)",
         helpText: "Usage: 'breakpoint [toggle/clear/list] [address]'")]
     internal class Breakpoint(CommandContext context) : BaseGlobalCommand(context)
     {
         protected override GlobalCommandResult ExecuteCore(GlobalCommandExecutionContext executionContext, string[] args)
         {
-            if (args.Length != 2)
+            if (args.Length < 1 || args.Length > 2)
             {
-                return new GlobalCommandResult(Success: false, Message: $"The '{Name}' command requires exactly 2 arguments.");
+                return new GlobalCommandResult(Success: false, Message: $"The '{Name}' command either one or two arguments.");
             }
             var action = args[0].ToLower();
 
@@ -57,7 +54,7 @@ namespace Backend.Commands.GlobalCommands
 
             var breakpoints = executionContext.Breakpoints.GetAll();
             var outputBreakpointList = string.Join(" ", breakpoints.Select(bp => bp.Address));
-            executionContext.Output.Write($"[BP] ${outputBreakpointList}");
+            executionContext.Output.Write($"[BP] {outputBreakpointList}");
 
             return new GlobalCommandResult(Success: true, Message: resultMessage);
         }
