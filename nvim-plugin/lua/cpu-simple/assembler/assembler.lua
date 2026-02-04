@@ -123,12 +123,7 @@ function M.assemble_buffer(config, bufnr)
         store_last_output(output_path)
         -- Load debug info if available
         if debug_file_path then
-          local ok, debug_info = pcall(dofile, debug_file_path)
-          if ok and debug_info then
-            M.last_debug_info = debug_info
-          else
-            M.last_debug_info = nil
-          end
+          M.parse_debug_file(debug_file_path)
         else
           M.last_debug_info = nil
         end
@@ -167,6 +162,53 @@ function M.assemble_buffer(config, bufnr)
       table.insert(stderr_output, data)
     end
   end)
+end
+
+function M.parse_debug_file(path)
+  local file = io.open(path, "r")
+  if not file then
+    M.last_debug_info = nil
+    return
+  end
+
+  local ok, json = pcall(vim.json.decode, file:read("*a"))
+  file:close()
+  if not ok then
+    vim.notify("[CPU] Invalid JSON: " .. json, vim.log.levels.WARN)
+    M.last_debug_info = nil
+    return
+  end
+
+  local debug_info = {
+    spans = {},
+    symbols = {},
+  }
+
+  if not json.version or json.version ~= 1 then
+    vim.notify("[CPU] Unsupported debug file version: " .. tostring(json.version), vim.log.levels.WARN)
+    M.last_debug_info = nil
+    return
+  end
+
+  if json.spans then
+    for _, span in ipairs(json.spans) do
+      table.insert(debug_info.spans, {
+        source_line = span.line,
+        source_start_column = span.start_column,
+        source_end_column = span.end_column,
+        start_address = span.start_address,
+        end_address = span.end_address,
+      })
+    end
+  end
+
+  if json.symbols then
+    for _, sym in ipairs(json.symbols) do
+      debug_info.symbols[sym.name] = { address = sym.address, kind = sym.kind }
+    end
+  end
+
+  M.last_debug_info = debug_info
 end
 
 return M

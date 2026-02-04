@@ -18,16 +18,16 @@ namespace Backend.IO
         {
             OutputData(new
             {
-                Type = "status",
-                Cycle = inspector.Cycle,
-                PC = inspector.PC,
-                SP = inspector.SP,
-                Registers = inspector.Registers.Select(v => (int)v).ToArray(), // Convert bytes to ints for JSON serialization
-                ZeroFlag = inspector.ZeroFlag,
-                CarryFlag = inspector.CarryFlag,
-                MemoryChanges = inspector.MemoryChanges,
-                StackChanges = inspector.StackChanges,
-                ProgramLoaded = inspector.ProgramLoaded
+                type = "status",
+                cycle = inspector.Cycle,
+                pc = inspector.PC,
+                sp = inspector.SP,
+                registers = inspector.Registers.Select(v => (int)v).ToArray(), // Convert bytes to ints for JSON serialization
+                zero_flag = inspector.ZeroFlag,
+                carry_flag = inspector.CarryFlag,
+                memory_changes = inspector.MemoryChanges,
+                stack_changes = inspector.StackChanges,
+                program_loaded = inspector.ProgramLoaded
             });
         }
 
@@ -35,8 +35,8 @@ namespace Backend.IO
         {
             OutputData(new
             {
-                Type = "memory_dump",
-                Memory = memoryDump.Select(v => (int)v).ToArray() // Convert bytes to ints for JSON serialization
+                type = "memory_dump",
+                memory = memoryDump.Select(v => (int)v).ToArray() // Convert bytes to ints for JSON serialization
             });
         }
 
@@ -44,8 +44,8 @@ namespace Backend.IO
         {
             OutputData(new
             {
-                Type = "stack_dump",
-                Stack = stackDump.Select(v => (int)v).ToArray() // Convert bytes to ints for JSON serialization
+                type = "stack_dump",
+                stack = stackDump.Select(v => (int)v).ToArray() // Convert bytes to ints for JSON serialization
             });
         }
 
@@ -53,8 +53,8 @@ namespace Backend.IO
         {
             OutputData(new
             {
-                Type = "breakpoint_list",
-                Breakpoints = breakpoints
+                type = "breakpoint_list",
+                breakpoints = breakpoints
             });
         }
 
@@ -62,8 +62,8 @@ namespace Backend.IO
         {
             OutputData(new
             {
-                Type = "breakpoint_hit",
-                Address = address
+                type = "breakpoint_hit",
+                address = address
             });
         }
 

@@ -1,5 +1,6 @@
 ﻿using Assembler.Analysis;
 using System.Diagnostics;
+using System.Text.Json;
 
 namespace Assembler
 {
@@ -136,40 +137,39 @@ namespace Assembler
         }
 
         /// <summary>
-        /// Outputs debug information as a Lua table to the specified output path.
+        /// Outputs debug information as JSON to the specified output path.
         /// </summary>
         /// <param name="symbols">List of <see cref="Symbol"/></param>
         /// <param name="spanAddresses">List of <see cref="SpanAddressInfo"/></param>
         /// <param name="outputPath">Path to the output file</param>
         private static void OutputDebugInfo(IList<Symbol> symbols, IList<SpanAddressInfo> spanAddresses, string outputPath)
         {
-            var sb = new System.Text.StringBuilder();
-
-            sb.AppendLine("return {");
-            sb.AppendLine($"  version = {DebugFileVersion},");
-            sb.AppendLine("  symbols = {");
-            for (int i = 0; i < symbols.Count; i++)
+            var debugInfo = new
             {
-                var symbol = symbols[i];
-                var comma = i < symbols.Count - 1 ? "," : "";
-                sb.AppendLine($"    {{ name =  \"{symbol.Name}\", address = {symbol.Address}, kind = \"{symbol.Kind}\" }}{comma}");
-            }
-            sb.AppendLine("  },");
-            sb.AppendLine("  spans = {");
-            for (int i = 0; i < spanAddresses.Count; i++)
-            {
-                var spanInfo = spanAddresses[i];
-                var comma = i < spanAddresses.Count - 1 ? "," : "";
-                sb.AppendLine($"    {{ line = {spanInfo.Span.Line}, start_column = {spanInfo.Span.StartColumn}, end_column = {spanInfo.Span.EndColumn}, start = {spanInfo.StartAddress}, ending = {spanInfo.EndAddress} }}{comma}");
-            }
-            sb.AppendLine("  }");
-            sb.AppendLine("}");
+                version = DebugFileVersion,
+                symbols = symbols.Select(s => new
+                {
+                    name = s.Name,
+                    address = s.Address,
+                    kind = s.Kind
+                }).ToArray(),
+                spans = spanAddresses.Select(sa => new
+                {
+                    line = sa.Span.Line,
+                    start_column = sa.Span.StartColumn,
+                    end_column = sa.Span.EndColumn,
+                    start_address = sa.StartAddress,
+                    end_address = sa.EndAddress
+                }).ToArray()
+            };
 
-            var content = sb.ToString();
-            File.WriteAllText(outputPath, content);
+            var json = JsonSerializer.Serialize(debugInfo, _jsonSerializerOptions);
+
+            File.WriteAllText(outputPath, json);
             Console.WriteLine($"Debug information written to {outputPath}.");
         }
 
+        private static readonly JsonSerializerOptions _jsonSerializerOptions = new() { WriteIndented = true };
         private const int DebugFileVersion = 1;
     }
 }

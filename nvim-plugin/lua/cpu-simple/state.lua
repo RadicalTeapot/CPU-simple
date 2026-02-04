@@ -19,15 +19,15 @@ function M.update_status(json)
   end
 
   local registers = {}
-  if json.Registers then
-    for reg, val in pairs(json.Registers) do
+  if json.registers then
+    for reg, val in pairs(json.registers) do
       registers[reg] = tonumber(val)
     end
   end
 
   local memory_changes = {}
-  if json.MemoryChanges then
-    for _, change in pairs(json.MemoryChanges) do
+  if json.memory_changes then
+    for _, change in pairs(json.memory_changes) do
       local addr = tonumber(change.Key)
       local val = tonumber(change.Value)
       memory_changes[addr] = val
@@ -35,8 +35,8 @@ function M.update_status(json)
   end
 
   local stack_changes = {}
-  if json.StackChanges then
-    for _, change in pairs(json.StackChanges) do
+  if json.stack_changes then
+    for _, change in pairs(json.stack_changes) do
       local index = tonumber(change.Key)
       local val = tonumber(change.Value)
       stack_changes[index] = val
@@ -44,17 +44,17 @@ function M.update_status(json)
   end
 
   M.status = {
-    cycles = tonumber(json.Cycle),
-    pc = tonumber(json.PC),
-    sp = tonumber(json.SP),
+    cycles = tonumber(json.cycle),
+    pc = tonumber(json.pc),
+    sp = tonumber(json.sp),
     registers = registers,
     flags = {
-      zero = json.ZeroFlag == "True",
-      carry = json.CarryFlag == "True",
+      zero = json.zero_flag == "True",
+      carry = json.carry_flag == "True",
     },
     memory_changes = memory_changes,
     stack_changes = stack_changes,
-    loaded_program = json.LoadedProgram == "True",
+    loaded_program = json.loaded_program == "True",
   }
 end
 
@@ -66,8 +66,8 @@ function M.update_stack(json)
   end
 
   local stack_values = {}
-  if json.Stack then
-    for _, val in ipairs(json.Stack) do
+  if json.stack then
+    for _, val in ipairs(json.stack) do
       table.insert(stack_values, tonumber(val))
     end
   end
@@ -83,8 +83,8 @@ function M.update_memory(json)
   end
 
   local memory_values = {}
-  if json.Memory then
-    for _, val in ipairs(json.Memory) do
+  if json.memory then
+    for _, val in ipairs(json.memory) do
       table.insert(memory_values, tonumber(val))
     end
   end
@@ -100,8 +100,8 @@ function M.set_breakpoints(json)
   end
 
   local breakpoints = {}
-  if json.Breakpoints then
-    for _, addr_str in ipairs(json.Breakpoints) do
+  if json.breakpoints then
+    for _, addr_str in ipairs(json.breakpoints) do
       local addr = tonumber(addr_str)
       table.insert(breakpoints, { address = addr })
     end

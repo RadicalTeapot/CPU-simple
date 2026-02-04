@@ -87,35 +87,14 @@ I did review the code but exercise caution when using it.
 
 ## To do (in no particular order)
 
-- [/] Write a bank of small programs for 8 and 16 bit version
+- [ ] Write a bank of small programs for 8 and 16 bit version
   - [ ] Test out stack operations
 - [ ] Missing assembler unit tests
   - [ ] Analyser
   - [ ] Emitter
   - [ ] Backend
-- [/] Change the CPU program to act as a backend that listens on STDIN for commands (load_prog(file_path), step(n=1), run(until...), read_mem) and sends back structured responses on STDOUT (lua tables)
-  - [x] Commands via STDIN
-    - [x] load
-    - [x] step
-    - [x] run
-    - [x] read_mem
-  - [x] Logging on STDERR
-  - [x] Add memory and stack diffs to CpuInspector
-- [/] Implement CPU IDE ([inspiration for some UI](https://github.com/AfaanBilal/NanoCore/blob/master/assets/NanoCoreTUI.gif)) in Neovim
-  - [x] Run backend in Lua and communication over STDIN, STDOUT
-  - [x] `:CpuLoad` (load on CPU and reset)
-  - [x] `:CpuStep`, `:CpuRun` and `:CpuReset` with simple print of status to a status line
-  - [x] `:CpuDump` full memory, stack and status dump to a scratch buffer
-  - [x] Highlight (using virtual text) of source -> machine code
+- [] Implement CPU IDE ([inspiration for some UI](https://github.com/AfaanBilal/NanoCore/blob/master/assets/NanoCoreTUI.gif)) in Neovim
   - [ ] Nicer CPU dump that auto-updates on step / run (split in 3 panels: status, memory, stack)
-  - [x] `:CpuToggleBp address`, `:CpuToggleBp` (set on cursor) (and virtual text highlight for BP position in source / machine code)
-    - [x] Test it
-    - [x] Refine IDE handling (send whole bp list when toggling from backend and update all highlights once something changes)
-  - [x] Highlight PC
-  - [x] Option to use signs PC and breakpoint rather than highlight
-  - [ ] Transition all output (STDOUT and symbols file) to use JSON and use `vim.json` for parsing
-    - [x] Output
-    - [ ] Debug symbols
   - [ ] On step (or first call after run), dump and show CPU status, then use diffs in progress report to update (or dump again on each step)
   - [ ] `:CpuToggleBp symbol` (and virtual text highlight for BP position in source / machine code)
   - [ ] `:StepOver`, `:StepIn`, `:StepOut`

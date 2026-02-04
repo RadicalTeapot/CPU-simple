@@ -162,9 +162,9 @@ function M.parse_stdout(data)
   end
 
   -- Check for Type attribute and handle accordingly
-  local msg_type = json.Type
+  local msg_type = json.type
   if not msg_type then
-    vim.notify("[CPU] Missing Type attribute in JSON", vim.log.levels.WARN)
+    vim.notify("[CPU] Missing type attribute in JSON", vim.log.levels.WARN)
     return
   end
 
@@ -182,8 +182,7 @@ function M.parse_stdout(data)
     events.emit(events.BREAKPOINT_UPDATED, {})
   elseif msg_type == "breakpoint_hit" then
     vim.notify("Breakpoint hit!", vim.log.levels.INFO)
-    local address = tonumber(json.Address, 16)
-    events.emit(events.BREAKPOINT_HIT, {address = address})
+    events.emit(events.BREAKPOINT_HIT, {address = json.address})
   else
     -- Fallback for unknown types
     vim.notify("[CPU] Unknown message type: " .. msg_type, vim.log.levels.INFO)

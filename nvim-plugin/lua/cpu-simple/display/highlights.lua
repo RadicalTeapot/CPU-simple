@@ -150,8 +150,8 @@ function M.setup_cursor_highlight(get_address_span_fn, get_assembled_bufnr_fn)
     vim.api.nvim_create_autocmd("CursorMoved", {
         group = vim.api.nvim_create_augroup("CpuSimpleCursorHighlight", { clear = true }),
         callback = function()
-            -- Get current line (0-based)
-            local cursor_line = vim.api.nvim_win_get_cursor(0)[1] - 1
+            -- Get current line
+            local cursor_line = vim.api.nvim_win_get_cursor(0)[1]
             
             -- Guard: skip if line hasn't changed
             if cursor_line == last_highlighted_line then
@@ -164,7 +164,7 @@ function M.setup_cursor_highlight(get_address_span_fn, get_assembled_bufnr_fn)
             if not bufnr then
                 return
             end
-            if span then
+            if span and span.start_address and span.end_address then
                 M.highlight_assembled_byte_range(bufnr, span.start_address, span.end_address)
             else
                 M.clear_assembled_highlights(bufnr)
