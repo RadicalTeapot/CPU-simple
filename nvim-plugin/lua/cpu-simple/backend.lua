@@ -154,24 +154,39 @@ end
 --- Parse stdout line and update state/emit events
 ---@param data string Single line of output
 function M.parse_stdout(data)
-  if data:match("^%[STATUS%]") then
-    state.update_status(data)
+  -- Parse JSON response
+  local ok, json = pcall(vim.json.decode, data)
+  if not ok then
+    vim.notify("[CPU] Invalid JSON: " .. data, vim.log.levels.WARN)
+    return
+  end
+
+  -- Check for Type attribute and handle accordingly
+  local msg_type = json.Type
+  if not msg_type then
+    vim.notify("[CPU] Missing Type attribute in JSON", vim.log.levels.WARN)
+    return
+  end
+
+  if msg_type == "status" then
+    state.update_status(json)
     events.emit(events.STATUS_UPDATED, state.status)
-  elseif data:match("^%[STACK%]") then
-    state.update_stack(data)
+  elseif msg_type == "stack_dump" then
+    state.update_stack(json)
     events.emit(events.STACK_UPDATED, state.stack)
-  elseif data:match("^%[MEMORY%]") then
-    state.update_memory(data)
+  elseif msg_type == "memory_dump" then
+    state.update_memory(json)
     events.emit(events.MEMORY_UPDATED, state.memory)
-  elseif data:match("^%[BP%]") then
-    state.set_breakpoints(data)
+  elseif msg_type == "breakpoint_list" then
+    state.set_breakpoints(json)
     events.emit(events.BREAKPOINT_UPDATED, {})
-  elseif data:match("^%[BP-HIT%]") then
-    vim.notify("Breakpoint hit!", vim.log.levels.INFO) -- Only notify user for now, can be improved later
-    events.emit(events.BREAKPOINT_HIT, {})
+  elseif msg_type == "breakpoint_hit" then
+    vim.notify("Breakpoint hit!", vim.log.levels.INFO)
+    local address = tonumber(json.Address, 16)
+    events.emit(events.BREAKPOINT_HIT, {address = address})
   else
-    -- Fallback to generic log
-    vim.notify("[CPU] " .. data, vim.log.levels.INFO)
+    -- Fallback for unknown types
+    vim.notify("[CPU] Unknown message type: " .. msg_type, vim.log.levels.INFO)
   end
 end
 

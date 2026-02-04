@@ -20,10 +20,11 @@ namespace CPU
             _cycle = 0;
             _opcodeFactory = new OpcodeFactory();
             _executionContext = new();
+            _programLoaded = false;
         }
 
         public CpuInspector GetInspector()
-            => CpuInspector.Create(_cycle, _state, _stack, _memory, _executionContext);
+            => CpuInspector.Create(_cycle, _state, _stack, _memory, _programLoaded, _executionContext);
 
         public void Reset()
         {
@@ -40,6 +41,7 @@ namespace CPU
 
             _memory.Clear();
             _memory.LoadBytes(0, program);
+            _programLoaded = true;
             Reset();
         }
 
@@ -111,6 +113,7 @@ namespace CPU
         private readonly OpcodeFactory _opcodeFactory;
         private int _cycle = 0;
         private ExecutionContext _executionContext;
+        private bool _programLoaded;
 #if x16
         public const int AddressSize = 2;
 #else

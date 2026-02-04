@@ -15,6 +15,7 @@ namespace CPU
         public byte[] MemoryContents { get; private set; } = [];
         public KeyValuePair<int, byte>[] MemoryChanges { get; private set; } = [];
         public KeyValuePair<int, byte>[] StackChanges { get; private set; } = [];
+        public bool ProgramLoaded { get; private set; } = false;
 
         internal class Builder()
         {
@@ -74,19 +75,25 @@ namespace CPU
                 _inspector.StackChanges = [..changes];
                 return this;
             }
+            public Builder SetProgramLoaded(bool loaded)
+            {
+                _inspector.ProgramLoaded = loaded;
+                return this;
+            }
             public CpuInspector Build()
             {
                 return _inspector;
             }
         }
 
-        internal static CpuInspector Create(int cycle, State state, Stack stack, Memory memory, ExecutionContext executionContext)
+        internal static CpuInspector Create(int cycle, State state, Stack stack, Memory memory, bool programLoaded, ExecutionContext executionContext)
         {
             var builder = new Builder()
                 .SetCycle(cycle)
                 .SetLastInstruction(executionContext.LastInstruction)
                 .SetMemoryChanges([..executionContext.MemoryChanges])
-                .SetStackChanges([..executionContext.StackChanges]);
+                .SetStackChanges([..executionContext.StackChanges])
+                .SetProgramLoaded(programLoaded);
             state.UpdateCpuInspectorBuilder(builder);
             stack.UpdateCpuInspectorBuilder(builder);
             memory.UpdateCpuInspectorBuilder(builder);

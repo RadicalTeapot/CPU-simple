@@ -4,7 +4,7 @@ namespace Backend.Commands.StateCommands
 {
     internal interface IStateCommand : ICommand
     {
-        StateCommandResult GetStateForCommand(CpuStateFactory stateFactory, string[] args);
+        StateCommandResult Execute(CpuStateFactory stateFactory, string[] args);
     }
 
     internal record StateCommandResult(

@@ -9,74 +9,105 @@ M.stack = nil    -- Array of stack values
 M.memory = nil   -- Array of memory values
 M.breakpoints = {}  -- Array of breakpoint objects (just { address = number } for now)
 M.is_halted = false
-M.loaded_program = nil  -- Optional metadata about the loaded program
+M.loaded_program = false  -- Whether a program is loaded
 
 --- Update CPU status from backend response
----@param status_line string "[STATUS] cycles pc sp r0 r1 r2 r3 zero carry memoryChanges stackChanges"
-function M.update_status(status_line)
-  local status = status_line:gsub("^%[STATUS%]%s*", "")
-
-  local cycles, pc, sp, r0, r1, r2, r3, zero, carry, memoryChanges, stackChanges = status:match(
-    "^(%d+)%s+(%d+)%s+(%d+)%s+(%d+)%s+(%d+)%s+(%d+)%s+(%d+)%s+(%d+)%s+(%d+)%s+%((.*)%)%s+%((.*)%)%s*$"
-  )
-
-  if cycles then
-    local memory_changes = {}
-    if memoryChanges then
-      for addr, val in memoryChanges:gmatch("(%d+)%s+(%d+)") do
-        memory_changes[tonumber(addr)] = tonumber(val)
-      end
-    end
-
-    local stack_changes = {}
-    if stackChanges then
-      for addr, val in stackChanges:gmatch("(%d+)%s+(%d+)") do
-        stack_changes[tonumber(addr)] = tonumber(val)
-      end
-    end
-
-    M.status = {
-      cycles = tonumber(cycles),
-      pc = tonumber(pc),
-      sp = tonumber(sp),
-      registers = {
-        tonumber(r0),
-        tonumber(r1),
-        tonumber(r2),
-        tonumber(r3),
-      },
-      flags = {
-        zero = tonumber(zero),
-        carry = tonumber(carry),
-      },
-      memory_changes = memory_changes,
-      stack_changes = stack_changes,
-    }
-    return true
+---@param json table Parsed JSON object from backend
+function M.update_status(json)
+  if not json then
+    return
   end
-  return false
+
+  local registers = {}
+  if json.Registers then
+    for reg, val in pairs(json.Registers) do
+      registers[reg] = tonumber(val)
+    end
+  end
+
+  local memory_changes = {}
+  if json.MemoryChanges then
+    for _, change in pairs(json.MemoryChanges) do
+      local addr = tonumber(change.Key)
+      local val = tonumber(change.Value)
+      memory_changes[addr] = val
+    end
+  end
+
+  local stack_changes = {}
+  if json.StackChanges then
+    for _, change in pairs(json.StackChanges) do
+      local index = tonumber(change.Key)
+      local val = tonumber(change.Value)
+      stack_changes[index] = val
+    end
+  end
+
+  M.status = {
+    cycles = tonumber(json.Cycle),
+    pc = tonumber(json.PC),
+    sp = tonumber(json.SP),
+    registers = registers,
+    flags = {
+      zero = json.ZeroFlag == "True",
+      carry = json.CarryFlag == "True",
+    },
+    memory_changes = memory_changes,
+    stack_changes = stack_changes,
+    loaded_program = json.LoadedProgram == "True",
+  }
 end
 
 --- Update stack from backend response
----@param stack_line string "[STACK] val1 val2 ..."
-function M.update_stack(stack_line)
-  local stack = stack_line:gsub("^%[STACK%]%s*", "")
-  local stack_values = {}
-  for value in stack:gmatch("(%d+)") do
-    table.insert(stack_values, tonumber(value))
+---@param json table Parsed JSON object from backend
+function M.update_stack(json)
+  if not json then
+    return
   end
+
+  local stack_values = {}
+  if json.Stack then
+    for _, val in ipairs(json.Stack) do
+      table.insert(stack_values, tonumber(val))
+    end
+  end
+
   M.stack = stack_values
 end
 
 --- Update memory from backend response
----@param memory_line string "[MEMORY] val1 val2 ..."
-function M.update_memory(memory_line)
-  local memory = memory_line:gsub("^%[MEMORY%]%s*", "")
-  local memory_values = {}
-  for value in memory:gmatch("(%d+)") do
-    table.insert(memory_values, tonumber(value))
+---@param json table Parsed JSON object from backend
+function M.update_memory(json)
+  if not json then
+    return
   end
+
+  local memory_values = {}
+  if json.Memory then
+    for _, val in ipairs(json.Memory) do
+      table.insert(memory_values, tonumber(val))
+    end
+  end
+
   M.memory = memory_values
+end
+
+--- Update breakpoint list from backend response
+---@param json table Parsed JSON object from backend
+function M.set_breakpoints(json)
+  if not json then
+    return
+  end
+
+  local breakpoints = {}
+  if json.Breakpoints then
+    for _, addr_str in ipairs(json.Breakpoints) do
+      local addr = tonumber(addr_str)
+      table.insert(breakpoints, { address = addr })
+    end
+  end
+
+  M.breakpoints = breakpoints
 end
 
 --- Clear all CPU state
@@ -86,17 +117,6 @@ function M.clear()
   M.memory = nil
   M.is_halted = false
   M.loaded_program = nil
-end
-
---- Update breakpoint list from backend response
----@param breakpoint_line string "[BP] addr1 addr2 ..."
-function M.set_breakpoints(breakpoint_line)
-  local bp_list = breakpoint_line:gsub("^%[BP%]%s*", "")
-  local breakpoints = {}
-  for addr in bp_list:gmatch("(%d+)") do
-    table.insert(breakpoints, { address = tonumber(addr) })
-  end
-  M.breakpoints = breakpoints
 end
 
 return M

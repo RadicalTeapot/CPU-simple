@@ -8,7 +8,7 @@ namespace Backend.Commands.StateCommands
         public string Description { get; } = context.Description;
         public string HelpText { get; } = context.HelpText;
 
-        public StateCommandResult GetStateForCommand(CpuStateFactory stateFactory, string[] args)
+        public StateCommandResult Execute(CpuStateFactory stateFactory, string[] args)
         {
             if (ShouldPrintHelp(args))
             {

@@ -44,17 +44,15 @@
                     }
                     else
                     {
-                        var breakpointAddresses = executionContext.Breakpoints.GetAll().Select(bp => $"0x{bp.Address:X4}");
-                        resultMessage = $"Current breakpoints at addresses: {string.Join(", ", breakpointAddresses)}";
+                        var addresses = executionContext.Breakpoints.GetAll().Select(bp => $"0x{bp.Address:X4}");
+                        resultMessage = $"Current breakpoints at addresses: {string.Join(", ", addresses)}";
                     }
                     break;
                 default:
                     return new GlobalCommandResult(Success: false, Message: $"The action '{action}' is not valid for the '{Name}' command. Use 'toggle' or 'remove'.");
             }
 
-            var breakpoints = executionContext.Breakpoints.GetAll();
-            var outputBreakpointList = string.Join(" ", breakpoints.Select(bp => bp.Address));
-            executionContext.Output.Write($"[BP] {outputBreakpointList}");
+            executionContext.Output.WriteBreakpointList([..executionContext.Breakpoints.GetAll().Select(bp => bp.Address)]);
 
             return new GlobalCommandResult(Success: true, Message: resultMessage);
         }

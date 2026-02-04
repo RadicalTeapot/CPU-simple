@@ -591,9 +591,12 @@ function M.get_statusline()
     return "Backend running: no status"
   end
   
+
+  local zero = s.flags.zero and 1 or 0
+  local carry = s.flags.carry and 1 or 0
   return string.format("Cyc:%d PC:%d SP:%d Z:%d C:%d R0:%d R1:%d R2:%d R3:%d",
-  s.cycles, s.pc, s.sp, s.flags.zero, s.flags.carry,
-  s.registers[1], s.registers[2], s.registers[3], s.registers[4])
+    s.cycles, s.pc, s.sp, zero, carry,
+    s.registers[1], s.registers[2], s.registers[3], s.registers[4])
 end
 
 return M

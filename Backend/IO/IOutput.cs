@@ -1,51 +1,76 @@
-﻿using System.Text;
+﻿using System.Text.Json;
 
 namespace Backend.IO
 {
     public interface IOutput
     {
-        void Write(string message);
         void WriteStatus(CPU.CpuInspector inspector);
         void WriteMemoryDump(byte[] memoryDump);
         void WriteStackDump(byte[] stackDump);
+        void WriteBreakpointList(int[] breakpoints);
+        void WriteBreakpointHit(int address);
     }
 
     // Output is done on STDOUT
     internal class ConsoleOutput : IOutput
     {
-        public void Write(string message)
-        {
-            Console.Out.WriteLine(message);
-        }
-
         public void WriteStatus(CPU.CpuInspector inspector)
         {
-            var zeroFlag = inspector.ZeroFlag ? 1 : 0;
-            var carryFlag = inspector.CarryFlag ? 1 : 0;
-
-            var sb = new StringBuilder();
-            sb.Append("[STATUS] ")
-                .Append($"{inspector.Cycle} ")
-                .Append($"{inspector.PC} ")
-                .Append($"{inspector.SP} ")
-                .Append($"{string.Join(" ", inspector.Registers)} ")
-                .Append($"{zeroFlag} ")
-                .Append($"{carryFlag} ")
-                .Append($"({string.Join(" ", inspector.MemoryChanges)}) ")
-                .Append($"({string.Join(" ", inspector.StackChanges)})");
-            Console.Out.WriteLine(sb.ToString());
+            OutputData(new
+            {
+                Type = "status",
+                Cycle = inspector.Cycle,
+                PC = inspector.PC,
+                SP = inspector.SP,
+                Registers = inspector.Registers.Select(v => (int)v).ToArray(), // Convert bytes to ints for JSON serialization
+                ZeroFlag = inspector.ZeroFlag,
+                CarryFlag = inspector.CarryFlag,
+                MemoryChanges = inspector.MemoryChanges,
+                StackChanges = inspector.StackChanges,
+                ProgramLoaded = inspector.ProgramLoaded
+            });
         }
 
         public void WriteMemoryDump(byte[] memoryDump)
         {
-            var hexString = BitConverter.ToString(memoryDump).Replace("-", " ");
-            Console.Out.WriteLine($"[MEMORY] {hexString}");
+            OutputData(new
+            {
+                Type = "memory_dump",
+                Memory = memoryDump.Select(v => (int)v).ToArray() // Convert bytes to ints for JSON serialization
+            });
         }
 
         public void WriteStackDump(byte[] stackDump)
         {
-            var hexString = BitConverter.ToString(stackDump).Replace("-", " ");
-            Console.Out.WriteLine($"[STACK] {hexString}");
+            OutputData(new
+            {
+                Type = "stack_dump",
+                Stack = stackDump.Select(v => (int)v).ToArray() // Convert bytes to ints for JSON serialization
+            });
+        }
+
+        public void WriteBreakpointList(int[] breakpoints)
+        {
+            OutputData(new
+            {
+                Type = "breakpoint_list",
+                Breakpoints = breakpoints
+            });
+        }
+
+        public void WriteBreakpointHit(int address)
+        {
+            OutputData(new
+            {
+                Type = "breakpoint_hit",
+                Address = address
+            });
+        }
+
+        private static void OutputData(object jsonObject)
+        {
+            var jsonString = JsonSerializer.Serialize(jsonObject);
+            Console.Out.WriteLine(jsonString);
         }
     }
 }

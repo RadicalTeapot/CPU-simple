@@ -22,7 +22,7 @@ namespace Backend.CpuStates
 
             if (breakpointContainer.Contains(inspector.PC))
             {
-                output.Write("[BP-HIT]");
+                output.WriteBreakpointHit(inspector.PC);
                 Context.Logger.Log($"Breakpoint hit at address 0x{inspector.PC:X4}. Transitioning to Idle state.");
                 return Context.StateFactory.CreateIdleState();
             }

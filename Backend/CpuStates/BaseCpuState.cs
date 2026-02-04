@@ -18,7 +18,7 @@ namespace Backend.CpuStates
                 return this;
             }
 
-            var result = command.GetStateForCommand(Context.StateFactory, args);
+            var result = command.Execute(Context.StateFactory, args);
             if (!result.Success)
             {
                 Context.Logger.Error(result.Message ?? $"Command '{command.Name}' failed to execute.");

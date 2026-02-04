@@ -112,13 +112,16 @@ I did review the code but exercise caution when using it.
     - [x] Test it
     - [x] Refine IDE handling (send whole bp list when toggling from backend and update all highlights once something changes)
   - [x] Highlight PC
-  - [ ] Test gutter for PC and breakpoint rather than highlight (and virtual underline in disassembled view)
+  - [x] Option to use signs PC and breakpoint rather than highlight
   - [ ] Transition all output (STDOUT and symbols file) to use JSON and use `vim.json` for parsing
+    - [x] Output
+    - [ ] Debug symbols
   - [ ] On step (or first call after run), dump and show CPU status, then use diffs in progress report to update (or dump again on each step)
   - [ ] `:CpuToggleBp symbol` (and virtual text highlight for BP position in source / machine code)
   - [ ] `:StepOver`, `:StepIn`, `:StepOut`
   - [ ] `:CpuRunToCursor`
-  - [ ] Add commands to navigate to next or previous breakpoint (`[b` and `]b`)
+  - [ ] Add commands to navigate to next or previous breakpoint (keymap to `[b` and `]b`)
+  - [ ] Add command to navigate to symbol under cursor
   - [ ] Cleanup buffer UIs
   - [ ] Handle assembler errors
 - [ ] Write grammar for tree-sitter
