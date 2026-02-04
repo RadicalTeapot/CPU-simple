@@ -108,15 +108,17 @@ I did review the code but exercise caution when using it.
   - [x] `:CpuDump` full memory, stack and status dump to a scratch buffer
   - [x] Highlight (using virtual text) of source -> machine code
   - [ ] Nicer CPU dump that auto-updates on step / run (split in 3 panels: status, memory, stack)
-  - [x] `:CpuToggletBp address`, `:CpuToggleBp` (set on cursor) (and virtual text highlight for BP position in source / machine code)
+  - [x] `:CpuToggleBp address`, `:CpuToggleBp` (set on cursor) (and virtual text highlight for BP position in source / machine code)
     - [x] Test it
     - [x] Refine IDE handling (send whole bp list when toggling from backend and update all highlights once something changes)
   - [x] Highlight PC
   - [ ] Test gutter for PC and breakpoint rather than highlight (and virtual underline in disassembled view)
   - [ ] Transition all output (STDOUT and symbols file) to use JSON and use `vim.json` for parsing
-  - [ ] `:CpuToggleBP symbol` (and virtual text highlight for BP position in source / machine code)
+  - [ ] On step (or first call after run), dump and show CPU status, then use diffs in progress report to update (or dump again on each step)
+  - [ ] `:CpuToggleBp symbol` (and virtual text highlight for BP position in source / machine code)
   - [ ] `:StepOver`, `:StepIn`, `:StepOut`
   - [ ] `:CpuRunToCursor`
+  - [ ] Add commands to navigate to next or previous breakpoint (`[b` and `]b`)
   - [ ] Cleanup buffer UIs
   - [ ] Handle assembler errors
 - [ ] Write grammar for tree-sitter

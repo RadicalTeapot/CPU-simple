@@ -163,7 +163,7 @@ function M.register_commands()
     desc = "Get the current CPU status",
   })
   
-  vim.api.nvim_create_user_command("CpuBreakToggle", function(cmd_opts)
+  vim.api.nvim_create_user_command("CpuToggleBp", function(cmd_opts)
     if (#cmd_opts.args == 0) then
       M.set_breakpoint_at_cursor()
       return
@@ -180,7 +180,7 @@ function M.register_commands()
     nargs = "?", -- 0 or 1 argument
   })
   
-  vim.api.nvim_create_user_command("CpuBreakClear", function()
+  vim.api.nvim_create_user_command("CpuClearBp", function()
     M.clear_all_breakpoints()
   end, {
     desc = "Clear all breakpoints",
