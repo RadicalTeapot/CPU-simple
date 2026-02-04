@@ -10,7 +10,6 @@ local display = nil
 local state = nil
 local events = nil
 local commands = nil
-local highlights = nil
 
 -- Default configuration
 M.defaults = {
@@ -34,6 +33,13 @@ M.defaults = {
     position = "right", -- "left" or "right"
     panels = {}, -- Panel-specific config: { [panel_id] = { height = 0 } }
   },
+  -- Signs configuration (alternative to line highlighting)
+  signs = {
+    use_for_breakpoints = false, -- Use sign column for breakpoints instead of line highlight
+    use_for_pc = false, -- Use sign column for PC instead of line highlight
+    breakpoint_text = "●", -- Text shown in sign column for breakpoints
+    pc_text = "▶", -- Text shown in sign column for PC
+  },
 }
 
 -- Current configuration
@@ -51,18 +57,17 @@ function M.setup(opts)
   state = require("cpu-simple.state")
   events = require("cpu-simple.events")
   commands = require("cpu-simple.commands")
-  highlights = require("cpu-simple.display.highlights")
   
-  -- Setup sidebar with configuration
-  display.setup(M.config.sidebar)
-  
-  -- Register highlight groups
-  highlights.define_highlight_groups()
+  -- Setup display with sidebar and signs configuration
+  display.setup({
+    sidebar = M.config.sidebar,
+    signs = M.config.signs,
+  })
   
   -- Register commands
   M.register_commands()
   
-  -- Subscribe to status updates for statusline
+  -- Subscribe to status updates for statusline and highlighting
   events.on(events.STATUS_UPDATED, function()
     M.highlight_pc()
     vim.cmd("redrawstatus")
@@ -83,10 +88,10 @@ end
 
 --- Setup CursorMoved autocmd to highlight assembled bytes for current source line
 function M.setup_cursor_highlight()
-  if not highlights then
-    highlights = require("cpu-simple.display.highlights")
+  if not display then
+    display = require("cpu-simple.display")
   end
-  highlights.setup_cursor_highlight(
+  display.highlights.setup_cursor_highlight(
   function()
     if not assembler then
       return nil
@@ -457,24 +462,13 @@ function M.highlight_breakpoints()
   if not display then
     display = require("cpu-simple.display")
   end
-  if not highlights then
-    highlights = require("cpu-simple.display.highlights")
-  end
   
   if not assembler.has_debug_info() then
     vim.notify("No debug info available to highlight breakpoints", vim.log.levels.WARN)
     return
   end
   
-  local bufnr = vim.api.nvim_get_current_buf()
-  local assembled_bufnr = display.assembled.is_visible() and display.assembled.get_buffer() or nil
-  
-  highlights.highlight_all_breakpoints(
-  bufnr,
-  state.breakpoints,
-  assembled_bufnr,
-  assembler.get_source_line_from_address
-)
+  display.highlight_breakpoints(state.breakpoints, assembler.get_source_line_from_address)
 end
 
 function M.highlight_pc()
@@ -487,23 +481,14 @@ function M.highlight_pc()
   if not display then
     display = require("cpu-simple.display")
   end
-  if not highlights then
-    highlights = require("cpu-simple.display.highlights")
-  end
   
   if not assembler.has_debug_info() then
     vim.notify("No debug info available to highlight PC", vim.log.levels.WARN)
     return
   end
   
-  local bufnr = vim.api.nvim_get_current_buf()
   local pc_address = state.status and state.status.pc
-  
-  highlights.highlight_program_counter(
-  bufnr,
-  pc_address,
-  assembler.get_source_line_from_address
-)
+  display.highlight_pc(pc_address, assembler.get_source_line_from_address)
 end
 
 --- Get full CPU dump

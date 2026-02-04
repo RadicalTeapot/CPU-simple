@@ -1,5 +1,5 @@
 -- Highlighting logic for cpu-simple display
--- Centralizes all highlight groups, namespaces, and highlighting functions
+-- Centralizes all highlight groups, namespaces, and line-based highlighting functions
 
 local M = {}
 
@@ -11,7 +11,7 @@ local M = {}
 M.groups = {
     CURRENT_SPAN = "CpuSimpleCurrentSpan",
     BREAKPOINT = "CpuSimpleBreakpoint",
-    BREAKPOINT_PC = "CpuSimpleBreakpointPC",
+    PC = "CpuSimplePC",
 }
 
 --- Define all highlight groups (should be called once at plugin load)
@@ -21,7 +21,7 @@ function M.define_highlight_groups()
     -- Highlight for breakpoints in source and assembled panels
     vim.api.nvim_set_hl(0, M.groups.BREAKPOINT, { link = "Error", default = true })
     -- Highlight for program counter line in source and assembled panels
-    vim.api.nvim_set_hl(0, M.groups.BREAKPOINT_PC, { link = "WarningMsg", default = true })
+    vim.api.nvim_set_hl(0, M.groups.PC, { link = "WarningMsg", default = true })
 end
 
 -- ============================================================================
@@ -58,7 +58,7 @@ end
 ---@param bufnr number Buffer number
 ---@param line_nr number 1-based line number
 function M.highlight_pc_line(bufnr, line_nr)
-    vim.api.nvim_buf_add_highlight(bufnr, M.ns_source_pc, M.groups.BREAKPOINT_PC, line_nr - 1, 0, -1)
+    vim.api.nvim_buf_add_highlight(bufnr, M.ns_source_pc, M.groups.PC, line_nr - 1, 0, -1)
 end
 
 --- Clear program counter highlight from a source buffer
@@ -171,46 +171,6 @@ function M.setup_cursor_highlight(get_address_span_fn, get_assembled_bufnr_fn)
             end
         end,
     })
-end
-
---- Highlight all breakpoints in source and assembled buffers
----@param source_bufnr number Source buffer number
----@param breakpoints table[] Array of breakpoints with .address field
----@param assembled_bufnr number|nil Assembled buffer number (or nil if not visible)
----@param get_source_line_fn function(address) Function to get source line from address
-function M.highlight_all_breakpoints(source_bufnr, breakpoints, assembled_bufnr, get_source_line_fn)
-    -- Clear existing breakpoint highlights
-    M.clear_breakpoint_highlights(source_bufnr)
-    if assembled_bufnr then
-        M.clear_assembled_breakpoint_highlights(assembled_bufnr)
-    end
-    
-    -- Highlight each breakpoint
-    for _, bp in ipairs(breakpoints) do
-        local source_line = get_source_line_fn(bp.address)
-        if source_line then
-            M.highlight_breakpoint_line(source_bufnr, source_line)
-        end
-        if assembled_bufnr then
-            M.highlight_assembled_breakpoint(assembled_bufnr, bp.address)
-        end
-    end
-end
-
---- Highlight the program counter in source buffer
----@param source_bufnr number Source buffer number
----@param pc_address number|nil Current program counter address
----@param get_source_line_fn function(address) Function to get source line from address
-function M.highlight_program_counter(source_bufnr, pc_address, get_source_line_fn)
-    -- Clear existing PC highlight
-    M.clear_pc_highlight(source_bufnr)
-    
-    if pc_address then
-        local source_line = get_source_line_fn(pc_address)
-        if source_line then
-            M.highlight_pc_line(source_bufnr, source_line)
-        end
-    end
 end
 
 return M
