@@ -21,15 +21,15 @@ function M.update_status(json)
   local registers = {}
   if json.registers then
     for reg, val in pairs(json.registers) do
-      registers[reg] = tonumber(val)
+      registers[reg] = val
     end
   end
 
   local memory_changes = {}
   if json.memory_changes then
     for _, change in pairs(json.memory_changes) do
-      local addr = tonumber(change.Key)
-      local val = tonumber(change.Value)
+      local addr = change.Key
+      local val = change.Value
       memory_changes[addr] = val
     end
   end
@@ -37,16 +37,16 @@ function M.update_status(json)
   local stack_changes = {}
   if json.stack_changes then
     for _, change in pairs(json.stack_changes) do
-      local index = tonumber(change.Key)
-      local val = tonumber(change.Value)
+      local index = change.Key
+      local val = change.Value
       stack_changes[index] = val
     end
   end
 
   M.status = {
-    cycles = tonumber(json.cycle),
-    pc = tonumber(json.pc),
-    sp = tonumber(json.sp),
+    cycles = json.cycle,
+    pc = json.pc,
+    sp = json.sp,
     registers = registers,
     flags = {
       zero = json.zero_flag == "True",
@@ -68,7 +68,7 @@ function M.update_stack(json)
   local stack_values = {}
   if json.stack then
     for _, val in ipairs(json.stack) do
-      table.insert(stack_values, tonumber(val))
+      table.insert(stack_values, val)
     end
   end
 
@@ -85,7 +85,7 @@ function M.update_memory(json)
   local memory_values = {}
   if json.memory then
     for _, val in ipairs(json.memory) do
-      table.insert(memory_values, tonumber(val))
+      table.insert(memory_values, val)
     end
   end
 
@@ -101,8 +101,7 @@ function M.set_breakpoints(json)
 
   local breakpoints = {}
   if json.breakpoints then
-    for _, addr_str in ipairs(json.breakpoints) do
-      local addr = tonumber(addr_str)
+    for _, addr in ipairs(json.breakpoints) do
       table.insert(breakpoints, { address = addr })
     end
   end
@@ -116,7 +115,7 @@ function M.clear()
   M.stack = nil
   M.memory = nil
   M.is_halted = false
-  M.loaded_program = nil
+  M.loaded_program = false
 end
 
 return M
