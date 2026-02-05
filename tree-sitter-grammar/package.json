@@ -1,0 +1,21 @@
+{
+  "name": "tree-sitter-cpu-simple-asm",
+  "version": "0.1.0",
+  "description": "Tree-sitter grammar for CPU-simple assembly language",
+  "main": "bindings/node",
+  "scripts": {
+    "build": "tree-sitter generate",
+    "test": "tree-sitter test"
+  },
+  "devDependencies": {
+    "tree-sitter-cli": "^0.20.8"
+  },
+  "tree-sitter": [
+    {
+      "scope": "source.cpu-simple-asm",
+      "file-types": [
+        "csasm"
+      ]
+    }
+  ]
+}

@@ -81,9 +81,16 @@ require("cpu-simple").setup({
 
 ## AI use disclamer
 
-I used Github copilot to help brainstorm the general architecture and write some unit tests, the vast majority of the functional code was written by hand.
-The notable exception for this is the Neovim plugin, which is written almost entirely by AI as this is far from my area of expertise.
-I did review the code but exercise caution when using it.
+I used Claude to help brainstorm the general architecture and write some unit tests, the vast majority of the functional C# code was written by hand.
+
+The notable exception for are:
+
+- the Neovim plugin
+- the tree sitter grammar
+
+Those where written almost entirely by Claude as they are far from my area of expertise.
+
+I did review and tested the code but exercise caution when using it.
 
 ## To do (in no particular order)
 
@@ -101,7 +108,7 @@ I did review the code but exercise caution when using it.
   - [ ] Add commands to navigate to next or previous breakpoint (keymap to `[b` and `]b`)
   - [ ] Add command to navigate to symbol under cursor
   - [ ] Handle assembler errors
-- [ ] Write grammar for tree-sitter
+- [x] Write grammar for tree-sitter
 - [ ] Write LSP server
 - [ ] Implement PPU and map some memory for it (for 16-bit version)
 - [ ] Implement sound chip and map some memory for it too (for 16-bit version)

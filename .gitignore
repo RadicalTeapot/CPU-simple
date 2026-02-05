@@ -34,6 +34,17 @@ nvim-plugin-data/
 nvim-plugin/init.lua
 nvim-plugin/swap
 
+# Node
+node_modules
+
+# Tree-sitter generated files
+tree-sitter-grammar/src/
+tree-sitter-grammar/bindings/
+tree-sitter-grammar/Cargo.toml
+tree-sitter-grammar/binding.gyp
+tree-sitter-grammar/package-lock.json
+tree-sitter-grammar/build/
+
 # Other
 $null
 tests/
