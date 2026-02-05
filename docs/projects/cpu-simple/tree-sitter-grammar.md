@@ -7,7 +7,7 @@ This document explains how the tree-sitter grammar in `tree-sitter-grammar/` imp
 | EBNF Production | Tree-sitter Rule | Notes |
 |-----------------|------------------|-------|
 | (file) | `source_file` | Root: sequence of `line` nodes |
-| (line) | `line` | Optional statement + newline |
+| (line) | `line` | Optional statement + newline, or statement at EOF |
 | `statement` | `statement` | At least one component required |
 | `directive` (section) | `header_directive` | `.text`, `.data` separated for semantics |
 | `directive` (data) | `directive` | `.byte`, `.short`, `.zero`, `.org`, `.string` |
@@ -46,6 +46,37 @@ identifier: ($) => /[a-zA-Z_][a-zA-Z0-9_]*/  // default priority
 ```
 
 This ensures `R0` is always parsed as a register, not an identifier, matching the existing assembler's lexer behavior (see `Assembler/Lexeme/RegisterLexeme.cs:3`).
+
+## Line Handling
+
+The `line` rule handles two cases using precedence:
+
+```javascript
+line: ($) =>
+  choice(
+    prec(2, seq(optional($.statement), /\r?\n/)), // Prefer newline-terminated
+    prec(1, $.statement) // Fallback: statement at EOF without newline
+  ),
+```
+
+- **Newline-terminated lines** (priority 2): Most lines end with `\n` or `\r\n`
+- **Final line without newline** (priority 1): The last line of a file may not have a trailing newline
+
+This allows parsing files that don't end with a newline, which is common in many editors.
+
+## Conflict Resolution
+
+The grammar declares explicit conflicts to handle ambiguous parses:
+
+```javascript
+conflicts: ($) => [[$.statement], [$.instruction]],
+```
+
+These conflicts arise because:
+- A `statement` can end after any optional component (header, label, directive/instruction, comment)
+- An `instruction` can end after the mnemonic or include 1-2 operands
+
+Without conflict declarations, the parser wouldn't know whether to end early or continue parsing. The GLR (Generalized LR) parser tries both paths and selects the valid one.
 
 ## Memory Addressing Modes
 
@@ -116,6 +147,22 @@ npx tree-sitter parse ../tests/prog-1.csasm
 # Test highlighting
 npx tree-sitter highlight ../tests/prog-1.csasm
 ```
+
+### Test File Format
+
+Test files in `test/corpus/` use tree-sitter's test format:
+
+```
+================================================================================
+Test Name
+================================================================================
+<input content here>
+--------------------------------------------------------------------------------
+
+<expected s-expression>
+```
+
+Note: The input section is everything between the `===` header and `---` separator. For tests that need a blank line as input (like "Empty line"), include two blank lines - one is consumed as the header line ending.
 
 ## File Structure
 

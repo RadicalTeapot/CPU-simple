@@ -11,6 +11,7 @@ This repository contains the CPU core, a backend server acting a simple debugger
 - `Assembler.Tests/` : Unit test for the assembler code
 - `Backend/`: Console application that hosts/runs the CPU to be used for debugging
 - `nvim-plugin/`: Neovim plugin to serve as the IDE
+- `tree-sitter-grammar/`: Tree sitter grammar generator for the assembly language
 - `docs/`: Design and specification documents
 
 ## Architectures
@@ -22,7 +23,9 @@ This is achieved by setting the `x16` compile flag for 16-bit build.
 
 ### Prerequisites
 
-- .NET SDK 8.0 or newer installed
+- .NET SDK 10.0 or newer installed
+- Node and npm (to build tree sitter grammar)
+- C compiler (to run tree sitter grammar tests)
 
 ### Build and Test
 
@@ -37,11 +40,32 @@ dotnet build cpu-simple.sln -c Debug
 dotnet test cpu-simple.sln -c Debug
 ```
 
-### Run the Console App
+### Run the backend
 
 ```pwsh
 # Run the Main project
-dotnet run --project Main/Main.csproj
+dotnet run --project Backend/Backend.csproj
+```
+
+### Generate the treesitter grammar
+
+```bash
+cd tree-sitter-grammar
+
+# Install dependencies
+npm install
+
+# Generate parser
+npm run build
+
+# Run tests
+npm test
+
+# Parse a file
+npx tree-sitter parse ../tests/prog-1.csasm
+
+# Test highlighting
+npx tree-sitter highlight ../tests/prog-1.csasm
 ```
 
 ## Neovim as IDE

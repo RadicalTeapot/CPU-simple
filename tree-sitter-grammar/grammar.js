@@ -7,12 +7,21 @@ module.exports = grammar({
   // Whitespace (but not newlines) is handled automatically
   extras: ($) => [/[ \t]+/],
 
+  // Resolve conflicts: prefer longer matches over ending early
+  conflicts: ($) => [[$.statement], [$.instruction]],
+
   rules: {
-    // Root: sequence of lines separated by newlines
+    // Root: sequence of lines
     source_file: ($) => repeat($.line),
 
-    // A line is either a statement or empty, followed by newline
-    line: ($) => seq(optional($.statement), /\r?\n/),
+    // A line can be:
+    // 1. Optional statement followed by newline (most lines)
+    // 2. Just a statement without newline (last line of file)
+    line: ($) =>
+      choice(
+        prec(2, seq(optional($.statement), /\r?\n/)), // Prefer newline-terminated
+        prec(1, $.statement) // Fallback: statement at EOF without newline
+      ),
 
     // Statement must have at least one component
     // Possible combinations: header?, label?, (directive|instruction)?, comment?
