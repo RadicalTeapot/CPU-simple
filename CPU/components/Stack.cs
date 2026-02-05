@@ -73,7 +73,7 @@ namespace CPU.components
         }
 
         public void PushAddress(ushort value, ExecutionContext executionContext) => PushWord(value, executionContext);
-        public ushort PopAddress(ExecutionContext executionContext) => PopWord(executionContext);
+        public ushort PopAddress() => PopWord();
         public ushort PeekAddress() => PeekWord();
 #else
         public void PushAddress(byte value, ExecutionContext executionContext) => PushByte(value, executionContext);

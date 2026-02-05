@@ -38,22 +38,16 @@ namespace CPU.Tests
             var memory = new Memory(256);
             var stack = new Stack(memory, 0xFF);
             ushort testAddress = 0x1234;
-            var executionContext = new ExecutionContext();
             stack.PushAddress(testAddress, new ExecutionContext()); // Push without recording to avoid interference
 
             // Act
-            var poppedAddress = stack.PopAddress(executionContext);
+            var poppedAddress = stack.PopAddress();
 
             // Assert
             Assert.Multiple(() =>
             {
                 Assert.That(poppedAddress, Is.EqualTo(testAddress), "Popped address should match pushed address");
                 Assert.That(stack.SP, Is.EqualTo(0xFF), "SP should be back to initial value");
-                Assert.That(executionContext.StackChanges.Count, Is.EqualTo(2), "Two stack changes should be recorded");
-                Assert.That(executionContext.StackChanges[0].Key, Is.EqualTo(0xFD), "First stack change address should be correct");
-                Assert.That(executionContext.StackChanges[0].Value, Is.EqualTo(0), "First stack change value should be correct");
-                Assert.That(executionContext.StackChanges[1].Key, Is.EqualTo(0xFE), "Second stack change address should be correct");
-                Assert.That(executionContext.StackChanges[1].Value, Is.EqualTo(0), "Second stack change value should be correct");
             });
         }
 
@@ -103,7 +97,6 @@ namespace CPU.Tests
             var memory = new Memory(256);
             var stack = new Stack(memory, 0xFF);
             byte testAddress = 0x12;
-            var executionContext = new ExecutionContext();
             stack.PushAddress(testAddress, new ExecutionContext()); // Push without recording to avoid interference
 
             // Act
@@ -114,9 +107,6 @@ namespace CPU.Tests
             {
                 Assert.That(poppedAddress, Is.EqualTo(testAddress), "Popped address should match pushed address");
                 Assert.That(stack.SP, Is.EqualTo(0xFF), "SP should be back to initial value");
-                Assert.That(executionContext.StackChanges.Count, Is.EqualTo(1), "One stack change should be recorded");
-                Assert.That(executionContext.StackChanges[0].Key, Is.EqualTo(0xFE), "Stack change address should be correct");
-                Assert.That(executionContext.StackChanges[0].Value, Is.EqualTo(0), "Stack change value should be correct");
             });
         }
 
@@ -133,8 +123,11 @@ namespace CPU.Tests
             var peekedAddress = stack.PeekAddress();
 
             // Assert
-            Assert.That(peekedAddress, Is.EqualTo(testAddress), "Peeked address should match pushed address");
-            Assert.That(stack.SP, Is.EqualTo(0xFE), "SP should be not be modified");
+            Assert.Multiple(() =>
+            {
+                Assert.That(peekedAddress, Is.EqualTo(testAddress), "Peeked address should match pushed address");
+                Assert.That(stack.SP, Is.EqualTo(0xFE), "SP should be not be modified");
+            });
         }
 #endif
 
@@ -167,8 +160,7 @@ namespace CPU.Tests
             var memory = new Memory(256);
             var stack = new Stack(memory, 0xFF);
             byte testAddress = 0x12;
-            var executionContext = new ExecutionContext();
-            stack.PushByte(testAddress, new ExecutionContext()); // Push without recording to avoid interference
+            stack.PushByte(testAddress, new ExecutionContext());
 
             // Act
             var poppedAddress = stack.PopByte();
@@ -178,9 +170,6 @@ namespace CPU.Tests
             {
                 Assert.That(poppedAddress, Is.EqualTo(testAddress), "Popped address should match pushed address");
                 Assert.That(stack.SP, Is.EqualTo(0xFF), "SP should be back to initial value");
-                Assert.That(executionContext.StackChanges.Count, Is.EqualTo(1), "One stack change should be recorded");
-                Assert.That(executionContext.StackChanges[0].Key, Is.EqualTo(0xFE), "Stack change address should be correct");
-                Assert.That(executionContext.StackChanges[0].Value, Is.EqualTo(0), "Stack change value should be correct");
             });
         }
 
