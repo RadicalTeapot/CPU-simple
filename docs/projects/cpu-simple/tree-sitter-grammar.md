@@ -136,7 +136,7 @@ cd tree-sitter-grammar
 npm install
 
 # Generate parser
-npm run build
+npm run build:generate
 
 # Run tests
 npm test
@@ -169,15 +169,17 @@ Note: The input section is everything between the `===` header and `---` separat
 ```
 tree-sitter-grammar/
 ├── grammar.js           # Main grammar definition
+├── tree-sitter.json     # Generated from `tree-sitter init`, necessary for latest ABI version (>= 15) generation
 ├── package.json         # NPM configuration
 ├── queries/
 │   └── highlights.scm   # Syntax highlighting queries
 └── test/
-    └── corpus/          # Test cases
-        ├── statements.txt
-        ├── directives.txt
-        ├── instructions.txt
-        ├── memory.txt
-        ├── comments.txt
-        └── edge_cases.txt
+    ├── corpus/          # Test cases
+    │   ├── statements.txt
+    │   ├── directives.txt
+    │   ├── instructions.txt
+    │   ├── memory.txt
+    │   ├── comments.txt
+    │   └── edge_cases.txt
+    └── prog-1.casm
 ```
