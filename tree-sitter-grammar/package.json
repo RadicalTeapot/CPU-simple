@@ -6,10 +6,11 @@
     "dependencies": {
     "tree-sitter-cli": "^0.26.5"
   },
+  
   "scripts": {
     "build:generate": "tree-sitter generate",
-    "build:parser": "mkdir -p build && tree-sitter build -o build/csasm.so",
-    "build:copy": "mkdir -p ../nvim-plugin/queries/csasm && mkdir -p ../nvim-plugin/parser && cp queries/highlights.scm ../nvim-plugin/queries/csasm/ && cp build/csasm.so ../nvim-plugin/parser/",
+    "build:parser": "node build-parser.js",
+    "build:copy": "node build-copy.js",
     "build" : "npm run build:generate && npm run build:parser && npm run build:copy",
     "test": "tree-sitter test"
   }
