@@ -34,6 +34,7 @@ nvim-plugin-data/
 nvim-plugin/init.lua
 nvim-plugin/swap
 nvim-plugin/queries
+nvim-plugin/parser
 nvim-plugin/site
 nvim-plugin/lazy
 nvim-plugin/lazy-lock.json

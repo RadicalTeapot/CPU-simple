@@ -52,7 +52,7 @@ dotnet run --project Backend/Backend.csproj
 ```bash
 cd tree-sitter-grammar
 npm install
-npm run generate && npm run build
+npm run build
 ```
 
 #### Testing

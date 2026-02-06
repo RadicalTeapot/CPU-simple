@@ -7,26 +7,8 @@ local cpu_simple = require("cpu-simple")
 
 -- Add tree-sitter to path
 vim.env.PATH =
-  vim.fn.expand("~/CPU-simple/tree-sitter-grammar/node_modules/.bin")
-  .. ":" .. vim.env.PATH
-
---- Use lazy for plugin management
--- Bootstrap lazy.nvim
-local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
-if not (vim.uv or vim.loop).fs_stat(lazypath) then
-    local lazyrepo = "https://github.com/folke/lazy.nvim.git"
-    local out = vim.fn.system({ "git", "clone", "--filter=blob:none", "--branch=stable", lazyrepo, lazypath })
-    if vim.v.shell_error ~= 0 then
-        vim.api.nvim_echo({
-            { "Failed to clone lazy.nvim:\n", "ErrorMsg" },
-            { out, "WarningMsg" },
-            { "\nPress any key to exit..." },
-        }, true, {})
-        vim.fn.getchar()
-        os.exit(1)
-    end
-end
-vim.opt.rtp:prepend(lazypath)
+vim.fn.expand("~/CPU-simple/tree-sitter-grammar/node_modules/.bin")
+.. ":" .. vim.env.PATH
 
 -- Make sure to setup `mapleader` and `maplocalleader` before
 -- loading lazy.nvim so that mappings are correct.
@@ -67,55 +49,6 @@ vim.keymap.set("n", "<leader>cc", "<cmd>CpuCloseSidebar<cr>", vim.tbl_extend("fo
 --     end,
 --     desc = "Auto-assemble CPU code on save",
 -- })
-
--- Setup lazy.nvim
-require("lazy").setup({
-    spec = {
-        {
-            'nvim-treesitter/nvim-treesitter',
-            lazy = false,
-            build = ':TSUpdate',
-            config = function()
-                vim.api.nvim_create_autocmd('User', { pattern = 'TSUpdate',
-                callback = function()
-                    require('nvim-treesitter.parsers').csasm = {
-                        install_info = {
-                            path = vim.fn.expand("~/CPU-simple/tree-sitter-grammar"),
-                            queries = "queries",
-                            generate = true,
-                            generate_from_json = false,
-                        },
-                    }
-                end})
-                
-                vim.treesitter.language.register('csasm', { 'csasm' })
-                -- optional but usually needed: map extension -> filetype
-                vim.filetype.add({ extension = { csasm = "csasm" } })
-                
-                -- This is the new, correct way to enable highlighting and indentation.
-                local langs = { "csasm" }
-                
-                local group = vim.api.nvim_create_augroup('MyTreesitterSetup', { clear = true })
-                vim.api.nvim_create_autocmd('FileType', {
-                    group = group,
-                    pattern = langs,
-                    callback = function(args)
-                        -- Enable highlighting for the buffer
-                        vim.treesitter.start(args.buf)
-                        
-                        -- Enable indentation for the buffer
-                        -- vim.bo[args.buf].indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
-                    end,
-                })
-            end,
-        },
-    },
-    -- Configure any other settings here. See the documentation for more details.
-    -- colorscheme that will be used when installing plugins.
-    install = { colorscheme = { "retrobox" } },
-    -- automatically check for plugin updates
-    checker = { enabled = true },
-})
 
 -- Helper to find executable in common locations
 local function find_executable(name, search_paths)
@@ -172,11 +105,42 @@ cpu_simple.setup({
         pc_text = "▶", -- Text shown in sign column for PC
     },
 })
+
+-- Register language
+vim.treesitter.language.add('csasm')
+vim.treesitter.language.register('csasm', { 'csasm' })
+vim.filetype.add({ extension = { csasm = "csasm" } })
+
+-- This is the new, correct way to enable highlighting and indentation.
+local langs = { "csasm" }
+
+local group = vim.api.nvim_create_augroup('MyTreesitterSetup', { clear = true })
+vim.api.nvim_create_autocmd('FileType', {
+    group = group,
+    pattern = langs,
+    callback = function(args)
+        -- Enable highlighting for the buffer
+        vim.treesitter.start(args.buf)
+        
+        -- Enable indentation for the buffer
+        -- vim.bo[args.buf].indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
+    end,
+})
 ```
 
-On first run, run `npm install` inside the `tree-sitter-grammar` folder to install all dependencies
+On first run, run `npm install` and `npm run build` inside the `tree-sitter-grammar` folder to install all dependencies
 
-Also run `:TSInstall csasm` in Neovim to install the language
+The important part of this is the build script places the compiled parser and queries in the `parser` and `queries/csasm` folders respectively so Neovim can find them.
+
+These 3 lines
+
+```lua
+vim.treesitter.language.add('csasm')
+vim.treesitter.language.register('csasm', { 'csasm' })
+vim.filetype.add({ extension = { csasm = "csasm" } })
+```
+
+Then add the language to Neovim, connect the parser to the language and connect the file extension with the language.
 
 ### Troubleshooting
 
