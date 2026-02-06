@@ -1,0 +1,10 @@
+.text
+    LDI R0, start
+    LDX R1, [r0]
+    LDX R2, [r0 + #0x01]
+    LDX R3, [r0 + #0x02]
+    HLT
+.data
+    start: .byte #0x01
+    .byte #0x02
+    .byte #0x03

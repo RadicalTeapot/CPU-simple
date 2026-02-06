@@ -9,17 +9,5 @@
   "scripts": {
     "build": "tree-sitter generate",
     "test": "tree-sitter test"
-  },
-  "tree-sitter": [
-    {
-      "scope": "source.cpu-simple-asm",
-      "file-types": [
-        "csasm"
-      ],
-      "injection-regex": "csasm",
-      "highlights": [
-        "queries/csasm/highlights.scm"
-      ]
-    }
-  ]
+  }
 }

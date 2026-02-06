@@ -1,0 +1,36 @@
+{
+  "$schema": "https://tree-sitter.github.io/tree-sitter/assets/schemas/config.schema.json",
+  "grammars": [
+    {
+      "name": "cpu_simple_asm",
+      "camelcase": "CpuSimpleAsm",
+      "title": "CPU-simple ASM",
+      "scope": "source.cpu_simple_asm",
+      "file-types": [
+        "csasm"
+      ],
+      "injection-regex": "^csasm$",
+      "class-name": "TreeSitterCpuSimpleAsm"
+    }
+  ],
+  "metadata": {
+    "version": "0.1.0",
+    "license": "MIT",
+    "description": "CPU-simple ASM grammar for tree-sitter",
+    "authors": [
+      {
+        "name": "Mathias Capdet"
+      }
+    ]
+  },
+  "bindings": {
+    "c": false,
+    "go": false,
+    "java": false,
+    "node": false,
+    "python": false,
+    "rust": false,
+    "swift": false,
+    "zig": false
+  }
+}
