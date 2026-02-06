@@ -51,22 +51,24 @@ dotnet run --project Backend/Backend.csproj
 
 ```bash
 cd tree-sitter-grammar
-
-# Install dependencies
 npm install
+npm run generate && npm run build
+```
 
-# Generate parser
-npm run build
+#### Testing
 
+```bash
 # Run tests
 npm test
-
 # Parse a file
-npx tree-sitter parse ../tests/prog-1.csasm
-
+npx tree-sitter parse tests/prog-1.csasm
 # Test highlighting
-npx tree-sitter highlight ../tests/prog-1.csasm
+npx tree-sitter highlight tests/prog-1.csasm
 ```
+
+#### Troubleshooting
+
+See [Neovim plugin troubleshoot section](docs/projects/cpu-simple/neovim-plugin.md#troubleshooting)
 
 ## Neovim as IDE
 

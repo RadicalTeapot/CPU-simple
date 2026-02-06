@@ -2,7 +2,8 @@
 // @ts-check
 
 module.exports = grammar({
-  name: "cpu_simple_asm",
+  // Name here is the name to use when loading in neovim (when registering the language)
+  name: "csasm",
 
   // Whitespace (but not newlines) is handled automatically
   extras: ($) => [/[ \t]+/],

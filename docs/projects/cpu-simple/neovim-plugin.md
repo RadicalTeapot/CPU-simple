@@ -177,3 +177,34 @@ cpu_simple.setup({
 On first run, run `npm install` inside the `tree-sitter-grammar` folder to install all dependencies
 
 Also run `:TSInstall csasm` in Neovim to install the language
+
+### Troubleshooting
+
+#### Error loading the parser
+
+If Neovim error when trying to load the parser with `csasm.so: undefined symbol: tree_sitter_csasm` it means that the symbol in the compiled file name doesn't match what neovim expects.
+
+Try the following:
+
+```bash
+cd tree-sitter-grammar
+npx tree-sitter generate
+npx tree-sitter build -o /tmp/csasm.so
+nm -D /tmp/csasm.so | rg 'tree_sitter_'
+```
+
+You’ll likely see something like `tree_sitter_<something_else>`.
+
+The language name in the line `vim.treesitter.language.register('csasm', { 'csasm' })` should match that name. (language name is the first argument of the register call).
+
+To fix this either change the Neovim config to have the correct name or change the name in the `grammar.js` file:
+
+```js
+module.exports = grammar({
+  // Name here is the name to use when loading in neovim (when registering the language)
+  name: "csasm",
+  ...
+})
+```
+
+Then rebuild the parser
