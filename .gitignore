@@ -33,6 +33,10 @@ nvim-plugin/log
 nvim-plugin-data/
 nvim-plugin/init.lua
 nvim-plugin/swap
+nvim-plugin/queries
+nvim-plugin/site
+nvim-plugin/lazy
+nvim-plugin/lazy-lock.json
 
 # Node
 node_modules
@@ -44,6 +48,7 @@ tree-sitter-grammar/Cargo.toml
 tree-sitter-grammar/binding.gyp
 tree-sitter-grammar/package-lock.json
 tree-sitter-grammar/build/
+tree-sitter-grammar/parser.so
 
 # Other
 $null
