@@ -17,6 +17,8 @@ M.defaults = {
   backend_path = "Backend.exe",
   -- Path to Assembler executable
   assembler_path = "Assembler.exe",
+  -- Path to Language Server executable (nil to disable LSP)
+  lsp_path = nil,
   -- Assembler options
   assembler_options = {
     emit_debug = false,
@@ -99,6 +101,27 @@ function M.setup(opts)
 
   -- Setup CursorMoved autocmd for assembled panel highlighting
   M.setup_cursor_highlight()
+
+  -- Start LSP if configured
+  M.start_lsp()
+end
+
+--- Start the LSP server for csasm files
+function M.start_lsp()
+  if not M.config.lsp_path then
+    return
+  end
+
+  vim.api.nvim_create_autocmd("FileType", {
+    pattern = "csasm",
+    callback = function()
+      vim.lsp.start({
+        cmd = { M.config.lsp_path },
+        name = "csasm-lsp",
+        root_dir = vim.fn.getcwd(),
+      })
+    end,
+  })
 end
 
 --- Setup CursorMoved autocmd to highlight assembled bytes for current source line
