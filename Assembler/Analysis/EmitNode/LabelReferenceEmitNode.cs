@@ -1,4 +1,5 @@
 ﻿using Assembler.AST;
+using System.Diagnostics;
 
 namespace Assembler.Analysis.EmitNode
 {

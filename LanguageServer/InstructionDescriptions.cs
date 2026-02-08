@@ -14,12 +14,12 @@ public static class InstructionDescriptions
         ["ret"] = ("Return from subroutine. Pops the return address from the stack and jumps to it.", "ret"),
 
         // Single memory address (jumps/calls)
-        ["jmp"] = ("Unconditional jump to address.", "jmp label"),
-        ["jcc"] = ("Jump if carry clear.", "jcc label"),
-        ["jcs"] = ("Jump if carry set.", "jcs label"),
-        ["jzc"] = ("Jump if zero clear (not zero).", "jzc label"),
-        ["jzs"] = ("Jump if zero set.", "jzs label"),
-        ["cal"] = ("Call subroutine. Pushes return address onto stack and jumps to label.", "cal label"),
+        ["jmp"] = ("Unconditional jump to address.", "jmp address"),
+        ["jcc"] = ("Jump if carry clear.", "jcc address"),
+        ["jcs"] = ("Jump if carry set.", "jcs address"),
+        ["jzc"] = ("Jump if zero clear (not zero).", "jzc address"),
+        ["jzs"] = ("Jump if zero set.", "jzs address"),
+        ["cal"] = ("Call subroutine. Pushes return address onto stack and jumps to address.", "cal address"),
 
         // Single register
         ["pop"] = ("Pop value from stack into register.", "pop rN"),
@@ -43,17 +43,17 @@ public static class InstructionDescriptions
         ["bti"] = ("Bit test register with immediate mask. Sets zero flag if result is zero.", "bti rN, #mask"),
 
         // Register + memory address
-        ["lda"] = ("Load value from memory address into register.", "lda rN, label"),
-        ["sta"] = ("Store register value to memory address.", "sta rN, label"),
-        ["ada"] = ("Add value at memory address to register.", "ada rN, label"),
-        ["sba"] = ("Subtract value at memory address from register.", "sba rN, label"),
-        ["cpa"] = ("Compare register with value at memory address. Sets flags.", "cpa rN, label"),
-        ["ana"] = ("Bitwise AND register with value at memory address.", "ana rN, label"),
-        ["ora"] = ("Bitwise OR register with value at memory address.", "ora rN, label"),
-        ["xra"] = ("Bitwise XOR register with value at memory address.", "xra rN, label"),
-        ["bta"] = ("Bit test register with value at memory address. Sets zero flag if result is zero.", "bta rN, label"),
-        ["ldx"] = ("Load value from memory address indexed by register into register.", "ldx rN, [label + rM]"),
-        ["stx"] = ("Store register value to memory address indexed by register.", "stx rN, [label + rM]"),
+        ["lda"] = ("Load value from memory address into register.", "lda rN, address"),
+        ["sta"] = ("Store register value to memory address.", "sta rN, address"),
+        ["ada"] = ("Add value at memory address to register.", "ada rN, address"),
+        ["sba"] = ("Subtract value at memory address from register.", "sba rN, address"),
+        ["cpa"] = ("Compare register with value at memory address. Sets flags.", "cpa rN, address"),
+        ["ana"] = ("Bitwise AND register with value at memory address.", "ana rN, address"),
+        ["ora"] = ("Bitwise OR register with value at memory address.", "ora rN, address"),
+        ["xra"] = ("Bitwise XOR register with value at memory address.", "xra rN, address"),
+        ["bta"] = ("Bit test register with value at memory address. Sets zero flag if result is zero.", "bta rN, address"),
+        ["ldx"] = ("Load value from memory address indexed by register into register.", "ldx rN, [address + rM]"),
+        ["stx"] = ("Store register value to memory address indexed by register.", "stx rN, [address + rM]"),
 
         // Two registers
         ["mov"] = ("Copy value from source register to destination register.", "mov rDst, rSrc"),

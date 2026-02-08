@@ -48,7 +48,7 @@ namespace Assembler.Tests
             var result = lexer.Tokenize("  nop  ");
             Assert.Multiple(() =>
             {
-                Assert.That(result[0].Column, Is.EqualTo(3));
+                Assert.That(result[0].Column, Is.EqualTo(2));
                 Assert.That(result[0].Type, Is.EqualTo(TokenType.Identifier));
             });
         }

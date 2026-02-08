@@ -65,7 +65,7 @@ namespace Assembler
         private readonly int _maxAddress = 0;
 
 #if x16
-        private const int DefaultMemorySize = 0xFF80; // Reserve some space for stack (127 bytes)
+        private const int DefaultMaxAddress = 0xFF80; // Reserve some space for stack (127 bytes)
 #else
         private const int DefaultMaxAddress = 0xF0; // Reserve some space for stack (15 bytes)
 #endif

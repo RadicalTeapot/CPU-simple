@@ -22,13 +22,13 @@ namespace CPU.Tests
             Assert.Multiple(() =>
             {
                 Assert.That(stack.SP, Is.EqualTo(0xFD), "SP should be decremented by 2");
-                Assert.That(memory.ReadByte(0xFF), Is.EqualTo(0x34), "Low byte should be at top of stack");
-                Assert.That(memory.ReadByte(0xFE), Is.EqualTo(0x12), "High byte should be next on stack");
+                Assert.That(memory.ReadByte(0xFF), Is.EqualTo(0x12), "High byte should be at top of stack");
+                Assert.That(memory.ReadByte(0xFE), Is.EqualTo(0x34), "Low byte should be next on stack");
                 Assert.That(executionContext.StackChanges.Count, Is.EqualTo(2), "Two stack changes should be recorded");
                 Assert.That(executionContext.StackChanges[0].Key, Is.EqualTo(0xFF), "First stack change address should be correct");
-                Assert.That(executionContext.StackChanges[0].Value, Is.EqualTo(0x34), "First stack change value should be correct");
+                Assert.That(executionContext.StackChanges[0].Value, Is.EqualTo(0x12), "First stack change value should be correct");
                 Assert.That(executionContext.StackChanges[1].Key, Is.EqualTo(0xFE), "Second stack change address should be correct");
-                Assert.That(executionContext.StackChanges[1].Value, Is.EqualTo(0x12), "Second stack change value should be correct");
+                Assert.That(executionContext.StackChanges[1].Value, Is.EqualTo(0x34), "Second stack change value should be correct");
             });
         }
 

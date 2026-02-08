@@ -1,0 +1,27 @@
+.text
+  LDI R0, #0x01
+  PSH R0
+  LDI R0, #0x02
+  PSH R0
+  CAL [swap]
+  HLT
+  
+  swap:
+    STA R0, [scratch]
+    STA R1, [scratch+#0x01]
+    POP R0 ; Store return address
+    STA R0, [scratch+#0x02]
+    
+    POP R0
+    POP R1
+    PSH R0
+    PSH R1
+
+    LDA R0, [scratch+#0x02]
+    PSH R0 ; Restore return address
+    LDA R1, [scratch+#0x01]
+    LDA R0, [scratch]
+    RET
+
+.data
+  scratch: .zero #0x04

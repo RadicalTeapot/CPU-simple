@@ -113,6 +113,7 @@ The notable exception for are:
 
 - the Neovim plugin
 - the tree sitter grammar
+- the LSP server
 
 Those where written almost entirely by Claude as they are far from my area of expertise.
 
@@ -121,12 +122,13 @@ I did review and tested the code but exercise caution when using it.
 ## To do (in no particular order)
 
 - [ ] Write a bank of small programs for 8 and 16 bit version
-  - [ ] Test out stack operations
+  - [x] Test out stack operations
 - [ ] Missing assembler unit tests
   - [ ] Analyser
   - [ ] Emitter
   - [ ] Backend
-- [] Implement CPU IDE ([inspiration for some UI](https://github.com/AfaanBilal/NanoCore/blob/master/assets/NanoCoreTUI.gif)) in Neovim
+- [ ] Implement CPU IDE ([inspiration for some UI](https://github.com/AfaanBilal/NanoCore/blob/master/assets/NanoCoreTUI.gif)) in Neovim
+  - [ ] Show SP in stack panel
   - [ ] On load, dump and show CPU status, memory and stack panels
   - [ ] `:CpuToggleBp symbol` (and virtual text highlight for BP position in source / machine code)
   - [ ] `:StepOver`, `:StepIn`, `:StepOut`
@@ -135,7 +137,7 @@ I did review and tested the code but exercise caution when using it.
   - [ ] Add command to navigate to symbol under cursor
   - [ ] Handle assembler errors
 - [x] Write grammar for tree-sitter
-- [ ] Write LSP server
+- [x] Write LSP server
 - [ ] Implement PPU and map some memory for it (for 16-bit version)
 - [ ] Implement sound chip and map some memory for it too (for 16-bit version)
   - [ ] Write a small MIDI player application
