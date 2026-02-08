@@ -24,7 +24,7 @@ namespace Assembler.Lexeme
             lexemes = DiscoverLexemes();
         }
 
-        public bool TryCreateToken(string source, int line, int column, out Token token, out int newColumn)
+        public bool TryCreateToken(string source, int line, int column, int startCol, out Token token, out int newColumn)
         {
             Debug.Assert(column >= 0 && column < source.Length);
             foreach (var lexeme in lexemes)
@@ -32,7 +32,7 @@ namespace Assembler.Lexeme
                 if (lexeme.Lexeme.TryMatch(source, column, out var matchedText))
                 {
                     var endIdx = column + matchedText.Length;
-                    token = new Token(lexeme.Type, matchedText, line, column);
+                    token = new Token(lexeme.Type, matchedText, line, column+startCol); // Offset start to match actual column in source code
                     newColumn = endIdx;
                     return true;
                 }

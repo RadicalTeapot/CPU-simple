@@ -42,13 +42,13 @@ namespace Assembler.Tests
         }
 
         [Test]
-        public void WhitespaceIsTrimmed()
+        public void OriginalColumnIsPreserved()
         {
             var lexer = new Lexer();
             var result = lexer.Tokenize("  nop  ");
             Assert.Multiple(() =>
             {
-                Assert.That(result[0].Column, Is.EqualTo(0));
+                Assert.That(result[0].Column, Is.EqualTo(3));
                 Assert.That(result[0].Type, Is.EqualTo(TokenType.Identifier));
             });
         }

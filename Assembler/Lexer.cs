@@ -25,14 +25,14 @@ namespace Assembler
         {
             var tokens = new List<Token>();
             var lastLineNumber = 0;
-            foreach (var (line, originalLineNumber) in GetCleanedLinesFromSource(source))
+            foreach (var (line, originalRow, originalCol) in GetCleanedLinesFromSource(source))
             {
                 if (string.IsNullOrWhiteSpace(line))
                 {
                     continue; // Skip empty lines but preserve original line numbers
                 }
-                tokens.AddRange(TokenizeLine(line, originalLineNumber));
-                lastLineNumber = originalLineNumber;
+                tokens.AddRange(TokenizeLine(line, originalRow, originalCol));
+                lastLineNumber = originalRow;
             }
             tokens.Add(new Token(TokenType.EndOfFile, string.Empty, lastLineNumber + 1, 0));
             return tokens;
@@ -43,9 +43,10 @@ namespace Assembler
         /// </summary>
         /// <param name="line">Line of source code</param>
         /// <param name="lineNumber">Line number in the source code</param>
+        /// <param name="startCol">Line start column in the source code</param>
         /// <returns>List of tokens extracted from the line</returns>
         /// <exception cref="LexerException"></exception>
-        private List<Token> TokenizeLine(string line, int lineNumber)
+        private List<Token> TokenizeLine(string line, int lineNumber, int startCol)
         {
             var column = 0;
             var tokens = new List<Token>();
@@ -62,7 +63,7 @@ namespace Assembler
                     break;
                 }
 
-                if (tokenFactory.TryCreateToken(line, lineNumber, column, out var token, out var newColumn))
+                if (tokenFactory.TryCreateToken(line, lineNumber, column, startCol, out var token, out var newColumn))
                 {
                     tokens.Add(token);
                     column = newColumn;
@@ -80,16 +81,29 @@ namespace Assembler
         /// Splits the source code into individual lines and clean them.
         /// </summary>
         /// <param name="source">Original source code</param>
-        /// <returns>Enumerable collection of tuples containing cleaned lines and their original line numbers</returns>
-        /// <remarks>Comments are trimmed and lines are cast to lowercase. Original line numbers are preserved.</remarks>
-        private static IEnumerable<(string Line, int OriginalLineNumber)> GetCleanedLinesFromSource(string source)
+        /// <returns>Enumerable collection of tuples containing cleaned lines and their original row and column numbers</returns>
+        /// <remarks>Comments are trimmed and lines are cast to lowercase. Original rows and columns are preserved.</remarks>
+        private static IEnumerable<(string Line, int OriginalRow, int OriginalColumn)> GetCleanedLinesFromSource(string source)
         {
             return source
                 .Split(NewLineChars, StringSplitOptions.None)
-                .Select((line, index) => (Line: line.Split(CommentDelimiter)[0], OriginalLineNumber: index))    // Remove comments
-                .Select(item => (Line: item.Line.Trim(), item.OriginalLineNumber))                              // Trim whitespace on both ends
-                .Where(item => !string.IsNullOrWhiteSpace(item.Line))                                           // Remove empty lines
-                .Select(item => (Line: item.Line.ToLower(), item.OriginalLineNumber));                          // Convert to lowercase
+                .Select((line, index) => (
+                    Line: line.Split(CommentDelimiter)[0], // Remove comments 
+                    OriginalRow: index,
+                    OriginalColumn: GetLeadingWhitespaceCount(line)))    
+                .Select(item => (Line: item.Line.Trim(), item.OriginalRow, item.OriginalColumn))      // Trim whitespace on both ends
+                .Where(item => !string.IsNullOrWhiteSpace(item.Line))                                 // Remove empty lines
+                .Select(item => (Line: item.Line.ToLower(), item.OriginalRow, item.OriginalColumn));  // Convert to lowercase
+        }
+
+        private static int GetLeadingWhitespaceCount(string line)
+        {
+            if (string.IsNullOrWhiteSpace(line))
+                return 0;
+            var count = 0;
+            while (count < line.Length && line[count] is ' ' or '\t')
+                count++;
+            return count;
         }
 
         private static bool IsWhiteSpace(char c) => c == ' ' || c == '\t';
