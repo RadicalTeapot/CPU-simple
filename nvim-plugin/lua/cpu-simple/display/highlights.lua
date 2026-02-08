@@ -84,6 +84,17 @@ end
 local BYTES_PER_ROW = 16
 local CHARS_PER_BYTE = 3 -- "XX " format
 
+--- Compute column start/end for a byte in the assembled panel (with address prefix)
+---@param byte_offset number 0-based byte offset
+---@return number col_start, number col_end
+local function assembled_col(byte_offset)
+    local row_addr = math.floor(byte_offset / BYTES_PER_ROW) * BYTES_PER_ROW
+    local prefix_len = #string.format("%02X:", row_addr)
+    local col_byte = byte_offset % BYTES_PER_ROW
+    local col_start = prefix_len + 1 + (col_byte * CHARS_PER_BYTE)
+    return col_start, col_start + 2
+end
+
 --- Highlight a range of bytes in an assembled buffer
 --- Bytes are displayed as "XX " (3 chars each), 16 per row
 ---@param bufnr number Buffer number
@@ -100,9 +111,7 @@ function M.highlight_assembled_byte_range(bufnr, start_byte, end_byte)
     -- Highlight each byte in the range
     for byte_offset = start_byte, end_byte do
         local row = math.floor(byte_offset / BYTES_PER_ROW)
-        local col_byte = byte_offset % BYTES_PER_ROW
-        local col_start = col_byte * CHARS_PER_BYTE
-        local col_end = col_start + 2 -- Just the "XX" part, not the space
+        local col_start, col_end = assembled_col(byte_offset)
         vim.api.nvim_buf_add_highlight(bufnr, M.ns_assembled_highlight, M.groups.CURRENT_SPAN, row, col_start, col_end)
     end
 end
@@ -133,10 +142,8 @@ function M.highlight_assembled_breakpoint(bufnr, address)
     end
     
     local row = math.floor(address / BYTES_PER_ROW)
-    local col_byte = address % BYTES_PER_ROW
-    local col_start = col_byte * CHARS_PER_BYTE
-    local col_end = col_start + 2
-    
+    local col_start, col_end = assembled_col(address)
+
     vim.api.nvim_buf_add_highlight(bufnr, M.ns_assembled_breakpoint, M.groups.BREAKPOINT, row, col_start, col_end)
 end
 
@@ -169,7 +176,7 @@ function M.highlight_hex_dump_byte(bufnr, ns, hl_group, address, bytes_per_line)
     vim.api.nvim_buf_add_highlight(bufnr, ns, hl_group, row, col_start, col_end)
 end
 
---- Highlight a range of bytes in the assembled panel (no address prefix)
+--- Highlight a range of bytes in the assembled panel (PC indicator)
 ---@param bufnr number Buffer number
 ---@param start_byte number 0-based start byte offset
 ---@param end_byte number 0-based end byte offset (inclusive)
@@ -182,9 +189,7 @@ function M.highlight_assembled_pc_range(bufnr, start_byte, end_byte)
 
     for byte_offset = start_byte, end_byte do
         local row = math.floor(byte_offset / BYTES_PER_ROW)
-        local col_byte = byte_offset % BYTES_PER_ROW
-        local col_start = col_byte * CHARS_PER_BYTE
-        local col_end = col_start + 2
+        local col_start, col_end = assembled_col(byte_offset)
         vim.api.nvim_buf_add_highlight(bufnr, M.ns_assembled_pc, M.groups.PC, row, col_start, col_end)
     end
 end

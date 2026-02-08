@@ -42,11 +42,12 @@ local function store_last_output(path)
       local byte = string.byte(content, i)
       table.insert(hex_lines, string.format("%02X", byte))
     end
-    -- Group hex bytes into lines of 16 bytes
+    -- Group hex bytes into lines of 16 bytes with address prefix
     local formatted_lines = {}
     for i = 1, #hex_lines, 16 do
-      local line = table.concat(vim.list_slice(hex_lines, i, i + 15), " ")
-      table.insert(formatted_lines, line)
+      local addr = string.format("%02X:", i - 1)
+      local bytes = table.concat(vim.list_slice(hex_lines, i, i + 15), " ")
+      table.insert(formatted_lines, addr .. " " .. bytes)
     end
     M.last_output_content = formatted_lines
   end

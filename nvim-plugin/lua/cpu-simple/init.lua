@@ -99,6 +99,17 @@ function M.setup(opts)
     end
   end)
 
+  -- Buffer-local keymaps for .csasm files
+  vim.api.nvim_create_autocmd("FileType", {
+    pattern = "csasm",
+    callback = function(args)
+      local opts = { buffer = args.buf }
+      vim.keymap.set("n", "]b", function() M.goto_next_breakpoint() end, vim.tbl_extend("force", opts, { desc = "Next breakpoint" }))
+      vim.keymap.set("n", "[b", function() M.goto_prev_breakpoint() end, vim.tbl_extend("force", opts, { desc = "Previous breakpoint" }))
+      vim.keymap.set("n", "gd", function() M.goto_definition() end, vim.tbl_extend("force", opts, { desc = "Go to symbol definition" }))
+    end,
+  })
+
   -- Setup CursorMoved autocmd for assembled panel highlighting
   M.setup_cursor_highlight()
 
@@ -227,6 +238,30 @@ function M.register_commands()
     M.clear_all_breakpoints()
   end, {
     desc = "Clear all breakpoints",
+  })
+
+  vim.api.nvim_create_user_command("CpuNextBp", function()
+    M.goto_next_breakpoint()
+  end, {
+    desc = "Go to next breakpoint",
+  })
+
+  vim.api.nvim_create_user_command("CpuPrevBp", function()
+    M.goto_prev_breakpoint()
+  end, {
+    desc = "Go to previous breakpoint",
+  })
+
+  vim.api.nvim_create_user_command("CpuGotoDef", function()
+    M.goto_definition()
+  end, {
+    desc = "Go to symbol definition",
+  })
+
+  vim.api.nvim_create_user_command("CpuRunToCursor", function()
+    M.run_to_cursor()
+  end, {
+    desc = "Run to cursor line",
   })
   
   -- Panel toggle commands
@@ -364,9 +399,12 @@ M.assemble = with_running_backend(function()
   end
   
   events.on(events.ASSEMBLED, function(data)
-    -- Show assembled panel when assembly is done
+    -- Show all panels when assembly is done
     display.assembled.set_content(assembler.get_last_output_content())
     display.assembled.show()
+    display.status_panel.show()
+    display.memory.show()
+    display.stack.show()
     M.load() -- Auto-load assembled code into CPU
   end, { once = true })
   assembler.assemble_current_buffer({
@@ -573,6 +611,152 @@ function M.highlight_pc()
   end
 
   display.highlight_pc(pc_address, assembler.get_source_line_from_address, pc_span)
+end
+
+--- Run the CPU until it reaches the address at the cursor line
+M.run_to_cursor = with_running_backend(function()
+  if not assembler then
+    assembler = require("cpu-simple.assembler")
+  end
+  if not commands then
+    commands = require("cpu-simple.commands")
+  end
+  if not backend then
+    backend = require("cpu-simple.backend")
+  end
+  if not state then
+    state = require("cpu-simple.state")
+  end
+
+  if not state.loaded_program then
+    vim.notify("No program loaded. Use :CpuLoad or :CpuAssemble first.", vim.log.levels.ERROR)
+    return
+  end
+
+  local span = assembler.get_address_span_from_current_line()
+  if not span or not span.start_address then
+    vim.notify("No address mapped to current line", vim.log.levels.ERROR)
+    return
+  end
+  backend.send(string.format("%s %d", commands.RUN_TO, span.start_address))
+end)
+
+--- Jump to the next breakpoint in the source buffer
+function M.goto_next_breakpoint()
+  if not assembler then
+    assembler = require("cpu-simple.assembler")
+  end
+  if not state then
+    state = require("cpu-simple.state")
+  end
+
+  if not assembler.has_debug_info() then
+    vim.notify("No debug info available", vim.log.levels.WARN)
+    return
+  end
+  if #state.breakpoints == 0 then
+    vim.notify("No breakpoints set", vim.log.levels.INFO)
+    return
+  end
+
+  -- Collect source lines for all breakpoints
+  local bp_lines = {}
+  for _, bp in ipairs(state.breakpoints) do
+    local line = assembler.get_source_line_from_address(bp.address)
+    if line then
+      table.insert(bp_lines, line)
+    end
+  end
+  if #bp_lines == 0 then
+    return
+  end
+  table.sort(bp_lines)
+
+  local cursor_line = vim.api.nvim_win_get_cursor(0)[1]
+  -- Find first breakpoint line > cursor
+  for _, line in ipairs(bp_lines) do
+    if line > cursor_line then
+      vim.api.nvim_win_set_cursor(0, { line, 0 })
+      return
+    end
+  end
+  -- Wrap around to first
+  vim.api.nvim_win_set_cursor(0, { bp_lines[1], 0 })
+end
+
+--- Jump to the previous breakpoint in the source buffer
+function M.goto_prev_breakpoint()
+  if not assembler then
+    assembler = require("cpu-simple.assembler")
+  end
+  if not state then
+    state = require("cpu-simple.state")
+  end
+
+  if not assembler.has_debug_info() then
+    vim.notify("No debug info available", vim.log.levels.WARN)
+    return
+  end
+  if #state.breakpoints == 0 then
+    vim.notify("No breakpoints set", vim.log.levels.INFO)
+    return
+  end
+
+  local bp_lines = {}
+  for _, bp in ipairs(state.breakpoints) do
+    local line = assembler.get_source_line_from_address(bp.address)
+    if line then
+      table.insert(bp_lines, line)
+    end
+  end
+  if #bp_lines == 0 then
+    return
+  end
+  table.sort(bp_lines)
+
+  local cursor_line = vim.api.nvim_win_get_cursor(0)[1]
+  -- Find last breakpoint line < cursor
+  for i = #bp_lines, 1, -1 do
+    if bp_lines[i] < cursor_line then
+      vim.api.nvim_win_set_cursor(0, { bp_lines[i], 0 })
+      return
+    end
+  end
+  -- Wrap around to last
+  vim.api.nvim_win_set_cursor(0, { bp_lines[#bp_lines], 0 })
+end
+
+--- Jump to the definition of the symbol under the cursor
+function M.goto_definition()
+  if not assembler then
+    assembler = require("cpu-simple.assembler")
+  end
+
+  if not assembler.has_debug_info() then
+    vim.notify("No debug info available", vim.log.levels.WARN)
+    return
+  end
+
+  local word = vim.fn.expand("<cword>")
+  if not word or word == "" then
+    vim.notify("No word under cursor", vim.log.levels.WARN)
+    return
+  end
+
+  local symbols = assembler.assembler.last_debug_info.symbols
+  if not symbols or not symbols[word] then
+    vim.notify("Symbol not found: " .. word, vim.log.levels.WARN)
+    return
+  end
+
+  local address = symbols[word].address
+  local line = assembler.get_source_line_from_address(address)
+  if not line then
+    vim.notify("No source line for symbol: " .. word, vim.log.levels.WARN)
+    return
+  end
+
+  vim.api.nvim_win_set_cursor(0, { line, 0 })
 end
 
 --- Send a raw command to the backend

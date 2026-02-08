@@ -122,22 +122,15 @@ I did review and tested the code but exercise caution when using it.
 ## To do (in no particular order)
 
 - [ ] Write a bank of small programs for 8 and 16 bit version
-  - [x] Test out stack operations
 - [ ] Missing assembler unit tests
   - [ ] Analyser
   - [ ] Emitter
   - [ ] Backend
 - [ ] Implement CPU IDE ([inspiration for some UI](https://github.com/AfaanBilal/NanoCore/blob/master/assets/NanoCoreTUI.gif)) in Neovim
-  - [ ] Show SP in stack panel
-  - [ ] On load, dump and show CPU status, memory and stack panels
   - [ ] `:CpuToggleBp symbol` (and virtual text highlight for BP position in source / machine code)
   - [ ] `:StepOver`, `:StepIn`, `:StepOut`
-  - [ ] `:CpuRunToCursor`
-  - [ ] Add commands to navigate to next or previous breakpoint (keymap to `[b` and `]b`)
-  - [ ] Add command to navigate to symbol under cursor
-  - [ ] Handle assembler errors
-- [x] Write grammar for tree-sitter
-- [x] Write LSP server
+  - [ ] Test if assembler errors are handled
+  - [ ] Add command to jump to PC
 - [ ] Implement PPU and map some memory for it (for 16-bit version)
 - [ ] Implement sound chip and map some memory for it too (for 16-bit version)
   - [ ] Write a small MIDI player application
