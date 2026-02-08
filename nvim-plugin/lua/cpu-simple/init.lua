@@ -99,22 +99,51 @@ function M.setup(opts)
     end
   end)
 
-  -- Buffer-local keymaps for .csasm files
-  vim.api.nvim_create_autocmd("FileType", {
-    pattern = "csasm",
-    callback = function(args)
-      local opts = { buffer = args.buf }
-      vim.keymap.set("n", "]b", function() M.goto_next_breakpoint() end, vim.tbl_extend("force", opts, { desc = "Next breakpoint" }))
-      vim.keymap.set("n", "[b", function() M.goto_prev_breakpoint() end, vim.tbl_extend("force", opts, { desc = "Previous breakpoint" }))
-      vim.keymap.set("n", "gd", function() M.goto_definition() end, vim.tbl_extend("force", opts, { desc = "Go to symbol definition" }))
-    end,
-  })
+  M.set_keymaps()
 
   -- Setup CursorMoved autocmd for assembled panel highlighting
   M.setup_cursor_highlight()
 
   -- Start LSP if configured
   M.start_lsp()
+end
+
+function M.set_keymaps()
+  -- Buffer-local keymaps for .csasm files
+  vim.api.nvim_create_autocmd("FileType", {
+    pattern = "csasm",
+    callback = function(args)
+      local opts = { buffer = args.buf, noremap = true }
+      -- Movement
+      vim.keymap.set("n", "]b", function() M.goto_next_breakpoint() end, vim.tbl_extend("force", opts, { desc = "Next breakpoint" }))
+      vim.keymap.set("n", "[b", function() M.goto_prev_breakpoint() end, vim.tbl_extend("force", opts, { desc = "Previous breakpoint" }))
+      vim.keymap.set("n", "gd", function() M.goto_definition() end, vim.tbl_extend("force", opts, { desc = "Go to symbol definition" }))
+      vim.keymap.set("n", "]p", function() M.goto_PC() end, vim.tbl_extend("force", opts, { desc = "Go to PC" }))
+
+      -- Start/stop backend
+      vim.keymap.set("n", "<leader>cs", "<cmd>CpuBackendStart<cr>", vim.tbl_extend("force", opts, { desc = "CPU: Start backend" }))
+      vim.keymap.set("n", "<leader>cq", "<cmd>CpuBackendStop<cr>", vim.tbl_extend("force", opts, { desc = "CPU: Stop backend" }))
+
+      -- Assemble and load
+      vim.keymap.set("n", "<leader>ca", "<cmd>CpuAssemble<cr>", vim.tbl_extend("force", opts, { desc = "CPU: Assemble" }))
+      vim.keymap.set("n", "<leader>cl", "<cmd>CpuLoad<cr>", vim.tbl_extend("force", opts, { desc = "CPU: Load" }))
+
+      -- Execution control
+      vim.keymap.set("n", "<leader>cr", "<cmd>CpuRun<cr>", vim.tbl_extend("force", opts, { desc = "CPU: Run" }))
+      vim.keymap.set("n", "<leader>cn", "<cmd>CpuStep<cr>", vim.tbl_extend("force", opts, { desc = "CPU: Step" }))
+      vim.keymap.set("n", "<leader>cR", "<cmd>CpuReset<cr>", vim.tbl_extend("force", opts, { desc = "CPU: Reset" }))
+
+      -- Breakpoints
+      vim.keymap.set("n", "<leader>cb", "<cmd>CpuToggleBp<cr>", vim.tbl_extend("force", opts, { desc = "CPU: Toggle breakpoint" }))
+      vim.keymap.set("n", "<leader>cB", "<cmd>CpuClearBp<cr>", vim.tbl_extend("force", opts, { desc = "CPU: Clear breakpoints" }))
+
+      -- View panels
+      vim.keymap.set("n", "<leader>cd", "<cmd>CpuToggleDump<cr>", vim.tbl_extend("force", opts, { desc = "CPU: Toggle dump panel" }))
+      vim.keymap.set("n", "<leader>ce", "<cmd>CpuToggleAssembled<cr>", vim.tbl_extend("force", opts, { desc = "CPU: Toggle assembled panel" }))
+      vim.keymap.set("n", "<leader>co", "<cmd>CpuOpenSidebar<cr>", vim.tbl_extend("force", opts, { desc = "CPU: Open sidebar" }))
+      vim.keymap.set("n", "<leader>cc", "<cmd>CpuCloseSidebar<cr>", vim.tbl_extend("force", opts, { desc = "CPU: Close sidebar" }))
+    end,
+  })
 end
 
 --- Start the LSP server for csasm files
@@ -256,6 +285,12 @@ function M.register_commands()
     M.goto_definition()
   end, {
     desc = "Go to symbol definition",
+  })
+
+  vim.api.nvim_create_user_command("CpuGotoPC", function()
+    M.goto_PC()
+  end, {
+    desc = "Go to PC"
   })
 
   vim.api.nvim_create_user_command("CpuRunToCursor", function()
@@ -757,6 +792,23 @@ function M.goto_definition()
   end
 
   vim.api.nvim_win_set_cursor(0, { line, 0 })
+end
+
+-- Jump to PC
+function M.goto_PC()
+  if not assembler then
+    assembler = require("cpu-simple.assembler")
+  end
+  if not state then
+    state = require("cpu-simple.state")
+  end
+
+  local pc_line = assembler.get_source_line_from_address(state.status.pc)
+  if not pc_line then
+    vim.notify("Could not find PC line", vim.log.levels.WARN)
+    return
+  end
+  vim.api.nvim_win_set_cursor(0, { pc_line, 0 })
 end
 
 --- Send a raw command to the backend
