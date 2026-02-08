@@ -29,6 +29,24 @@ function M.get_address_span_from_line(line, debug_info)
     return {start_address = start_address, end_address = end_address}
 end
 
+--- Get the address span (start_address, end_address) that contains the given address
+---@param address number Address to look up
+---@param debug_info table Debug info with spans
+---@return table|nil {start_address = number, end_address = number} or nil
+function M.get_address_span_from_address(address, debug_info)
+    if not debug_info or not debug_info.spans then
+        return nil
+    end
+
+    for _, span in ipairs(debug_info.spans) do
+        if address >= span.start_address and address <= span.end_address then
+            return { start_address = span.start_address, end_address = span.end_address }
+        end
+    end
+
+    return nil
+end
+
 function M.get_source_line_from_address(address, debug_info)
     if not debug_info or not debug_info.spans then
         return nil

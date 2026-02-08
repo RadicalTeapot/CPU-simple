@@ -565,7 +565,14 @@ function M.highlight_pc()
   end
   
   local pc_address = state.status and state.status.pc
-  display.highlight_pc(pc_address, assembler.get_source_line_from_address)
+
+  -- Look up the instruction span containing PC from debug info
+  local pc_span = nil
+  if pc_address and assembler.assembler.last_debug_info and assembler.assembler.last_debug_info.spans then
+    pc_span = assembler.utils.get_address_span_from_address(pc_address, assembler.assembler.last_debug_info)
+  end
+
+  display.highlight_pc(pc_address, assembler.get_source_line_from_address, pc_span)
 end
 
 --- Send a raw command to the backend

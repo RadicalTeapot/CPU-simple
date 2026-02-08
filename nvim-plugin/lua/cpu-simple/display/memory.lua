@@ -3,6 +3,7 @@
 
 local utils = require("cpu-simple.display.utils")
 local sidebar = require("cpu-simple.display.sidebar")
+local highlights = require("cpu-simple.display.highlights")
 local state = require("cpu-simple.state")
 local events = require("cpu-simple.events")
 
@@ -98,6 +99,11 @@ function M.render()
   vim.api.nvim_set_option_value("modifiable", true, { buf = bufnr })
   vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
   vim.api.nvim_set_option_value("modifiable", false, { buf = bufnr })
+
+  -- Highlight the byte at PC
+  if state.status and state.status.pc ~= nil and state.memory and state.status.pc < #state.memory then
+    highlights.highlight_hex_dump_byte(bufnr, highlights.ns_memory_pc, highlights.groups.PC, state.status.pc, M.bytes_per_line)
+  end
 end
 
 --- Clear the buffer

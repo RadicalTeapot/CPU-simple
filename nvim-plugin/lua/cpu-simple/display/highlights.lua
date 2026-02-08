@@ -12,6 +12,7 @@ M.groups = {
     CURRENT_SPAN = "CpuSimpleCurrentSpan",
     BREAKPOINT = "CpuSimpleBreakpoint",
     PC = "CpuSimplePC",
+    SP = "CpuSimpleSP",
 }
 
 --- Define all highlight groups (should be called once at plugin load)
@@ -22,6 +23,8 @@ function M.define_highlight_groups()
     vim.api.nvim_set_hl(0, M.groups.BREAKPOINT, { link = "Error", default = true })
     -- Highlight for program counter line in source and assembled panels
     vim.api.nvim_set_hl(0, M.groups.PC, { link = "WarningMsg", default = true })
+    -- Highlight for stack pointer in stack panel
+    vim.api.nvim_set_hl(0, M.groups.SP, { link = "Search", default = true })
 end
 
 -- ============================================================================
@@ -36,6 +39,12 @@ M.ns_source_pc = vim.api.nvim_create_namespace("cpu_simple_source_pc")
 M.ns_assembled_highlight = vim.api.nvim_create_namespace("cpu_simple_assembled_highlight")
 -- Namespace for assembled buffer breakpoints
 M.ns_assembled_breakpoint = vim.api.nvim_create_namespace("cpu_simple_assembled_breakpoint")
+-- Namespace for SP highlight in stack panel
+M.ns_stack_sp = vim.api.nvim_create_namespace("cpu_simple_stack_sp")
+-- Namespace for PC highlight in memory panel
+M.ns_memory_pc = vim.api.nvim_create_namespace("cpu_simple_memory_pc")
+-- Namespace for PC/instruction range highlight in assembled panel
+M.ns_assembled_pc = vim.api.nvim_create_namespace("cpu_simple_assembled_pc")
 
 -- ============================================================================
 -- Source Buffer Highlighting
@@ -129,6 +138,63 @@ function M.highlight_assembled_breakpoint(bufnr, address)
     local col_end = col_start + 2
     
     vim.api.nvim_buf_add_highlight(bufnr, M.ns_assembled_breakpoint, M.groups.BREAKPOINT, row, col_start, col_end)
+end
+
+-- ============================================================================
+-- Hex Dump Byte Highlighting (for address-prefixed panels: stack, memory)
+-- ============================================================================
+
+--- Highlight a single byte in a hex dump with address prefix format ("XX: AA BB CC ...")
+---@param bufnr number Buffer number
+---@param ns number Namespace id
+---@param hl_group string Highlight group name
+---@param address number 0-based byte address to highlight
+---@param bytes_per_line number Bytes per line in the hex dump
+function M.highlight_hex_dump_byte(bufnr, ns, hl_group, address, bytes_per_line)
+    if not bufnr or not vim.api.nvim_buf_is_valid(bufnr) then
+        return
+    end
+
+    vim.api.nvim_buf_clear_namespace(bufnr, ns, 0, -1)
+
+    local row = math.floor(address / bytes_per_line)
+    local col_byte = address % bytes_per_line
+    -- Prefix is "XX:" for 8-bit or "XXXX:" for 16-bit, compute dynamically
+    local row_addr = row * bytes_per_line
+    local prefix = string.format("%02X:", row_addr)
+    -- Format: "XX: AA BB CC" — prefix, then " AA" per byte (joined by " ")
+    local col_start = #prefix + 1 + (col_byte * 3)
+    local col_end = col_start + 2 -- Just the "XX" part
+
+    vim.api.nvim_buf_add_highlight(bufnr, ns, hl_group, row, col_start, col_end)
+end
+
+--- Highlight a range of bytes in the assembled panel (no address prefix)
+---@param bufnr number Buffer number
+---@param start_byte number 0-based start byte offset
+---@param end_byte number 0-based end byte offset (inclusive)
+function M.highlight_assembled_pc_range(bufnr, start_byte, end_byte)
+    if not bufnr or not vim.api.nvim_buf_is_valid(bufnr) then
+        return
+    end
+
+    vim.api.nvim_buf_clear_namespace(bufnr, M.ns_assembled_pc, 0, -1)
+
+    for byte_offset = start_byte, end_byte do
+        local row = math.floor(byte_offset / BYTES_PER_ROW)
+        local col_byte = byte_offset % BYTES_PER_ROW
+        local col_start = col_byte * CHARS_PER_BYTE
+        local col_end = col_start + 2
+        vim.api.nvim_buf_add_highlight(bufnr, M.ns_assembled_pc, M.groups.PC, row, col_start, col_end)
+    end
+end
+
+--- Clear PC highlights from assembled buffer
+---@param bufnr number Buffer number
+function M.clear_assembled_pc(bufnr)
+    if bufnr and vim.api.nvim_buf_is_valid(bufnr) then
+        vim.api.nvim_buf_clear_namespace(bufnr, M.ns_assembled_pc, 0, -1)
+    end
 end
 
 -- ============================================================================

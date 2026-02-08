@@ -114,20 +114,21 @@ function M.highlight_breakpoints(breakpoints, get_source_line_fn)
   end
 end
 
---- Highlight the program counter in source buffer
+--- Highlight the program counter in source and assembled buffers
 ---@param pc_address number|nil Current program counter address
 ---@param get_source_line_fn function(address) Function to get source line from address
-function M.highlight_pc(pc_address, get_source_line_fn)
+---@param pc_span table|nil Optional span with start_address and end_address for the current instruction
+function M.highlight_pc(pc_address, get_source_line_fn, pc_span)
   local bufnr = vim.api.nvim_get_current_buf()
   local use_signs = config and config.signs and config.signs.use_for_pc
-  
+
   -- Clear existing PC highlight/sign
   if use_signs then
     M.signs.clear_pc_sign(bufnr)
   else
     M.highlights.clear_pc_highlight(bufnr)
   end
-  
+
   if pc_address then
     local source_line = get_source_line_fn(pc_address)
     if source_line then
@@ -135,6 +136,19 @@ function M.highlight_pc(pc_address, get_source_line_fn)
         M.signs.place_pc_sign(bufnr, source_line)
       else
         M.highlights.highlight_pc_line(bufnr, source_line)
+      end
+    end
+  end
+
+  -- Highlight PC in assembled panel
+  local assembled_bufnr = M.assembled.is_visible() and M.assembled.get_buffer() or nil
+  if assembled_bufnr then
+    M.highlights.clear_assembled_pc(assembled_bufnr)
+    if pc_address then
+      if pc_span and pc_span.start_address and pc_span.end_address then
+        M.highlights.highlight_assembled_pc_range(assembled_bufnr, pc_span.start_address, pc_span.end_address)
+      else
+        M.highlights.highlight_assembled_pc_range(assembled_bufnr, pc_address, pc_address)
       end
     end
   end
