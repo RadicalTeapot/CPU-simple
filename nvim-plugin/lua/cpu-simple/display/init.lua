@@ -83,8 +83,9 @@ end
 --- Highlight all breakpoints in source and assembled buffers
 ---@param breakpoints table[] Array of breakpoints with .address field
 ---@param get_source_line_fn function(address) Function to get source line from address
-function M.highlight_breakpoints(breakpoints, get_source_line_fn)
-  local bufnr = vim.api.nvim_get_current_buf()
+---@param source_bufnr number|nil Source buffer number (defaults to current buffer)
+function M.highlight_breakpoints(breakpoints, get_source_line_fn, source_bufnr)
+  local bufnr = source_bufnr or vim.api.nvim_get_current_buf()
   local assembled_bufnr = M.assembled.is_visible() and M.assembled.get_buffer() or nil
   local use_signs = config and config.signs and config.signs.use_for_breakpoints
   
@@ -118,8 +119,9 @@ end
 ---@param pc_address number|nil Current program counter address
 ---@param get_source_line_fn function(address) Function to get source line from address
 ---@param pc_span table|nil Optional span with start_address and end_address for the current instruction
-function M.highlight_pc(pc_address, get_source_line_fn, pc_span)
-  local bufnr = vim.api.nvim_get_current_buf()
+---@param source_bufnr number|nil Source buffer number (defaults to current buffer)
+function M.highlight_pc(pc_address, get_source_line_fn, pc_span, source_bufnr)
+  local bufnr = source_bufnr or vim.api.nvim_get_current_buf()
   local use_signs = config and config.signs and config.signs.use_for_pc
 
   -- Clear existing PC highlight/sign

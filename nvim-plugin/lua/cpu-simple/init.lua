@@ -131,6 +131,8 @@ function M.set_keymaps()
       -- Execution control
       vim.keymap.set("n", "<leader>cr", "<cmd>CpuRun<cr>", vim.tbl_extend("force", opts, { desc = "CPU: Run" }))
       vim.keymap.set("n", "<leader>cn", "<cmd>CpuStep<cr>", vim.tbl_extend("force", opts, { desc = "CPU: Step" }))
+      vim.keymap.set("n", "<leader>cN", "<cmd>CpuStepOver<cr>", vim.tbl_extend("force", opts, { desc = "CPU: Step over" }))
+      vim.keymap.set("n", "<leader>cO", "<cmd>CpuStepOut<cr>", vim.tbl_extend("force", opts, { desc = "CPU: Step out" }))
       vim.keymap.set("n", "<leader>cR", "<cmd>CpuReset<cr>", vim.tbl_extend("force", opts, { desc = "CPU: Reset" }))
 
       -- Breakpoints
@@ -233,7 +235,19 @@ function M.register_commands()
   end, {
     desc = "Execute one CPU instruction",
   })
-  
+
+  vim.api.nvim_create_user_command("CpuStepOver", function()
+    M.step_over()
+  end, {
+    desc = "Step over the current instruction",
+  })
+
+  vim.api.nvim_create_user_command("CpuStepOut", function()
+    M.step_out()
+  end, {
+    desc = "Step out of the current subroutine",
+  })
+
   vim.api.nvim_create_user_command("CpuReset", function()
     M.reset()
   end, {
@@ -483,7 +497,11 @@ M.load = with_running_backend(function(path)
   
   -- Convert to absolute path
   file_path = vim.fn.fnamemodify(file_path, ":p")
-  
+
+  -- Clear cached memory/stack state so auto-dump fires after load
+  state.memory = nil
+  state.stack = nil
+
   -- Send load command to backend
   backend.send(commands.LOAD .. " " .. file_path)
 
@@ -532,6 +550,46 @@ M.step = with_running_backend(function()
   end
 
   backend.send(commands.STEP)
+end)
+
+--- Step over the current instruction
+M.step_over = with_running_backend(function()
+  if not commands then
+    commands = require("cpu-simple.commands")
+  end
+  if not state then
+    state = require("cpu-simple.state")
+  end
+  if not backend then
+    backend = require("cpu-simple.backend")
+  end
+
+  if not state.loaded_program then
+    vim.notify("No program loaded. Use :CpuLoad or :CpuAssemble first.", vim.log.levels.ERROR)
+    return
+  end
+
+  backend.send(commands.STEP_OVER)
+end)
+
+--- Step out of the current subroutine
+M.step_out = with_running_backend(function()
+  if not commands then
+    commands = require("cpu-simple.commands")
+  end
+  if not state then
+    state = require("cpu-simple.state")
+  end
+  if not backend then
+    backend = require("cpu-simple.backend")
+  end
+
+  if not state.loaded_program then
+    vim.notify("No program loaded. Use :CpuLoad or :CpuAssemble first.", vim.log.levels.ERROR)
+    return
+  end
+
+  backend.send(commands.STEP_OUT)
 end)
 
 --- Reset the CPU
@@ -618,7 +676,8 @@ function M.highlight_breakpoints()
     return
   end
   
-  display.highlight_breakpoints(state.breakpoints, assembler.get_source_line_from_address)
+  local bufnr = assembler.assembler.last_source_bufnr or vim.api.nvim_get_current_buf()
+  display.highlight_breakpoints(state.breakpoints, assembler.get_source_line_from_address, bufnr)
 end
 
 function M.highlight_pc()
@@ -645,7 +704,8 @@ function M.highlight_pc()
     pc_span = assembler.utils.get_address_span_from_address(pc_address, assembler.assembler.last_debug_info)
   end
 
-  display.highlight_pc(pc_address, assembler.get_source_line_from_address, pc_span)
+  local bufnr = assembler.assembler.last_source_bufnr or vim.api.nvim_get_current_buf()
+  display.highlight_pc(pc_address, assembler.get_source_line_from_address, pc_span, bufnr)
 end
 
 --- Run the CPU until it reaches the address at the cursor line

@@ -268,7 +268,7 @@ function M.show_panel(panel_id)
         -- Find the last visible panel to split below
         local last_winnr = get_last_visible_winnr()
         -- Split below the last panel
-        panel.winnr = vim.api.nvim_open_win(panel.bufnr, true, {
+        panel.winnr = vim.api.nvim_open_win(panel.bufnr, false, {
             split = "below",
             win = last_winnr,
         })

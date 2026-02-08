@@ -16,8 +16,8 @@ M.BREAK_CLR = "breakpoint clear"
 M.BREAK_GET = "breakpoint list"
 M.RUN_TO = "run to_address"
 
--- Future debugging commands (placeholders)
+-- Stepping commands
 M.STEP_OVER = "stepover"
-M.STEP_INTO = "stepinto"
+M.STEP_OUT = "stepout"
 
 return M

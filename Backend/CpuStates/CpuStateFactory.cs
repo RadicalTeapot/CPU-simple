@@ -1,5 +1,6 @@
 ﻿using Backend.Commands.StateCommands;
 using Backend.IO;
+using CPU;
 
 namespace Backend.CpuStates
 {
@@ -44,6 +45,8 @@ namespace Backend.CpuStates
         {
             return new HaltedState(GetContextForState(typeof(HaltedState)));
         }
+
+        public CpuInspector GetInspector() => cpu.GetInspector();
 
         private CpuStateContext GetContextForState(Type stateType)
         {
