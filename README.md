@@ -122,15 +122,9 @@ I did review and tested the code but exercise caution when using it.
 ## To do (in no particular order)
 
 - [ ] Write a bank of small programs for 8 and 16 bit version
-- [ ] Missing assembler unit tests
-  - [ ] Analyser
-  - [ ] Emitter
-  - [ ] Backend
 - [ ] Implement CPU IDE ([inspiration for some UI](https://github.com/AfaanBilal/NanoCore/blob/master/assets/NanoCoreTUI.gif)) in Neovim
-  - [ ] `:StepOver`, `:StepIn`, `:StepOut`
   - [ ] Test if assembler errors are handled
   - [ ] Error when loading CPU dump of 16bit version
-  - [ ] PC sign not shown when assembling the code for the first time
 - [ ] Implement PPU and map some memory for it (for 16-bit version)
 - [ ] Implement sound chip and map some memory for it too (for 16-bit version)
   - [ ] Write a small MIDI player application
