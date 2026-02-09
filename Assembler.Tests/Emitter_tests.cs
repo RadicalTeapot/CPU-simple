@@ -10,11 +10,7 @@ namespace Assembler.Tests
         public void Emitter_EmptyProgram_EmptyOutput()
         {
             var result = new Emitter().Emit(new List<IEmitNode>());
-#if x16
             Assert.That(result.Length, Is.EqualTo(0));
-#else
-            Assert.That(result.Length, Is.EqualTo(0));
-#endif
         }
 
         [Test]
@@ -78,6 +74,73 @@ namespace Assembler.Tests
             var emitter = new Emitter();
             Assert.Throws<EmitterException>(() => emitter.Emit(nodes));
         }
+
+        [Test]
+        public void Emitter_SpanTracking_ReturnsCorrectAddresses()
+        {
+            var nodes = new List<IEmitNode>
+            {
+                new TestEmitNode([0x01, 0x02]),
+                new TestEmitNode([0x03])
+            };
+            var emitter = new Emitter();
+            emitter.Emit(nodes);
+            var spans = emitter.GetSpanAddresses();
+            Assert.Multiple(() =>
+            {
+                Assert.That(spans, Has.Count.EqualTo(2));
+                Assert.That(spans[0].StartAddress, Is.EqualTo(0));
+                Assert.That(spans[0].EndAddress, Is.EqualTo(1));
+                Assert.That(spans[1].StartAddress, Is.EqualTo(2));
+                Assert.That(spans[1].EndAddress, Is.EqualTo(2));
+            });
+        }
+
+        [Test]
+        public void Emitter_EmitCountMismatch_ThrowsEmitterException()
+        {
+            var nodes = new List<IEmitNode>
+            {
+                new MismatchedEmitNode()
+            };
+            var emitter = new Emitter();
+            Assert.Throws<EmitterException>(() => emitter.Emit(nodes));
+        }
+
+        [Test]
+        public void Emitter_ExactMaxAddress_Succeeds()
+        {
+            var nodes = new List<IEmitNode>
+            {
+                new TestFillEmitNode(10, 0xAA)
+            };
+            var emitter = new Emitter(10);
+            var result = emitter.Emit(nodes);
+            Assert.That(result, Has.Length.EqualTo(10));
+            Assert.That(result, Is.All.EqualTo(0xAA));
+        }
+
+        [Test]
+        public void Emitter_CustomMaxAddress_ClampsCorrectly()
+        {
+            var nodes = new List<IEmitNode>
+            {
+                new TestFillEmitNode(6, 0xBB)
+            };
+            var emitter = new Emitter(5);
+            Assert.Throws<EmitterException>(() => emitter.Emit(nodes));
+        }
+
+        [Test]
+        public void Emitter_IntegrationWithAnalyser_ProducesValidBytes()
+        {
+            var bytes = AnalyserTestsHelper.AnalyseAndEmit("NOP\nHLT");
+            Assert.Multiple(() =>
+            {
+                Assert.That(bytes[0], Is.EqualTo(0x00)); // NOP
+                Assert.That(bytes[1], Is.EqualTo(0x01)); // HLT
+            });
+        }
     }
 
     internal class TestEmitNode(byte[] bytes) : IEmitNode
@@ -97,6 +160,13 @@ namespace Assembler.Tests
             return [.. Enumerable.Repeat(value, count)];
         }
         public int Count => count;
+        public NodeSpan Span => new();
+    }
+
+    internal class MismatchedEmitNode : IEmitNode
+    {
+        public byte[] Emit() => [0x01, 0x02]; // returns 2 bytes
+        public int Count => 1; // but claims count is 1
         public NodeSpan Span => new();
     }
 }

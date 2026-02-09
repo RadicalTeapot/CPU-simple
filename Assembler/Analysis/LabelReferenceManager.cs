@@ -87,9 +87,10 @@ namespace Assembler.Analysis
                         firstEmitNode.LabelRefNode.Span.Line, firstEmitNode.LabelRefNode.Span.StartColumn); // Show location of first reference
                 }
 
+                Debug.Assert(_section != null, "Section should not be null when resolving emit nodes for located label.");
                 foreach (var emitNode in EmitNodes)
                 {
-                    emitNode.Resolve(_locationCounter + _section?.StartAddress ?? 0);
+                    emitNode.Resolve(_locationCounter + _section.StartAddress);
                 }
             }
 

@@ -22,7 +22,7 @@ namespace Backend
             return application.Run();
         }
 
-        private static int ParseArgs(string[] args, ILogger logger, out CPU.Config config)
+        internal static int ParseArgs(string[] args, ILogger logger, out CPU.Config config)
         {
             int memorySize = DefaultMemorySize;
             int stackSize = DefaultStackSize;
@@ -43,6 +43,8 @@ namespace Backend
                         else
                         {
                             logger.Error("Invalid memory size specified.");
+                            config = default;
+                            return InvalidArgExitCode;
                         }
                         break;
                     case "-s":
@@ -55,6 +57,8 @@ namespace Backend
                         else
                         {
                             logger.Error("Invalid stack size specified.");
+                            config = default;
+                            return InvalidArgExitCode;
                         }
                         break;
                     case "--registers":
@@ -66,6 +70,8 @@ namespace Backend
                         else
                         {
                             logger.Error("Invalid register count specified.");
+                            config = default;
+                            return InvalidArgExitCode;
                         }
                         break;
                     case "-h":

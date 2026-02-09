@@ -17,8 +17,18 @@
             var sp = executionContext.Inspector.SP;
             var stack = executionContext.Inspector.StackContents;
 
-            var address = args.Length > 0 ? Convert.ToInt32(args[0], 16) : sp;
-            var length = args.Length > 1 ? Convert.ToInt32(args[1]) : stack.Length;
+            int address;
+            int length;
+            try
+            {
+                address = args.Length > 0 ? Convert.ToInt32(args[0], 16) : sp;
+                length = args.Length > 1 ? Convert.ToInt32(args[1]) : stack.Length;
+            }
+            catch (Exception ex) when (ex is FormatException or OverflowException or ArgumentException)
+            {
+                return new GlobalCommandResult(Success: false, Message: $"Error: Invalid argument format. {ex.Message}");
+            }
+
             length = Math.Min(length, address+1); // Stack grows downwards, so we can't read more than address+1 bytes
 
             if (length <= 0 || address < 0 || address >= stack.Length)

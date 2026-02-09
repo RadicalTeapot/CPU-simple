@@ -21,6 +21,7 @@ dotnet test cpu-simple.sln -c Debug
 # Run a single test project
 dotnet test CPU.Tests/CPU.Tests.csproj
 dotnet test Assembler.Tests/Assembler.Tests.csproj
+dotnet test Backend.Tests/Backend.Tests.csproj
 dotnet test LanguageServer.Tests/LanguageServer.Tests.csproj
 
 # Run a specific test by name
@@ -60,7 +61,7 @@ Assembly source (.csasm) → Lexer → Parser → Analyser → Emitter → Machi
 - **Assembler/** - CLI tool with four pipeline stages: `Lexer` (tokenizes) → `Parser` (builds AST) → `Analyser` (two-pass: builds symbol table, resolves labels) → `Emitter` (produces bytes). Supports `.text` and `.data` sections.
 - **Backend/** - Console debugger hosting the CPU. Reads JSON commands from stdin, writes JSON responses to stdout. Commands are discovered via `[Command]` attribute, split into `GlobalCommands/` (dump, breakpoint, status) and `StateCommands/` (load, run, step, pause, reset).
 - **LanguageServer/** - LSP server for `.csasm` files (diagnostics, hover, completion). Uses the OmniSharp LSP SDK (`OmniSharp.Extensions.LanguageServer`) over stdio. Reuses the Assembler pipeline directly — runs Lexer→Parser→Analyser on each document change and translates exceptions into LSP diagnostics.
-- **CPU.Tests/**, **Assembler.Tests/**, and **LanguageServer.Tests/** - NUnit 4 test suites.
+- **CPU.Tests/**, **Assembler.Tests/**, **Backend.Tests/**, and **LanguageServer.Tests/** - NUnit 4 test suites. Backend.Tests uses `InternalsVisibleTo` to access internal Backend types.
 
 ### Non-C# Components
 
@@ -82,3 +83,7 @@ Assembly source (.csasm) → Lexer → Parser → Analyser → Emitter → Machi
 ## Test Framework
 
 NUnit 4 with `Microsoft.NET.Test.SDK`. Tests use `[Test]` and `[TestCase]` attributes.
+
+### Test Helpers
+- **Assembler tests**: `AnalyserTestsHelper.AnalyseProgram()` runs Lex→Parse→Analyse and returns emit nodes. `AnalyseAndEmit()` goes through the full pipeline to bytes. `GetSymbols()` returns the symbol table.
+- **Backend tests**: `BackendTestHelpers.CreateGlobalContext()` creates a `GlobalCommandExecutionContext` with a real CPU and test doubles (`TestLogger`, `TestOutput`). Backend's `ParseArgs` is `internal` for direct testability.

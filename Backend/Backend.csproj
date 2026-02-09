@@ -18,6 +18,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="Backend.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Assembler\Assembler.csproj" />
     <ProjectReference Include="..\CPU\CPU.csproj" />
   </ItemGroup>

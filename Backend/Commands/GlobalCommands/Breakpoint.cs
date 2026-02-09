@@ -1,7 +1,7 @@
 ﻿namespace Backend.Commands.GlobalCommands
 {
     [Command(CommandType.Global, "breakpoint", ["bp"],
-        description: "Toggle or remove brakpoint(s)",
+        description: "Toggle or remove breakpoint(s)",
         helpText: "Usage: 'breakpoint [toggle/clear/list] [address]'")]
     internal class Breakpoint(CommandContext context) : BaseGlobalCommand(context)
     {
@@ -9,7 +9,7 @@
         {
             if (args.Length < 1 || args.Length > 2)
             {
-                return new GlobalCommandResult(Success: false, Message: $"The '{Name}' command either one or two arguments.");
+                return new GlobalCommandResult(Success: false, Message: $"The '{Name}' command takes one or two arguments.");
             }
             var action = args[0].ToLower();
 
@@ -17,6 +17,10 @@
             switch (action)
             {
                 case "toggle":
+                    if (args.Length < 2)
+                    {
+                        return new GlobalCommandResult(Success: false, Message: "The 'toggle' action requires an address argument.");
+                    }
                     if (!int.TryParse(args[1], out int address) || address < 0 || address > 0xFFFF)
                     {
                         return new GlobalCommandResult(Success: false, Message: $"The address '{args[1]}' is not a valid memory address.");
@@ -49,7 +53,7 @@
                     }
                     break;
                 default:
-                    return new GlobalCommandResult(Success: false, Message: $"The action '{action}' is not valid for the '{Name}' command. Use 'toggle' or 'remove'.");
+                    return new GlobalCommandResult(Success: false, Message: $"The action '{action}' is not valid for the '{Name}' command. Use 'toggle', 'clear', or 'list'.");
             }
 
             executionContext.Output.WriteBreakpointList([..executionContext.Breakpoints.GetAll().Select(bp => bp.Address)]);

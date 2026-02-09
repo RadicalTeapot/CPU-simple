@@ -14,7 +14,7 @@ namespace Backend.Commands.GlobalCommands
         {
             if (args.Length > 3)
             {
-                return new GlobalCommandResult(Success: false, Message: $"The '{Name}' command does takes at most 3 arguments.");
+                return new GlobalCommandResult(Success: false, Message: $"The '{Name}' command takes at most 3 arguments.");
             }
 
             var dumpStatus = args.Length == 0;

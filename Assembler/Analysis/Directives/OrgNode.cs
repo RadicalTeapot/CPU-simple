@@ -25,6 +25,12 @@ namespace Assembler.Analysis.Directives
             }
 
             var bytesToFill = address - currentLocationCounter;
+            if (bytesToFill < 0)
+            {
+                throw new AnalyserException(
+                    $"'.org' directive address 0x{address:X2} is behind the current location counter 0x{currentLocationCounter:X2}",
+                    directive.Span.Line, directive.Span.StartColumn);
+            }
             EmitNodes = [new FillEmitNode(bytesToFill, fillValue, directive.Span)];
         }
 
