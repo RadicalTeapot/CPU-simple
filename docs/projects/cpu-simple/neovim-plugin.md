@@ -95,7 +95,21 @@ cpu_simple.setup({
     sidebar = {
         width = 0.5, -- Ratio of editor width (0.5 = half), or absolute columns if > 1
         position = "right", -- "left" or "right"
-        panels = {}, -- Panel-specific config: { [panel_id] = { height = 0 } }
+        panels = {
+            memory = {
+                bytes_per_line = 16,
+                changed_highlight = {
+                    enabled = true,
+                    timeout_ms = 1500, -- 0 = persistent
+                },
+                cursor_address_highlight = true,
+            },
+        },
+    },
+    source_annotations = {
+        pc_operands_virtual_text = {
+            enabled = true,
+        },
     },
     -- Signs configuration
     signs = {
@@ -126,6 +140,12 @@ vim.api.nvim_create_autocmd('FileType', {
         -- vim.bo[args.buf].indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
     end,
 })
+```
+
+Smoke test command:
+
+```bash
+./nvim-plugin/smoke.sh
 ```
 
 On first run, run `npm install` and `npm run build` inside the `tree-sitter-grammar` folder to install all dependencies

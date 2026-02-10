@@ -13,6 +13,9 @@ M.groups = {
     BREAKPOINT = "CpuSimpleBreakpoint",
     PC = "CpuSimplePC",
     SP = "CpuSimpleSP",
+    MEMORY_CHANGED = "CpuSimpleMemoryChanged",
+    MEMORY_CURSOR_ADDRESS = "CpuSimpleMemoryCursorAddress",
+    PC_VIRTUAL_TEXT = "CpuSimplePCVirtualText",
 }
 
 --- Define all highlight groups (should be called once at plugin load)
@@ -25,6 +28,12 @@ function M.define_highlight_groups()
     vim.api.nvim_set_hl(0, M.groups.PC, { link = "WarningMsg", default = true })
     -- Highlight for stack pointer in stack panel
     vim.api.nvim_set_hl(0, M.groups.SP, { link = "Search", default = true })
+    -- Highlight for changed bytes in the memory panel
+    vim.api.nvim_set_hl(0, M.groups.MEMORY_CHANGED, { link = "DiffChange", default = true })
+    -- Highlight for memory address under source cursor in the memory panel
+    vim.api.nvim_set_hl(0, M.groups.MEMORY_CURSOR_ADDRESS, { link = "IncSearch", default = true })
+    -- Highlight for PC line virtual text annotations
+    vim.api.nvim_set_hl(0, M.groups.PC_VIRTUAL_TEXT, { link = "Comment", default = true })
 end
 
 -- ============================================================================
@@ -43,8 +52,14 @@ M.ns_assembled_breakpoint = vim.api.nvim_create_namespace("cpu_simple_assembled_
 M.ns_stack_sp = vim.api.nvim_create_namespace("cpu_simple_stack_sp")
 -- Namespace for PC highlight in memory panel
 M.ns_memory_pc = vim.api.nvim_create_namespace("cpu_simple_memory_pc")
+-- Namespace for changed bytes in memory panel
+M.ns_memory_changed = vim.api.nvim_create_namespace("cpu_simple_memory_changed")
+-- Namespace for cursor-address highlight in memory panel
+M.ns_memory_cursor = vim.api.nvim_create_namespace("cpu_simple_memory_cursor")
 -- Namespace for PC/instruction range highlight in assembled panel
 M.ns_assembled_pc = vim.api.nvim_create_namespace("cpu_simple_assembled_pc")
+-- Namespace for PC line virtual text in source buffer
+M.ns_source_pc_virtual_text = vim.api.nvim_create_namespace("cpu_simple_source_pc_virtual_text")
 
 -- ============================================================================
 -- Source Buffer Highlighting
@@ -176,6 +191,51 @@ function M.highlight_hex_dump_byte(bufnr, ns, hl_group, address, bytes_per_line)
     vim.api.nvim_buf_add_highlight(bufnr, ns, hl_group, row, col_start, col_end)
 end
 
+--- Highlight multiple bytes in a hex dump with address prefix format ("XX: AA BB CC ...")
+---@param bufnr number Buffer number
+---@param ns number Namespace id
+---@param hl_group string Highlight group name
+---@param addresses table<number, boolean>|number[] 0-based byte addresses to highlight
+---@param bytes_per_line number Bytes per line in the hex dump
+function M.highlight_hex_dump_bytes(bufnr, ns, hl_group, addresses, bytes_per_line)
+    if not bufnr or not vim.api.nvim_buf_is_valid(bufnr) then
+        return
+    end
+
+    vim.api.nvim_buf_clear_namespace(bufnr, ns, 0, -1)
+
+    if not addresses then
+        return
+    end
+
+    local function add_address(address)
+        if type(address) ~= "number" then
+            return
+        end
+        local row = math.floor(address / bytes_per_line)
+        local col_byte = address % bytes_per_line
+        local row_addr = row * bytes_per_line
+        local prefix = string.format("%02X:", row_addr)
+        local col_start = #prefix + 1 + (col_byte * 3)
+        local col_end = col_start + 2
+        vim.api.nvim_buf_add_highlight(bufnr, ns, hl_group, row, col_start, col_end)
+    end
+
+    local is_list = vim.islist and vim.islist(addresses) or type(addresses[1]) ~= "nil"
+    if is_list then
+        for _, address in ipairs(addresses) do
+            add_address(address)
+        end
+        return
+    end
+
+    for address, enabled in pairs(addresses) do
+        if enabled then
+            add_address(address)
+        end
+    end
+end
+
 --- Highlight a range of bytes in the assembled panel (PC indicator)
 ---@param bufnr number Buffer number
 ---@param start_byte number 0-based start byte offset
@@ -200,6 +260,43 @@ function M.clear_assembled_pc(bufnr)
     if bufnr and vim.api.nvim_buf_is_valid(bufnr) then
         vim.api.nvim_buf_clear_namespace(bufnr, M.ns_assembled_pc, 0, -1)
     end
+end
+
+--- Clear a namespace in a buffer
+---@param bufnr number|nil Buffer number
+---@param ns number Namespace id
+function M.clear_ns(bufnr, ns)
+    if bufnr and vim.api.nvim_buf_is_valid(bufnr) then
+        vim.api.nvim_buf_clear_namespace(bufnr, ns, 0, -1)
+    end
+end
+
+--- Set right-aligned virtual text on a line
+---@param bufnr number|nil Buffer number
+---@param line_nr number 1-based line number
+---@param text string Text to render
+---@param hl_group string|nil Highlight group (defaults to PC virtual text group)
+function M.set_pc_virtual_text(bufnr, line_nr, text, hl_group)
+    if not bufnr or not vim.api.nvim_buf_is_valid(bufnr) or type(line_nr) ~= "number" then
+        return
+    end
+
+    vim.api.nvim_buf_clear_namespace(bufnr, M.ns_source_pc_virtual_text, 0, -1)
+
+    if not text or text == "" then
+        return
+    end
+
+    vim.api.nvim_buf_set_extmark(bufnr, M.ns_source_pc_virtual_text, line_nr - 1, 0, {
+        virt_text = { { text, hl_group or M.groups.PC_VIRTUAL_TEXT } },
+        virt_text_pos = "eol_right_align",
+    })
+end
+
+--- Clear PC virtual text annotations
+---@param bufnr number|nil Buffer number
+function M.clear_pc_virtual_text(bufnr)
+    M.clear_ns(bufnr, M.ns_source_pc_virtual_text)
 end
 
 -- ============================================================================

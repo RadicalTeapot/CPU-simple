@@ -10,6 +10,8 @@ local display = nil
 local state = nil
 local events = nil
 local commands = nil
+local operand_resolver = nil
+local pending_dump_request = false
 
 -- Default configuration
 M.defaults = {
@@ -35,7 +37,19 @@ M.defaults = {
     position = "right", -- "left" or "right"
     panels = { -- Panel-specific config: { [panel_id] = { height = 0 } }
       stack = { bytes_per_line = 16 },
-      memory = { bytes_per_line = 16 },
+      memory = {
+        bytes_per_line = 16,
+        changed_highlight = {
+          enabled = true,
+          timeout_ms = 1500, -- 0 = persistent, > 0 = auto-hide delay in ms
+        },
+        cursor_address_highlight = true,
+      },
+    },
+  },
+  source_annotations = {
+    pc_operands_virtual_text = {
+      enabled = true,
     },
   },
   -- Panels to show automatically after successful assembly
@@ -69,6 +83,7 @@ function M.setup(opts)
   state = require("cpu-simple.state")
   events = require("cpu-simple.events")
   commands = require("cpu-simple.commands")
+  operand_resolver = require("cpu-simple.operand_resolver")
   
   -- Setup display with sidebar and signs configuration
   display.setup({
@@ -81,35 +96,38 @@ function M.setup(opts)
   
   -- Subscribe to status updates for statusline and highlighting
   events.on(events.STATUS_UPDATED, function()
+    M.maybe_request_dump()
     M.highlight_pc()
+    M.update_cursor_memory_highlight()
+    M.update_pc_virtual_text()
     vim.cmd("redrawstatus")
   end)
+  events.on(events.MEMORY_UPDATED, function()
+    pending_dump_request = false
+    M.update_cursor_memory_highlight()
+    M.update_pc_virtual_text()
+  end)
   events.on(events.BACKEND_STARTED, function()
+    pending_dump_request = false
     vim.cmd("redrawstatus")
   end)
   events.on(events.BACKEND_STOPPED, function()
+    pending_dump_request = false
+    M.clear_pc_virtual_text()
+    if display and display.memory then
+      display.memory.set_cursor_address(nil)
+    end
     vim.cmd("redrawstatus")
   end)
   events.on(events.BREAKPOINT_UPDATED, function()
     M.highlight_breakpoints()
   end)
 
-  -- Auto-request dump when stack/memory panels are visible but have no data
-  events.on(events.STATUS_UPDATED, function()
-    if not display then
-      display = require("cpu-simple.display")
-    end
-    local needs_dump = (display.stack.is_visible() and not state.stack)
-      or (display.memory.is_visible() and not state.memory)
-    if needs_dump and backend and backend.is_running() then
-      backend.send(commands.DUMP)
-    end
-  end)
-
   M.set_keymaps()
 
   -- Setup CursorMoved autocmd for assembled panel highlighting
   M.setup_cursor_highlight()
+  M.setup_memory_cursor_highlight()
 
   -- Start LSP if configured
   M.start_lsp()
@@ -173,6 +191,83 @@ function M.start_lsp()
   })
 end
 
+local function get_memory_panel_config()
+  local sidebar_cfg = M.config.sidebar or {}
+  local panels_cfg = sidebar_cfg.panels or {}
+  return panels_cfg.memory or {}
+end
+
+local function is_pc_virtual_text_enabled()
+  local source_annotations = M.config.source_annotations or {}
+  local pc_annotations = source_annotations.pc_operands_virtual_text or {}
+  return pc_annotations.enabled ~= false
+end
+
+local function annotation_hex_width()
+  if state and state.memory and #state.memory > 0x100 then
+    return 4
+  end
+  return 2
+end
+
+function M.clear_pc_virtual_text()
+  if not display then
+    display = require("cpu-simple.display")
+  end
+  if not assembler then
+    assembler = require("cpu-simple.assembler")
+  end
+  if not display or not display.highlights then
+    return
+  end
+
+  local bufnr = assembler.assembler and assembler.assembler.last_source_bufnr or nil
+  if bufnr and vim.api.nvim_buf_is_valid(bufnr) then
+    display.highlights.clear_pc_virtual_text(bufnr)
+  end
+end
+
+function M.maybe_request_dump()
+  if pending_dump_request then
+    return
+  end
+  if not backend or not backend.is_running() then
+    return
+  end
+  if not display then
+    display = require("cpu-simple.display")
+  end
+  if not assembler then
+    assembler = require("cpu-simple.assembler")
+  end
+  if not state then
+    state = require("cpu-simple.state")
+  end
+  if not commands then
+    commands = require("cpu-simple.commands")
+  end
+
+  local needs_dump_for_visible_panels = (display.stack.is_visible() and not state.stack)
+    or (display.memory.is_visible() and not state.memory)
+
+  local needs_dump_for_virtual_text = is_pc_virtual_text_enabled()
+    and state
+    and state.status
+    and state.loaded_program
+    and assembler.has_debug_info()
+    and not state.memory
+
+  if not (needs_dump_for_visible_panels or needs_dump_for_virtual_text) then
+    return
+  end
+
+  pending_dump_request = true
+  local sent = backend.send(commands.DUMP)
+  if not sent then
+    pending_dump_request = false
+  end
+end
+
 --- Setup CursorMoved autocmd to highlight assembled bytes for current source line
 function M.setup_cursor_highlight()
   if not display then
@@ -195,6 +290,126 @@ function M.setup_cursor_highlight()
     return display.assembled.get_buffer()
   end
 )
+end
+
+function M.setup_memory_cursor_highlight()
+  vim.api.nvim_create_autocmd("CursorMoved", {
+    group = vim.api.nvim_create_augroup("CpuSimpleMemoryCursorAddress", { clear = true }),
+    callback = function()
+      M.update_cursor_memory_highlight()
+    end,
+  })
+end
+
+function M.update_cursor_memory_highlight()
+  if not display then
+    display = require("cpu-simple.display")
+  end
+  if not assembler then
+    assembler = require("cpu-simple.assembler")
+  end
+  if not state then
+    state = require("cpu-simple.state")
+  end
+  if not operand_resolver then
+    operand_resolver = require("cpu-simple.operand_resolver")
+  end
+
+  local memory_cfg = get_memory_panel_config()
+  if memory_cfg.cursor_address_highlight == false then
+    display.memory.set_cursor_address(nil)
+    return
+  end
+
+  if not assembler.has_debug_info() then
+    display.memory.set_cursor_address(nil)
+    return
+  end
+
+  local source_bufnr = assembler.assembler.last_source_bufnr
+  local current_bufnr = vim.api.nvim_get_current_buf()
+  if not source_bufnr or current_bufnr ~= source_bufnr then
+    display.memory.set_cursor_address(nil)
+    return
+  end
+
+  local cursor = vim.api.nvim_win_get_cursor(0)
+  local line_nr = cursor[1]
+  local col0 = cursor[2]
+  local line_text = vim.api.nvim_buf_get_lines(current_bufnr, line_nr - 1, line_nr, false)[1] or ""
+  local range = operand_resolver.find_memory_expr_at_cursor(line_text, col0)
+  if not range then
+    display.memory.set_cursor_address(nil)
+    return
+  end
+
+  local symbols = assembler.assembler.last_debug_info and assembler.assembler.last_debug_info.symbols or nil
+  local resolved = operand_resolver.resolve_memory_expr(range.expression, {
+    symbols = symbols,
+    registers = state.status and state.status.registers or nil,
+    memory = state.memory,
+    max_address = M.config.memory_size - 1,
+  })
+
+  display.memory.set_cursor_address(resolved and resolved.address or nil)
+end
+
+function M.update_pc_virtual_text()
+  if not display then
+    display = require("cpu-simple.display")
+  end
+  if not assembler then
+    assembler = require("cpu-simple.assembler")
+  end
+  if not state then
+    state = require("cpu-simple.state")
+  end
+  if not operand_resolver then
+    operand_resolver = require("cpu-simple.operand_resolver")
+  end
+
+  if not is_pc_virtual_text_enabled() then
+    M.clear_pc_virtual_text()
+    return
+  end
+  if not state.status or not state.loaded_program then
+    M.clear_pc_virtual_text()
+    return
+  end
+  if not assembler.has_debug_info() then
+    M.clear_pc_virtual_text()
+    return
+  end
+
+  local source_bufnr = assembler.assembler.last_source_bufnr
+  if not source_bufnr or not vim.api.nvim_buf_is_valid(source_bufnr) then
+    M.clear_pc_virtual_text()
+    return
+  end
+
+  local pc_address = state.status.pc
+  if pc_address == nil then
+    M.clear_pc_virtual_text()
+    return
+  end
+
+  local source_line = assembler.get_source_line_from_address(pc_address)
+  if not source_line then
+    M.clear_pc_virtual_text()
+    return
+  end
+
+  local line_text = vim.api.nvim_buf_get_lines(source_bufnr, source_line - 1, source_line, false)[1] or ""
+  local symbols = assembler.assembler.last_debug_info and assembler.assembler.last_debug_info.symbols or nil
+  local virtual_text = operand_resolver.build_pc_virtual_text(line_text, {
+    symbols = symbols,
+    registers = state.status.registers,
+    memory = state.memory,
+    hex_width = annotation_hex_width(),
+    max_address = M.config.memory_size - 1,
+  })
+
+  display.highlights.set_pc_virtual_text(source_bufnr, source_line, virtual_text, display.highlights.groups.PC_VIRTUAL_TEXT)
 end
 
 --- Register user commands
@@ -485,6 +700,9 @@ M.load = with_running_backend(function(path)
   if not assembler then
     assembler = require("cpu-simple.assembler")
   end
+  if not display then
+    display = require("cpu-simple.display")
+  end
   if not commands then
     commands = require("cpu-simple.commands")
   end
@@ -517,6 +735,9 @@ M.load = with_running_backend(function(path)
   -- Clear cached memory/stack state so auto-dump fires after load
   state.memory = nil
   state.stack = nil
+  pending_dump_request = false
+  M.clear_pc_virtual_text()
+  display.memory.clear_highlight_state()
 
   -- Send load command to backend
   backend.send(commands.LOAD .. " " .. file_path)
