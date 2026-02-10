@@ -41,13 +41,14 @@ nvim-plugin/lazy-lock.json
 
 # Node
 node_modules
+package*.json
+!tree-sitter-grammar/package.json
 
 # Tree-sitter generated files
 tree-sitter-grammar/src/
 tree-sitter-grammar/bindings/
 tree-sitter-grammar/Cargo.toml
 tree-sitter-grammar/binding.gyp
-tree-sitter-grammar/package-lock.json
 tree-sitter-grammar/build/
 tree-sitter-grammar/parser.so
 
