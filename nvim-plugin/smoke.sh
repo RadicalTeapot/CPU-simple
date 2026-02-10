@@ -93,6 +93,15 @@ events.emit(events.STATUS_UPDATED, {})
 assert(memory.changed_addresses[0] ~= nil)
 assert(memory.changed_addresses[2] ~= nil)
 
+state.status = {
+  pc = 0,
+  memory_changes = { [1] = 2 },
+}
+events.emit(events.STATUS_UPDATED, {})
+assert(memory.changed_addresses[0] == nil)
+assert(memory.changed_addresses[2] == nil)
+assert(memory.changed_addresses[1] ~= nil)
+
 print("cpu-simple nvim smoke: OK")
 LUA
 

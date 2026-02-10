@@ -86,16 +86,29 @@ local function collect_memory_changes_from_status()
     return
   end
 
+  local changed_addresses = {}
+  local has_any_change = false
+  for address, _ in pairs(state.status.memory_changes) do
+    local numeric_address = tonumber(address)
+    if numeric_address ~= nil then
+      changed_addresses[numeric_address] = true
+      has_any_change = true
+    end
+  end
+
+  -- A new memory delta replaces prior byte-change highlights (timeout-agnostic).
+  if not has_any_change then
+    return
+  end
+  M.changed_addresses = {}
+
   local expires_at = 0
   if M.change_highlight_timeout_ms > 0 then
     expires_at = now_ms() + M.change_highlight_timeout_ms
   end
 
-  for address, _ in pairs(state.status.memory_changes) do
-    local numeric_address = tonumber(address)
-    if numeric_address ~= nil then
-      M.changed_addresses[numeric_address] = expires_at
-    end
+  for numeric_address, _ in pairs(changed_addresses) do
+    M.changed_addresses[numeric_address] = expires_at
   end
 
   if M.change_highlight_timeout_ms > 0 then
