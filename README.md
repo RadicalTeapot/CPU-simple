@@ -82,6 +82,12 @@ Run the Neovim plugin smoke test:
 ./nvim-plugin/smoke.sh
 ```
 
+Run the Neovim plugin integration tests:
+
+```bash
+./nvim-plugin/tests/run.sh
+```
+
 ### Config
 
 ```lua

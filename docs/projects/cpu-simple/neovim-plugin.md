@@ -2,6 +2,8 @@
 
 ## Linux
 
+### Example config
+
 ```lua
 local cpu_simple = require("cpu-simple")
 
@@ -142,11 +144,21 @@ vim.api.nvim_create_autocmd('FileType', {
 })
 ```
 
+### Testing
+
 Smoke test command:
 
 ```bash
 ./nvim-plugin/smoke.sh
 ```
+
+Integration test suite:
+
+```bash
+./nvim-plugin/tests/run.sh
+```
+
+### Tree sitter setup
 
 On first run, run `npm install` and `npm run build` inside the `tree-sitter-grammar` folder to install all dependencies
 
@@ -161,6 +173,14 @@ vim.filetype.add({ extension = { csasm = "csasm" } })
 ```
 
 Then add the language to Neovim, connect the parser to the language and connect the file extension with the language.
+
+### Next steps
+
+Follow-up cleanup backlog:
+
+- Move command metadata (name, args, desc, handler) to a single declarative table to reduce command boilerplate.
+- Replace optimistic `state.loaded_program` assignment on `CpuLoad` with an explicit backend acknowledgement flow.
+- Add more feature-level specs for navigation and source annotation edge-cases around missing/partial debug info.
 
 ### Troubleshooting
 
