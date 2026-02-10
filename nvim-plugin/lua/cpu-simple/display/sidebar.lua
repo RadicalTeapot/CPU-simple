@@ -256,7 +256,7 @@ function M.show_panel(panel_id)
 
     -- Already visible after restoring?
     if panel.visible and panel.winnr and vim.api.nvim_win_is_valid(panel.winnr) then
-        vim.api.nvim_set_current_win(panel.winnr)
+        -- vim.api.nvim_set_current_win(panel.winnr)
         return true
     end
        
@@ -380,18 +380,6 @@ end
 function M.is_panel_visible(panel_id)
     local panel = get_panel(panel_id)
     return panel ~= nil and panel.visible and panel.winnr ~= nil and vim.api.nvim_win_is_valid(panel.winnr)
-end
-
---- Focus a panel if visible
----@param panel_id string Panel identifier
----@return boolean success
-function M.focus_panel(panel_id)
-    local panel = get_panel(panel_id)
-    if panel and panel.visible and panel.winnr and vim.api.nvim_win_is_valid(panel.winnr) then
-        vim.api.nvim_set_current_win(panel.winnr)
-        return true
-    end
-    return false
 end
 
 --- Get list of all registered panel IDs

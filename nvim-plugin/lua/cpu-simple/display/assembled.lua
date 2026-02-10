@@ -86,12 +86,6 @@ function M.clear()
   end
 end
 
---- Focus the panel if visible
----@return boolean success
-function M.focus()
-  return sidebar.focus_panel(PANEL_ID)
-end
-
 --- Get the window number (if visible)
 ---@return number|nil winnr
 function M.get_winnr()

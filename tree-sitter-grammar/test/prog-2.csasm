@@ -1,8 +1,11 @@
 .text
+  ; Prime stack values
   LDI R0, #0x01
   PSH R0
   LDI R0, #0x02
   PSH R0
+  
+  ; Perform swap
   CAL [swap]
   HLT
   

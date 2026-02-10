@@ -123,6 +123,8 @@ I did review and tested the code but exercise caution when using it.
 
 - [ ] Write a bank of small programs for 8 and 16 bit version
 - [ ] Implement CPU IDE ([inspiration for some UI](https://github.com/AfaanBilal/NanoCore/blob/master/assets/NanoCoreTUI.gif)) in Neovim
+  - [ ] Highlight memory address under cusor in memory panel (taking offsets into account)
+  - [ ] When assembled, if sidebar was never opened, open the configured panels, otherwise just re-open sidebar
   - [ ] Test if assembler errors are handled
   - [ ] Error when loading CPU dump of 16bit version
 - [ ] Implement PPU and map some memory for it (for 16-bit version)

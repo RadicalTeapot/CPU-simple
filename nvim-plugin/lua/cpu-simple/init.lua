@@ -38,6 +38,13 @@ M.defaults = {
       memory = { bytes_per_line = 16 },
     },
   },
+  -- Panels to show automatically after successful assembly
+  assemble_panels = {
+    assembled = true,
+    status = true,
+    memory = true,
+    stack = true,
+  },
   -- Signs configuration (alternative to line highlighting)
   signs = {
     use_for_breakpoints = false, -- Use sign column for breakpoints instead of line highlight
@@ -450,10 +457,19 @@ M.assemble = with_running_backend(function()
   events.on(events.ASSEMBLED, function(data)
     -- Show all panels when assembly is done
     display.assembled.set_content(assembler.get_last_output_content())
-    display.assembled.show()
-    display.status_panel.show()
-    display.memory.show()
-    display.stack.show()
+    local panels = M.config.assemble_panels or {}
+    if panels.assembled ~= false then
+      display.assembled.show()
+    end
+    if panels.status ~= false then
+      display.status_panel.show()
+    end
+    if panels.memory ~= false then
+      display.memory.show()
+    end
+    if panels.stack ~= false then
+      display.stack.show()
+    end
     M.load() -- Auto-load assembled code into CPU
   end, { once = true })
   assembler.assemble_current_buffer({
