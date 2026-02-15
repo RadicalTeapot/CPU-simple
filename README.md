@@ -12,7 +12,7 @@ This repository contains the CPU core, a backend server acting a simple debugger
 - `Backend/`: Console application that hosts/runs the CPU to be used for debugging
 - `nvim-plugin/`: Neovim plugin to serve as the IDE
 - `tree-sitter-grammar/`: Tree sitter grammar generator for the assembly language
-- `docs/`: Design and specification documents
+- `docs/`: Design and specification documents (including instruction timing model in `docs/projects/cpu-simple/micro-code.md`)
 
 ## Architectures
 

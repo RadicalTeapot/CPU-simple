@@ -57,7 +57,7 @@ Assembly source (.csasm) → Lexer → Parser → Analyser → Emitter → Machi
 
 ### C# Projects (in `cpu-simple.sln`)
 
-- **CPU/** - Core CPU library: fetch-decode-execute cycle, memory, stack, registers, flags (Zero/Carry). The `OpcodeFactory` uses reflection to discover opcode classes annotated with `[Opcode]` attribute implementing `IOpcode`.
+- **CPU/** - Core CPU library: fetch-decode-execute cycle, memory, stack, registers, flags (Zero/Carry). The `OpcodeFactory` uses reflection to discover opcode classes annotated with `[Opcode]` attribute implementing `IOpcode`. Current implementation treats all instructions as single-cycle, but a realistic timing model is documented in `docs/projects/cpu-simple/micro-code.md` (Fetch cost = instruction bytes, Decode = 0 cycles [parallel with fetch], Execute = 0/1/2 cycles based on operation type).
 - **Assembler/** - CLI tool with four pipeline stages: `Lexer` (tokenizes) → `Parser` (builds AST) → `Analyser` (two-pass: builds symbol table, resolves labels) → `Emitter` (produces bytes). Supports `.text` and `.data` sections.
 - **Backend/** - Console debugger hosting the CPU. Reads JSON commands from stdin, writes JSON responses to stdout. Commands are discovered via `[Command]` attribute, split into `GlobalCommands/` (dump, breakpoint, status) and `StateCommands/` (load, run, step, pause, reset).
 - **LanguageServer/** - LSP server for `.csasm` files (diagnostics, hover, completion). Uses the OmniSharp LSP SDK (`OmniSharp.Extensions.LanguageServer`) over stdio. Reuses the Assembler pipeline directly — runs Lexer→Parser→Analyser on each document change and translates exceptions into LSP diagnostics.
