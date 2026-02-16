@@ -1,12 +1,13 @@
 using CPU.components;
 
-using OpcodeConstrutor = System.Func<CPU.components.State, CPU.components.Memory, CPU.components.Stack, CPU.opcodes.OpcodeArgs, CPU.opcodes.IOpcode>;
+using OpcodeConstrutor = System.Func<byte, CPU.components.State, CPU.components.Memory, CPU.components.Stack, CPU.opcodes.IOpcode>;
 
 namespace CPU.opcodes
 {
     /// <summary>
     /// Defines the number of register arguments an opcode has.
     /// </summary>
+    /// <remarks>DEPRECATED</remarks>
     internal enum RegisterArgsCount
     {
         Zero,
@@ -17,6 +18,7 @@ namespace CPU.opcodes
     /// <summary>
     /// Defines the type of operand an opcode uses.
     /// </summary>
+    /// <remarks>DEPRECATED</remarks>
     internal enum OperandType
     {
         None,
@@ -37,7 +39,9 @@ namespace CPU.opcodes
     {
         public OpcodeBaseCode BaseCode { get; } = baseCode;
         public OpcodeGroupBaseCode GroupCode { get; } = groupCode;
+        /// <remarks>DEPRECATED</remarks>
         public RegisterArgsCount RegisterArgsCount { get; } = registerArgsCount;
+        /// <remarks>DEPRECATED</remarks>
         public OperandType OperandType { get; } = operandType;
     }
 
@@ -55,6 +59,7 @@ namespace CPU.opcodes
     /// <summary>
     /// Result of the decode phase: contains the opcode, its metadata, and parsed arguments.
     /// </summary>
+    /// <remarks>DEPRECATED</remarks>
     internal record class DecodedInstruction(
         OpcodeMetadata Metadata,
         OpcodeArgs Args,

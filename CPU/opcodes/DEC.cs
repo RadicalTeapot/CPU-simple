@@ -1,16 +1,34 @@
 ﻿using CPU.components;
+using CPU.microcode;
 
 namespace CPU.opcodes
 {
     [Opcode(OpcodeBaseCode.DEC, OpcodeGroupBaseCode.SingleRegisterLogicOne, RegisterArgsCount.One, OperandType.None)]
-    internal class DEC(State cpuState, Memory memory, Stack stack, OpcodeArgs args) : IOpcode
+    internal class DEC : IOpcode
     {
-        public void Execute(ExecutionContext executionContext)
+        public DEC(byte instructionByte, State state, Memory memory, Stack stack)
         {
-            var registerValue = cpuState.GetRegister(args.LowRegisterIdx);
-            var newValue = (byte)(registerValue - 1);
-            cpuState.SetRegister(args.LowRegisterIdx, newValue);
-            cpuState.SetZeroFlag(newValue == 0);
+            _registerIdx = OpcodeHelpers.GetLowRegisterIdx(instructionByte);
+            _state = state;
+            _phases = [Phase1, () => MicroPhase.Done];
         }
+
+        public MicroPhase Tick(int phaseCount)
+        {
+            return _phases[phaseCount].Invoke();
+        }
+
+        private MicroPhase Phase1()
+        {
+            var registerValue = _state.GetRegister(_registerIdx);
+            var newValue = (byte)(registerValue - 1);
+            _state.SetRegister(_registerIdx, newValue);
+            _state.SetZeroFlag(newValue == 0);
+            return MicroPhase.AluOp;
+        }
+
+        private readonly byte _registerIdx;
+        private readonly State _state;
+        private readonly Func<MicroPhase>[] _phases;
     }
 }

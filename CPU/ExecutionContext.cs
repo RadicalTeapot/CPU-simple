@@ -1,5 +1,6 @@
 ﻿namespace CPU
 {
+    /// <remarks>DEPRECATED</remarks>
     public class ExecutionContext
     {
         public List<KeyValuePair<int, byte>> MemoryChanges { get; } = [];

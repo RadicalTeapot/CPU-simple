@@ -1,4 +1,6 @@
-﻿namespace CPU.opcodes
+﻿using CPU.microcode;
+
+namespace CPU.opcodes
 {
     public enum OpcodeBaseCode : byte
     {
@@ -52,6 +54,7 @@
         BTA = 0xEC,
     }
 
+    /// <remarks>DEPRECATED</remarks>
     internal struct OpcodeArgs()
     {
         /// <summary>
@@ -76,13 +79,18 @@
     /// </summary>
     /// <remarks>
     /// Opcodes should be decorated with <see cref="OpcodeAttribute"/> for auto-discovery.
-    /// The Execute method returns true if the opcode modified PC (jumps, calls, returns).
     /// </remarks>
     internal interface IOpcode
     {
         /// <summary>
-        /// Executes the opcode.
+        /// Executes a single micro-instruction phase of the opcode.
         /// </summary>
-        void Execute(ExecutionContext executionContext);
+        /// <param name="phaseCount">The current phase count.</param>
+        /// <returns>The micro-phase result.</returns>
+        /// <remarks>
+        /// This method should not be called directly. It is invoked by the CPU's instruction execution pipeline.
+        /// </remarks>
+        /// <exception cref="IndexOutOfRangeException">Thrown if the phase count is out of range for instruction.</exception>
+        MicroPhase Tick(int phaseCount);
     }
 }

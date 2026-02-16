@@ -1,4 +1,5 @@
 ﻿using CPU.components;
+using CPU.microcode;
 using CPU.opcodes;
 using System.Diagnostics;
 
@@ -19,6 +20,7 @@ namespace CPU
             _memory = memory;
             _cycle = 0;
             _opcodeFactory = new OpcodeFactory();
+            _tickHandler = new TickHandler(new TickHandlerConfig(_state, _memory, _stack, _opcodeFactory));
             _executionContext = new();
             _programLoaded = false;
         }
@@ -52,7 +54,7 @@ namespace CPU
             {
                 try
                 {
-                    Step();
+                    _tickHandler.Tick();
                 }
                 catch (OpcodeException.HaltException)
                 {
@@ -70,33 +72,35 @@ namespace CPU
         }
 
         /// <summary>
-        /// Executes a single instruction cycle: Fetch → Decode → Execute.
+        /// Executes a single instruction cycle, which may involve multiple micro-operations depending on the instruction's complexity.
         /// </summary>
         public void Step()
         {
-            _executionContext = new();
-            var instructionBytes = Fetch();
-            var opcodeInstance = Decode(instructionBytes);
-            opcodeInstance.Execute(_executionContext);
-
-            _cycle++;
+            try
+            {
+                var result = _tickHandler.Tick();
+                while (result.CurrentPhase != MicroPhase.Done)
+                {
+                    result = _tickHandler.Tick();
+                }
+            }
+            catch (OpcodeException.HaltException)
+            {
+                // Handle HALT exception gracefully
+                Console.WriteLine("Program halted.");
+                Dump();
+            }
+            catch
+            {
+                Dump();
+                throw;
+            }
         }
 
-        private byte[] Fetch()
-        {
-            var instruction = _memory.ReadByte(_state.GetPC());
-            var instructionSize = _opcodeFactory.GetInstructionSize(instruction);
-            var instructionBytes = _memory.ReadBytes(_state.GetPC(), instructionSize);
-            _state.IncrementPC(instructionSize); // Move to next instruction byte
-            return instructionBytes;
-        }
-
-        private IOpcode Decode(byte[] instructionBytes)
-        {
-            var decodedInstruction = _opcodeFactory.Decode(instructionBytes);
-            _executionContext.SetLastInstruction(decodedInstruction.AsStringArray());
-            return decodedInstruction.CreateOpcode(_state, _memory, _stack);
-        }
+        /// <summary>
+        /// Advances the timer or scheduler by one tick, triggering any actions scheduled for this interval.
+        /// </summary>
+        public void Tick() => _tickHandler.Tick();
 
         private void Dump()
         {
@@ -112,6 +116,8 @@ namespace CPU
         private readonly Memory _memory;
         private readonly OpcodeFactory _opcodeFactory;
         private int _cycle = 0;
+        private readonly TickHandler _tickHandler;
+        /// <remarks>DEPRECATED</remarks>
         private ExecutionContext _executionContext;
         private bool _programLoaded;
 #if x16
