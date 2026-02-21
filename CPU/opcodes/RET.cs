@@ -35,7 +35,7 @@ namespace CPU.opcodes
         {
             var returnAddressHigh = _stack.PopByte();
             var returnAddress = ByteConversionHelper.ToUShort(returnAddressHigh, _returnAddressLow);
-            _state.SetPCHigh(returnAddress);
+            _state.SetPC(returnAddress);
             return MicroPhase.Done;
         }
 

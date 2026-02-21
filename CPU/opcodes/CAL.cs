@@ -14,7 +14,7 @@ namespace CPU.opcodes
 #if x16
             SetPhases(MicroPhase.MemoryRead, Read1, Read2, Push1, Push2);
 #else
-            SetPhases(MicroPhase.MemoryRead, Read1, Push);
+            SetPhases(MicroPhase.MemoryRead, Read1, Push1);
 #endif
         }
 
@@ -41,21 +41,21 @@ namespace CPU.opcodes
         }
 #endif
 
-        private MicroPhase Push()
-        {
-            _stack.PushByte(_state.GetPC());
-            _state.SetPC(_address);
-            return MicroPhase.Done;
-        }
 
-#if x16
         private MicroPhase Push1()
         {
+#if x16
             var returnAddress = _state.GetPC();
             _stack.PushByte((byte)(returnAddress >> 8)); // high byte pushed first
             return MicroPhase.MemoryWrite;
+#else
+            _stack.PushByte(_state.GetPC());
+            _state.SetPC(_address);
+            return MicroPhase.Done;
+#endif
         }
 
+#if x16
         private MicroPhase Push2()
         {
             var returnAddress = _state.GetPC();

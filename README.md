@@ -150,6 +150,8 @@ I did review and tested the code but exercise caution when using it.
 ## To do (in no particular order)
 
 - [ ] Write a bank of small programs for 8 and 16 bit version
+- [ ] Re-implement the ExecutionContext behavior (using info from micro-ticks)
+- [ ] Add micro-code oriented tests
 - [ ] Implement CPU IDE ([inspiration for some UI](https://github.com/AfaanBilal/NanoCore/blob/master/assets/NanoCoreTUI.gif)) in Neovim
   - [x] Highlight memory address under cursor in memory panel (taking offsets into account)
   - [ ] When assembled, if sidebar was never opened, open the configured panels, otherwise just re-open sidebar
