@@ -97,6 +97,6 @@ namespace CPU.opcodes
         /// This method should not be called directly. It is invoked by the CPU's instruction execution pipeline.
         /// </remarks>
         /// <exception cref="IndexOutOfRangeException">Thrown if the phase count is out of range for instruction.</exception>
-        MicroPhase Tick(int phaseCount);
+        MicroPhase Tick(uint phaseCount);
     }
 }

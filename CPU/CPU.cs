@@ -52,7 +52,7 @@ namespace CPU
             {
                 try
                 {
-                    _tickHandler.Tick();
+                    _lastTickResult = _tickHandler.Tick();
                 }
                 catch (OpcodeException.HaltException)
                 {
@@ -75,17 +75,17 @@ namespace CPU
         /// <throws>OpcodeException.HaltException when a HALT instruction is executed.</throws>
         public void Step()
         {
-            var result = _tickHandler.Tick();
-            while (!result.IsInstructionComplete)
+            _lastTickResult = _tickHandler.Tick();
+            while (!_lastTickResult.IsInstructionComplete)
             {
-                result = _tickHandler.Tick();
+                _lastTickResult = _tickHandler.Tick();
             }
         }
 
         /// <summary>
         /// Advances the timer or scheduler by one tick, triggering any actions scheduled for this interval.
         /// </summary>
-        public void Tick() => _tickHandler.Tick();
+        public void Tick() => _lastTickResult = _tickHandler.Tick();
 
         private void Dump()
         {
@@ -96,13 +96,14 @@ namespace CPU
             Console.WriteLine("======================");
         }
 
+        private int _cycle;
+        private bool _programLoaded;
+        private MicrocodeTickResult _lastTickResult;
         private readonly State _state;
         private readonly Stack _stack;
         private readonly Memory _memory;
         private readonly OpcodeFactory _opcodeFactory;
-        private int _cycle = 0;
         private readonly TickHandler _tickHandler;
-        private bool _programLoaded;
 #if x16
         public const int AddressSize = 2;
 #else

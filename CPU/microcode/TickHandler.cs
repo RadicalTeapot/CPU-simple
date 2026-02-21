@@ -85,7 +85,7 @@ namespace CPU.microcode
         }
 
         private MicroPhase _currentPhase = MicroPhase.FetchOp;
-        private int _phaseCount = 0;
+        private uint _phaseCount = 0;
         private ulong _tickCounter = 0;
         private bool _pendingInterrupt = false;
         private OpcodeBaseCode _currentBaseCode = OpcodeBaseCode.NOP;

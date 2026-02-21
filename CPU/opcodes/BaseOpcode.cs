@@ -18,7 +18,7 @@ namespace CPU.opcodes
 
         public MicroPhase GetStartPhaseType() => _startPhaseType;
 
-        public MicroPhase Tick(int phaseCount)
+        public MicroPhase Tick(uint phaseCount)
         {
             return _phases[phaseCount].Invoke();
         }

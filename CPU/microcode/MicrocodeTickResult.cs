@@ -4,7 +4,7 @@ namespace CPU.microcode
     internal record MicrocodeTickResult(
         ulong TickCount,
         MicroPhase NextPhase,
-        int PhaseCount,
+        uint PhaseCount,
         OpcodeBaseCode CurrentOpcode,
         bool IsInstructionComplete = false
     ) { }

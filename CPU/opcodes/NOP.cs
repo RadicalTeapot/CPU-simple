@@ -8,6 +8,6 @@ namespace CPU.opcodes
     {
         public MicroPhase GetStartPhaseType() => MicroPhase.Done;
 
-        public MicroPhase Tick(int phaseCount) => MicroPhase.Done;
+        public MicroPhase Tick(uint phaseCount) => MicroPhase.Done;
     }
 }

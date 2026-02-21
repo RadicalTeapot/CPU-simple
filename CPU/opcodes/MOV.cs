@@ -15,7 +15,7 @@ namespace CPU.opcodes
 
         public MicroPhase GetStartPhaseType() => MicroPhase.Done;
 
-        public MicroPhase Tick(int phaseCount)
+        public MicroPhase Tick(uint phaseCount)
         {
             var value = _state.GetRegister(_sourceRegisterIdx);
             _state.SetRegister(_destinationRegisterIdx, value);
