@@ -9,8 +9,8 @@ namespace CPU.opcodes
         public LSH(byte instructionByte, State state, Memory memory, Stack stack)
         {
             _state = state;
-            _registerIdx = OpcodeHelpers.GetLowRegisterIdx(instructionByte);
-            SetPhases(AluOp);
+            _registerIdx = OpcodeHelpers.GetDestinationRegisterIdx(instructionByte);
+            SetPhases(MicroPhase.AluOp, AluOp);
         }
 
         public MicroPhase AluOp()

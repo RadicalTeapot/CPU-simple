@@ -10,15 +10,15 @@ namespace CPU.opcodes
         {
             _state = state;
             _memory = memory;
-            _registerIdx = OpcodeHelpers.GetLowRegisterIdx(instructionByte);
-            SetPhases(ReadImmediateValue, AluOp, Done);
+            _registerIdx = OpcodeHelpers.GetDestinationRegisterIdx(instructionByte);
+            SetPhases(MicroPhase.MemoryRead, ReadImmediateValue, AluOp);
         }
 
         private MicroPhase ReadImmediateValue()
         {
             _immediateValue = _memory.ReadByte(_state.GetPC());
             _state.IncrementPC();
-            return MicroPhase.MemoryRead;
+            return MicroPhase.AluOp;
         }
 
         private MicroPhase AluOp()
@@ -28,10 +28,8 @@ namespace CPU.opcodes
             _state.SetRegister(_registerIdx, (byte)result); // Wrap around on underflow
             _state.SetCarryFlag(result >= 0); // No borrow carry
             _state.SetZeroFlag(result == 0);
-            return MicroPhase.AluOp;
+            return MicroPhase.Done;
         }
-
-        private MicroPhase Done() => MicroPhase.Done;
 
         private byte _immediateValue;
         private readonly byte _registerIdx;

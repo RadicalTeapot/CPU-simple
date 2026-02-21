@@ -10,35 +10,37 @@ namespace CPU.opcodes
         {
             _state = state;
             _memory = memory;
-            _registerIdx = OpcodeHelpers.GetLowRegisterIdx(instructionByte);
-            _indirectRegisterIdx = OpcodeHelpers.GetHighRegisterIdx(instructionByte);
-            SetPhases(ReadImmediate, AluOp, GetMemoryValue);
+            _registerIdx = OpcodeHelpers.GetDestinationRegisterIdx(instructionByte);
+            SetPhases(MicroPhase.MemoryRead, ReadOffsetAndImmediate, AluOp, GetMemoryValue);
         }
 
-        private MicroPhase ReadImmediate()
+        private MicroPhase ReadOffsetAndImmediate()
         {
-            _immediateValue = _memory.ReadByte(_state.GetPC());
+            var value = _memory.ReadByte(_state.GetPC());
             _state.IncrementPC();
-            return MicroPhase.MemoryRead;
+            _indirectRegisterIdx = (byte)(value & 0b11);
+            _immediateValue = (byte)(value >> 2);
+            return MicroPhase.AluOp;
         }
 
         private MicroPhase AluOp()
         {
-            _effectiveAddress = (byte)(_state.GetRegister(_indirectRegisterIdx) + _immediateValue);
-            return MicroPhase.AluOp;
+            var offset = _state.GetRegister(_indirectRegisterIdx);
+            _effectiveAddress = (byte)(offset + _immediateValue);
+            return MicroPhase.MemoryRead;
         }
 
         private MicroPhase GetMemoryValue()
         {
             var value = _memory.ReadByte(_effectiveAddress);
             _state.SetRegister(_registerIdx, value);
-            return MicroPhase.MemoryRead;
+            return MicroPhase.Done;
         }
 
         private byte _immediateValue;
         private byte _effectiveAddress;
+        private byte _indirectRegisterIdx;
         private readonly byte _registerIdx;
-        private readonly byte _indirectRegisterIdx;
         private readonly State _state;
         private readonly Memory _memory;
     }

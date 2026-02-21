@@ -10,35 +10,36 @@ namespace CPU.opcodes
         {
             _state = state;
             _memory = memory;
-            _registerIdx = OpcodeHelpers.GetLowRegisterIdx(instructionByte);
-            _indirectRegisterIdx = OpcodeHelpers.GetHighRegisterIdx(instructionByte);
-            SetPhases(ReadImmediate, AluOp, Write);
+            _registerIdx = OpcodeHelpers.GetDestinationRegisterIdx(instructionByte);
+            SetPhases(MicroPhase.MemoryRead, ReadRegisterAndImmediate, AluOp, Write);
         }
 
-        private MicroPhase ReadImmediate()
+        private MicroPhase ReadRegisterAndImmediate()
         {
-            _immediateValue = _memory.ReadByte(_state.GetPC());
+            var value = _memory.ReadByte(_state.GetPC());
             _state.IncrementPC();
-            return MicroPhase.MemoryRead;
+            _indirectRegisterIdx = (byte)(value & 0b11);
+            _immediateValue = (byte)(value >> 2);
+            return MicroPhase.AluOp;
         }
 
         private MicroPhase AluOp()
         {
             _effectiveAddress = (byte)(_state.GetRegister(_indirectRegisterIdx) + _immediateValue);
-            return MicroPhase.AluOp;
+            return MicroPhase.MemoryWrite;
         }
 
         private MicroPhase Write()
         {
             var value = _state.GetRegister(_registerIdx);
             _memory.WriteByte(_effectiveAddress, value);
-            return MicroPhase.MemoryWrite;
+            return MicroPhase.Done;
         }
 
         private byte _immediateValue;
         private byte _effectiveAddress;
+        private byte _indirectRegisterIdx;
         private readonly byte _registerIdx;
-        private readonly byte _indirectRegisterIdx;
         private readonly State _state;
         private readonly Memory _memory;
     }

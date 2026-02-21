@@ -9,24 +9,24 @@ namespace CPU.opcodes
         public SUB(byte instructionByte, State state, Memory memory, Stack stack)
         {
             _state = state;
-            _highRegisterIdx = OpcodeHelpers.GetHighRegisterIdx(instructionByte);
-            _lowRegisterIdx = OpcodeHelpers.GetLowRegisterIdx(instructionByte);
-            SetPhases(AluOp);
+            _sourceRegisterIdx = OpcodeHelpers.GetSourceRegisterIdx(instructionByte);
+            _destinationRegisterIdx = OpcodeHelpers.GetDestinationRegisterIdx(instructionByte);
+            SetPhases(MicroPhase.AluOp, AluOp);
         }
 
         public MicroPhase AluOp()
         {
-            var firstValue = _state.GetRegister(_highRegisterIdx);
-            var secondValue = _state.GetRegister(_lowRegisterIdx);
+            var firstValue = _state.GetRegister(_sourceRegisterIdx);
+            var secondValue = _state.GetRegister(_destinationRegisterIdx);
             var result = secondValue - firstValue - (1 - _state.GetCarryFlagAsInt());
-            _state.SetRegister(_lowRegisterIdx, (byte)result); // Wrap around on underflow
+            _state.SetRegister(_destinationRegisterIdx, (byte)result); // Wrap around on underflow
             _state.SetCarryFlag(result >= 0); // No borrow carry
             _state.SetZeroFlag(result == 0);
-            return MicroPhase.AluOp;
+            return MicroPhase.Done;
         }
 
-        private readonly byte _highRegisterIdx;
-        private readonly byte _lowRegisterIdx;
+        private readonly byte _sourceRegisterIdx;
+        private readonly byte _destinationRegisterIdx;
         private readonly State _state;
     }
 }

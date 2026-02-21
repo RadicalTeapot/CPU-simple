@@ -10,11 +10,11 @@ namespace CPU.opcodes
         {
             _state = state;
             _memory = memory;
-            _registerIdx = OpcodeHelpers.GetLowRegisterIdx(instructionByte);
+            _registerIdx = OpcodeHelpers.GetDestinationRegisterIdx(instructionByte);
 #if x16
-            SetPhases(Read1, Read2, GetMemoryValue, AluOp);
+            SetPhases(MicroPhase.MemoryRead, Read1, Read2, GetMemoryValue, AluOp);
 #else
-            SetPhases(Read1, GetMemoryValue, AluOp);
+            SetPhases(MicroPhase.MemoryRead, Read1, GetMemoryValue, AluOp);
 #endif
         }
 
@@ -42,7 +42,7 @@ namespace CPU.opcodes
         private MicroPhase GetMemoryValue()
         {
             _addressValue = _memory.ReadByte(_effectiveAddress);
-            return MicroPhase.MemoryRead;
+            return MicroPhase.AluOp;
         }
 
         private MicroPhase AluOp()
@@ -52,7 +52,7 @@ namespace CPU.opcodes
             _state.SetRegister(_registerIdx, (byte)result); // Wrap around on overflow
             _state.SetCarryFlag(result > 0xFF);
             _state.SetZeroFlag(result == 0);
-            return MicroPhase.AluOp;
+            return MicroPhase.Done;
         }
 
 #if x16

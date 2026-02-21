@@ -9,22 +9,22 @@ namespace CPU.opcodes
         public CMP(byte instructionByte, State state, Memory memory, Stack stack)
         {
             _state = state;
-            _highRegisterIdx = OpcodeHelpers.GetHighRegisterIdx(instructionByte);
-            _lowRegisterIdx = OpcodeHelpers.GetLowRegisterIdx(instructionByte);
-            SetPhases(AluOp);
+            _sourceRegisterIdx = OpcodeHelpers.GetSourceRegisterIdx(instructionByte);
+            _destinationRegisterIdx = OpcodeHelpers.GetDestinationRegisterIdx(instructionByte);
+            SetPhases(MicroPhase.AluOp, AluOp);
         }
 
         public MicroPhase AluOp()
         {
-            var source = _state.GetRegister(_highRegisterIdx);
-            var destination = _state.GetRegister(_lowRegisterIdx);
+            var source = _state.GetRegister(_sourceRegisterIdx);
+            var destination = _state.GetRegister(_destinationRegisterIdx);
             _state.SetZeroFlag(destination == source);
             _state.SetCarryFlag(destination >= source); // Similar to SUB (no borrow), but without actual subtraction
-            return MicroPhase.AluOp;
+            return MicroPhase.Done;
         }
 
-        private readonly byte _highRegisterIdx;
-        private readonly byte _lowRegisterIdx;
+        private readonly byte _sourceRegisterIdx;
+        private readonly byte _destinationRegisterIdx;
         private readonly State _state;
     }
 }

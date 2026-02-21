@@ -10,9 +10,9 @@ namespace CPU.opcodes
         public ADD(byte instructionByte, State state, Memory memory, Stack stack)
         {
             _state = state;
-            _sourceRegisterIdx = OpcodeHelpers.GetLowRegisterIdx(instructionByte);
-            _destinationRegisterIdx = OpcodeHelpers.GetHighRegisterIdx(instructionByte);
-            SetPhases(AluOp);
+            _sourceRegisterIdx = OpcodeHelpers.GetSourceRegisterIdx(instructionByte);
+            _destinationRegisterIdx = OpcodeHelpers.GetDestinationRegisterIdx(instructionByte);
+            SetPhases(MicroPhase.AluOp, AluOp);
         }
 
         public MicroPhase AluOp()
@@ -23,8 +23,7 @@ namespace CPU.opcodes
             _state.SetRegister(_destinationRegisterIdx, (byte)result); // Wrap around on overflow
             _state.SetCarryFlag(result > 0xFF);
             _state.SetZeroFlag(result == 0);
-            return MicroPhase.AluOp;
-
+            return MicroPhase.Done;
         }
 
         private readonly byte _sourceRegisterIdx;

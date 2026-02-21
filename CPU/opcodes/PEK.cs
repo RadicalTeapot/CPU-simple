@@ -10,15 +10,15 @@ namespace CPU.opcodes
         {
             _state = state;
             _stack = stack;
-            _registerIdx = OpcodeHelpers.GetLowRegisterIdx(instructionByte);
-            SetPhases(Peek);
+            _registerIdx = OpcodeHelpers.GetDestinationRegisterIdx(instructionByte);
+            SetPhases(MicroPhase.MemoryRead, Peek);
         }
 
         private MicroPhase Peek()
         {
             var value = _stack.PeekByte();
             _state.SetRegister(_registerIdx, value);
-            return MicroPhase.MemoryRead;
+            return MicroPhase.Done;
         }
 
         private readonly byte _registerIdx;

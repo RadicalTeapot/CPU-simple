@@ -9,9 +9,11 @@ namespace CPU.opcodes
         public MOV(byte instructionByte, State state, Memory memory, Stack stack)
         {
             _state = state;
-            _sourceRegisterIdx = OpcodeHelpers.GetLowRegisterIdx(instructionByte);
-            _destinationRegisterIdx = OpcodeHelpers.GetHighRegisterIdx(instructionByte);
+            _sourceRegisterIdx = OpcodeHelpers.GetSourceRegisterIdx(instructionByte);
+            _destinationRegisterIdx = OpcodeHelpers.GetDestinationRegisterIdx(instructionByte);
         }
+
+        public MicroPhase GetStartPhaseType() => MicroPhase.Done;
 
         public MicroPhase Tick(int phaseCount)
         {

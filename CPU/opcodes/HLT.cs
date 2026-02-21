@@ -6,6 +6,8 @@ namespace CPU.opcodes
     [Opcode(OpcodeBaseCode.HLT, OpcodeGroupBaseCode.SystemAndJump)]
     internal class HLT(byte instructionByte, State state, Memory memory, Stack stack) : IOpcode
     {
+        public MicroPhase GetStartPhaseType() => MicroPhase.Done;
+
         public MicroPhase Tick(int phaseCount)
         {
             throw new OpcodeException.HaltException();

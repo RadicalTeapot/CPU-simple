@@ -8,9 +8,9 @@ namespace CPU.opcodes
     {
         public INC(byte instructionByte, State state, Memory memory, Stack stack)
         {
-            _registerIdx = OpcodeHelpers.GetLowRegisterIdx(instructionByte);
+            _registerIdx = OpcodeHelpers.GetDestinationRegisterIdx(instructionByte);
             _state = state;
-            SetPhases(AluOp);
+            SetPhases(MicroPhase.AluOp, AluOp);
         }
 
         private MicroPhase AluOp()
@@ -19,7 +19,7 @@ namespace CPU.opcodes
             var newValue = (byte)(registerValue + 1); // Wrap around on overflow
             _state.SetRegister(_registerIdx, newValue);
             _state.SetZeroFlag(newValue == 0);
-            return MicroPhase.AluOp;
+            return MicroPhase.Done;
         }
 
         private readonly byte _registerIdx;

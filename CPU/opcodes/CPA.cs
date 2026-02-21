@@ -10,11 +10,11 @@ namespace CPU.opcodes
         {
             _state = state;
             _memory = memory;
-            _registerIdx = OpcodeHelpers.GetLowRegisterIdx(instructionByte);
+            _registerIdx = OpcodeHelpers.GetDestinationRegisterIdx(instructionByte);
 #if x16
-            SetPhases(Read1, Read2, GetMemoryValue, AluOp);
+            SetPhases(MicroPhase.MemoryRead, Read1, Read2, GetMemoryValue, AluOp);
 #else
-            SetPhases(Read1, GetMemoryValue, AluOp);
+            SetPhases(MicroPhase.MemoryRead, Read1, GetMemoryValue, AluOp);
 #endif
         }
 
@@ -35,14 +35,14 @@ namespace CPU.opcodes
             var addressHigh = _memory.ReadByte(_state.GetPC());
             _effectiveAddress = ByteConversionHelper.ToUShort(addressHigh, _addressLow);
             _state.IncrementPC();
-            return MicroPhase.MemoryByteRead;
+            return MicroPhase.MemoryRead;
         }
 #endif
 
         private MicroPhase GetMemoryValue()
         {
             _addressValue = _memory.ReadByte(_effectiveAddress);
-            return MicroPhase.MemoryRead;
+            return MicroPhase.AluOp;
         }
 
         private MicroPhase AluOp()
@@ -50,7 +50,7 @@ namespace CPU.opcodes
             var currentValue = _state.GetRegister(_registerIdx);
             _state.SetCarryFlag(currentValue >= _addressValue); // Similar to SUB (no borrow), but without actual subtraction
             _state.SetZeroFlag(currentValue == _addressValue);
-            return MicroPhase.AluOp;
+            return MicroPhase.Done;
         }
 
 #if x16

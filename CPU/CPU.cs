@@ -72,26 +72,13 @@ namespace CPU
         /// <summary>
         /// Executes a single instruction cycle, which may involve multiple micro-operations depending on the instruction's complexity.
         /// </summary>
+        /// <throws>OpcodeException.HaltException when a HALT instruction is executed.</throws>
         public void Step()
         {
-            try
+            var result = _tickHandler.Tick();
+            while (!result.IsInstructionComplete)
             {
-                var result = _tickHandler.Tick();
-                while (!result.IsInstructionComplete)
-                {
-                    result = _tickHandler.Tick();
-                }
-            }
-            catch (OpcodeException.HaltException)
-            {
-                // Handle HALT exception gracefully
-                Console.WriteLine("Program halted.");
-                Dump();
-            }
-            catch
-            {
-                Dump();
-                throw;
+                result = _tickHandler.Tick();
             }
         }
 

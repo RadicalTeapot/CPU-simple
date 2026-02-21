@@ -11,9 +11,9 @@ namespace CPU.opcodes
             _state = state;
             _stack = stack;
 #if x16
-            SetPhases(Read1, Read2);
+            SetPhases(MicroPhase.MemoryRead, Read1, Read2);
 #else
-            SetPhases(Read1);
+            SetPhases(MicroPhase.MemoryRead, Read1);
 #endif
         }
 
@@ -22,11 +22,12 @@ namespace CPU.opcodes
 #if x16
             _returnAddressLow = _stack.PopByte();
             _state.IncrementPC();
-#else
-            var returnAddress = _stack.PopByte(); 
-            _state.SetPC(returnAddress);
-#endif
             return MicroPhase.MemoryRead;
+#else
+            var returnAddress = _stack.PopByte();
+            _state.SetPC(returnAddress);
+            return MicroPhase.Done;
+#endif
         }
 
 #if x16
@@ -35,7 +36,7 @@ namespace CPU.opcodes
             var returnAddressHigh = _stack.PopByte();
             var returnAddress = ByteConversionHelper.ToUShort(returnAddressHigh, _returnAddressLow);
             _state.SetPCHigh(returnAddress);
-            return MicroPhase.MemoryRead;
+            return MicroPhase.Done;
         }
 
         private byte _returnAddressLow;

@@ -10,8 +10,8 @@ namespace CPU.opcodes
         {
             _state = state;
             _memory = memory;
-            _registerIdx = OpcodeHelpers.GetLowRegisterIdx(instructionByte);
-            SetPhases(ReadImmediateValue);
+            _registerIdx = OpcodeHelpers.GetDestinationRegisterIdx(instructionByte);
+            SetPhases(MicroPhase.MemoryRead, ReadImmediateValue);
         }
 
         private MicroPhase ReadImmediateValue()
@@ -19,7 +19,7 @@ namespace CPU.opcodes
             var value = _memory.ReadByte(_state.GetPC());
             _state.IncrementPC();
             _state.SetRegister(_registerIdx, value);
-            return MicroPhase.FetchOp;
+            return MicroPhase.Done;
         }
 
         private readonly byte _registerIdx;

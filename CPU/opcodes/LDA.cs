@@ -10,12 +10,12 @@ namespace CPU.opcodes
         {
             _state = state;
             _memory = memory;
-            _registerIdx = OpcodeHelpers.GetLowRegisterIdx(instructionByte);
+            _registerIdx = OpcodeHelpers.GetDestinationRegisterIdx(instructionByte);
 
 #if x16
-            SetPhases(Read1, Read2, GetMemoryValue);
+            SetPhases(MicroPhase.MemoryRead, Read1, Read2, GetMemoryValue);
 #else
-            SetPhases(Read1, GetMemoryValue);
+            SetPhases(MicroPhase.MemoryRead, Read1, GetMemoryValue);
 #endif
         }
 
@@ -44,7 +44,7 @@ namespace CPU.opcodes
         {
             _addressValue = _memory.ReadByte(_effectiveAddress);
             _state.SetRegister(_registerIdx, _addressValue);
-            return MicroPhase.MemoryRead;
+            return MicroPhase.Done;
         }
 
         //public void Tick(ExecutionContext executionContext)

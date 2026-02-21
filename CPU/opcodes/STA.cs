@@ -10,11 +10,11 @@ namespace CPU.opcodes
         {
             _state = state;
             _memory = memory;
-            _registerIdx = OpcodeHelpers.GetLowRegisterIdx(instructionByte);
+            _registerIdx = OpcodeHelpers.GetDestinationRegisterIdx(instructionByte);
 #if x16
-            SetPhases(Read1, Read2, Write);
+            SetPhases(MicroPhase.MemoryRead, Read1, Read2, Write);
 #else
-            SetPhases(Read1, Write);
+            SetPhases(MicroPhase.MemoryRead, Read1, Write);
 #endif
         }
 
@@ -22,11 +22,13 @@ namespace CPU.opcodes
         {
 #if x16
             _addressLow = _memory.ReadByte(_state.GetPC());
-#else
-            _effectiveAddress = _memory.ReadByte(_state.GetPC());
-#endif
             _state.IncrementPC();
             return MicroPhase.MemoryRead;
+#else
+            _effectiveAddress = _memory.ReadByte(_state.GetPC());
+            _state.IncrementPC();
+            return MicroPhase.MemoryWrite;
+#endif
         }
 
 #if x16
@@ -35,14 +37,14 @@ namespace CPU.opcodes
             var addressHigh = _memory.ReadByte(_state.GetPC());
             _effectiveAddress = ByteConversionHelper.ToUShort(addressHigh, _addressLow);
             _state.IncrementPC();
-            return MicroPhase.MemoryRead;
+            return MicroPhase.MemoryWrite;
         }
 #endif
 
         private MicroPhase Write()
         {
             _memory.WriteByte(_effectiveAddress, _state.GetRegister(_registerIdx));
-            return MicroPhase.MemoryWrite;
+            return MicroPhase.Done;
         }
 
 #if x16

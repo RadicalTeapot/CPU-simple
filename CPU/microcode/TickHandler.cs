@@ -1,4 +1,4 @@
-﻿using CPU.components;
+using CPU.components;
 using CPU.opcodes;
 using System.Diagnostics;
 
@@ -22,17 +22,39 @@ namespace CPU.microcode
         {
             _tickCounter++;
             var isInstructionComplete = false;
-            if (_currentOpcode != null)
-            {
-                TickCurrentInstruction();
-                isInstructionComplete = _currentPhase == MicroPhase.Done;
-            }
 
-            // If the current phase is Done, it means the instruction has completed its execution and we need to fetch the next instruction.
-            // Note: When testing, this means that a bunch of NOPs should keep the _currentPhase at FetchOp8
-            if (_currentPhase == MicroPhase.Done)
+            if (_currentPhase == MicroPhase.FetchOp)
             {
                 FetchCurrentInstruction();
+
+                var nextPhaseType = _currentOpcode!.GetStartPhaseType();
+                if (nextPhaseType == MicroPhase.Done)
+                {
+                    // Zero-execute-tick instruction (NOP, MOV, CLC, etc.)
+                    _currentOpcode.Tick(0);
+                    isInstructionComplete = true;
+                    _currentPhase = MicroPhase.FetchOp;
+                }
+                else
+                {
+                    _currentPhase = nextPhaseType;
+                }
+            }
+            else
+            {
+                Debug.Assert(_currentOpcode != null, "Current opcode should not be null when executing a phase.");
+                var nextPhase = _currentOpcode.Tick(_phaseCount);
+                _phaseCount++;
+
+                if (nextPhase == MicroPhase.Done)
+                {
+                    isInstructionComplete = true;
+                    _currentPhase = MicroPhase.FetchOp;
+                }
+                else
+                {
+                    _currentPhase = nextPhase;
+                }
             }
 
             return new MicrocodeTickResult(_tickCounter, _currentPhase, _phaseCount, _currentBaseCode, isInstructionComplete);
@@ -46,13 +68,12 @@ namespace CPU.microcode
                 return;
             }
 
-            _currentPhase = MicroPhase.FetchOp;
             _phaseCount = 0;
 
             var instruction = _memory.ReadByte(_state.GetPC());
             _currentBaseCode = _opcodeFactory.GetOpcodeBaseCodeFromInstruction(instruction);
             _currentOpcode = _opcodeFactory.CreateOpcode(instruction, _state, _memory, _stack);
-            
+
             _state.IncrementPC();
         }
 
@@ -63,14 +84,7 @@ namespace CPU.microcode
             // Implementation of jumping to the interrupt handler would go here.
         }
 
-        private void TickCurrentInstruction()
-        {
-            Debug.Assert(_currentOpcode != null, "Current opcode should not be null when ticking an instruction.");
-            _currentPhase = _currentOpcode.Tick(_phaseCount);
-            _phaseCount++;
-        }
-
-        private MicroPhase _currentPhase = MicroPhase.Done;
+        private MicroPhase _currentPhase = MicroPhase.FetchOp;
         private int _phaseCount = 0;
         private ulong _tickCounter = 0;
         private bool _pendingInterrupt = false;

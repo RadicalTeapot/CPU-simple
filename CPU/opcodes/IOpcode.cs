@@ -83,10 +83,16 @@ namespace CPU.opcodes
     internal interface IOpcode
     {
         /// <summary>
+        /// Returns the micro-phase type of the first execute phase, or <see cref="MicroPhase.Done"/>
+        /// if the opcode has no execute phases (zero-execute-tick instruction).
+        /// </summary>
+        MicroPhase GetStartPhaseType();
+
+        /// <summary>
         /// Executes a single micro-instruction phase of the opcode.
         /// </summary>
         /// <param name="phaseCount">The current phase count.</param>
-        /// <returns>The micro-phase result.</returns>
+        /// <returns>The micro-phase type of the next phase, or <see cref="MicroPhase.Done"/> if the instruction is complete.</returns>
         /// <remarks>
         /// This method should not be called directly. It is invoked by the CPU's instruction execution pipeline.
         /// </remarks>
