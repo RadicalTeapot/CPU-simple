@@ -9,10 +9,10 @@
 
         public static byte GetHighRegisterIdx(byte instructionByte)
         {
-            return (byte)((instructionByte & HIGH_REGISTER_MASK) >> 3);
+            return (byte)((instructionByte & HIGH_REGISTER_MASK) >> 2);
         }
 
-        private const byte LOW_REGISTER_MASK = 0b111;
-        private const byte HIGH_REGISTER_MASK = 0b111000;
+        private const byte LOW_REGISTER_MASK = 0b11;
+        private const byte HIGH_REGISTER_MASK = 0b1100;
     }
 }

@@ -1,16 +1,52 @@
-﻿using CPU.components;
+using CPU.components;
+using CPU.microcode;
 
 namespace CPU.opcodes
 {
-    [Opcode(OpcodeBaseCode.JCS, OpcodeGroupBaseCode.SystemAndJump, RegisterArgsCount.Zero, OperandType.Address)]
-    internal class JCS(State cpuState, Memory memory, Stack stack, OpcodeArgs args) : IOpcode
+    [Opcode(OpcodeBaseCode.JCS, OpcodeGroupBaseCode.SystemAndJump)]
+    internal class JCS : BaseOpcode
     {
-        public void Execute(ExecutionContext executionContext)
+        public JCS(byte instructionByte, State state, Memory memory, Stack stack)
         {
-            if (cpuState.C)
-            {
-                cpuState.SetPC(args.AddressValue);
-            }
+            _state = state;
+            _memory = memory;
+#if x16
+            SetPhases(Read1, Read2);
+#else
+            SetPhases(Read1);
+#endif
         }
+
+        private MicroPhase Read1()
+        {
+#if x16
+            _addressLow = _memory.ReadByte(_state.GetPC());
+            _state.IncrementPC();
+            return MicroPhase.MemoryByteRead;
+#else
+            var address = _memory.ReadByte(_state.GetPC());
+            _state.IncrementPC();
+            if (_state.C)
+                _state.SetPC(address);
+            return MicroPhase.Done;
+#endif
+        }
+
+#if x16
+        private MicroPhase Read2()
+        {
+            var addressHigh = _memory.ReadByte(_state.GetPC());
+            var address = ByteConversionHelper.ToUShort(addressHigh, _addressLow);
+            _state.IncrementPC();
+            if (_state.C)
+                _state.SetPC(address);
+            return MicroPhase.Done;
+        }
+
+        private byte _addressLow;
+#endif
+
+        private readonly State _state;
+        private readonly Memory _memory;
     }
 }

@@ -69,9 +69,7 @@ namespace CPU.opcodes
                 var metadata = new OpcodeMetadata(
                     (instructionByte, state, memory, stack) => (IOpcode)constructor.Invoke([instructionByte, state, memory, stack]),
                     attribute.BaseCode,
-                    attribute.GroupCode,
-                    attribute.RegisterArgsCount,
-                    attribute.OperandType);
+                    attribute.GroupCode);
 
                 opcodeMetadataCache[attribute.BaseCode] = metadata;
             }

@@ -33,16 +33,10 @@ namespace CPU.opcodes
     [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
     internal sealed class OpcodeAttribute(
         OpcodeBaseCode baseCode,
-        OpcodeGroupBaseCode groupCode,
-        RegisterArgsCount registerArgsCount,
-        OperandType operandType) : Attribute
+        OpcodeGroupBaseCode groupCode) : Attribute
     {
         public OpcodeBaseCode BaseCode { get; } = baseCode;
         public OpcodeGroupBaseCode GroupCode { get; } = groupCode;
-        /// <remarks>DEPRECATED</remarks>
-        public RegisterArgsCount RegisterArgsCount { get; } = registerArgsCount;
-        /// <remarks>DEPRECATED</remarks>
-        public OperandType OperandType { get; } = operandType;
     }
 
     /// <summary>
@@ -51,51 +45,6 @@ namespace CPU.opcodes
     internal record class OpcodeMetadata(
         OpcodeConstrutor Constructor,
         OpcodeBaseCode BaseCode,
-        OpcodeGroupBaseCode GroupCode,
-        RegisterArgsCount RegisterArgsCount,
-        OperandType OperandType)
+        OpcodeGroupBaseCode GroupCode)
     { }
-
-    /// <summary>
-    /// Result of the decode phase: contains the opcode, its metadata, and parsed arguments.
-    /// </summary>
-    /// <remarks>DEPRECATED</remarks>
-    internal record class DecodedInstruction(
-        OpcodeMetadata Metadata,
-        OpcodeArgs Args,
-        byte RawInstruction)
-    {
-        public IOpcode CreateOpcode(State cpuState, Memory memory, Stack stack)
-            => Metadata.Constructor(cpuState, memory, stack, Args);
-
-        public string[] AsStringArray()
-        {
-            var parts = new List<string> { Metadata.BaseCode.ToString() };
-
-            if (Metadata.RegisterArgsCount == RegisterArgsCount.Two)
-            {
-                parts.Add($"R{Args.LowRegisterIdx}");
-                parts.Add($"R{Args.HighRegisterIdx}");
-            }
-            else if (Metadata.RegisterArgsCount == RegisterArgsCount.One)
-            {
-                parts.Add($"R{Args.LowRegisterIdx}");
-            }
-
-            if (Metadata.OperandType == OperandType.Address)
-            {
-                parts.Add($"[{Args.AddressValue:X2}]");
-            }
-            else if (Metadata.OperandType == OperandType.Immediate)
-            {
-                parts.Add($"#0x{Args.ImmediateValue:X2}");
-            }
-            else if (Metadata.OperandType == OperandType.RegAndImmediate)
-            {
-                parts.Add($"[R{Args.IndirectRegisterIdx}+#0x{Args.ImmediateValue:X2}]");
-            }
-
-            return [.. parts];
-        }
-    }
 }

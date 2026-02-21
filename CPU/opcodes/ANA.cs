@@ -1,17 +1,68 @@
 ﻿using CPU.components;
+using CPU.microcode;
 
 namespace CPU.opcodes
 {
-    [Opcode(OpcodeBaseCode.ANA, OpcodeGroupBaseCode.SingleRegisterLogicOne, RegisterArgsCount.One, OperandType.Address)]
-    internal class ANA(State cpuState, Memory memory, Stack stack, OpcodeArgs args) : IOpcode
+    [Opcode(OpcodeBaseCode.ANA, OpcodeGroupBaseCode.SingleRegisterLogicOne)]
+    internal class ANA : BaseOpcode
     {
-        public void Execute(ExecutionContext executionContext)
+        public ANA(byte instructionByte, State state, Memory memory, Stack stack)
         {
-            var currentValue = cpuState.GetRegister(args.LowRegisterIdx);
-            var valueAtAddress = memory.ReadByte(args.AddressValue);
-            var value = (byte)(currentValue & valueAtAddress);
-            cpuState.SetRegister(args.LowRegisterIdx, value);
-            cpuState.SetZeroFlag(value == 0);
+            _state = state;
+            _memory = memory;
+            _registerIdx = OpcodeHelpers.GetLowRegisterIdx(instructionByte);
+#if x16
+            SetPhases(Read1, Read2, GetMemoryValue, AluOp);
+#else
+            SetPhases(Read1, GetMemoryValue, AluOp);
+#endif
         }
+
+        private MicroPhase Read1()
+        {
+#if x16
+            _addressLow = _memory.ReadByte(_state.GetPC());
+#else
+            _effectiveAddress = _memory.ReadByte(_state.GetPC());
+#endif
+            _state.IncrementPC();
+            return MicroPhase.MemoryRead;
+        }
+
+#if x16
+        private MicroPhase Read2()
+        {
+            var addressHigh = _memory.ReadByte(_state.GetPC());
+            _effectiveAddress = ByteConversionHelper.ToUShort(addressHigh, _addressLow);
+            _state.IncrementPC();
+            return MicroPhase.MemoryByteRead;
+        }
+#endif
+
+        private MicroPhase GetMemoryValue()
+        {
+            _addressValue = _memory.ReadByte(_effectiveAddress);
+            return MicroPhase.MemoryRead;
+        }
+
+        private MicroPhase AluOp()
+        {
+            var registerValue = _state.GetRegister(_registerIdx);
+            var value = (byte)(registerValue & _addressValue);
+            _state.SetRegister(_registerIdx, value);
+            _state.SetZeroFlag(value == 0);
+            return MicroPhase.AluOp;
+        }
+
+#if x16
+        private byte _addressLow;
+        private ushort _effectiveAddress;
+#else
+        private byte _effectiveAddress;
+#endif
+        private byte _addressValue;
+        private readonly byte _registerIdx;
+        private readonly State _state;
+        private readonly Memory _memory;
     }
 }

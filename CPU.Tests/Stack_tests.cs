@@ -74,19 +74,15 @@ namespace CPU.Tests
             // Arrange
             var memory = new Memory(256);
             var stack = new Stack(memory, 0xFF);
-            var executionContext = new ExecutionContext();
 
             // Act
-            stack.PushAddress(0x12, executionContext);
+            stack.PushAddress(0x12);
 
             // Assert
             Assert.Multiple(() =>
             {
                 Assert.That(stack.SP, Is.EqualTo(0xFE), "SP should be decremented by 1");
                 Assert.That(memory.ReadByte(0xFF), Is.EqualTo(0x12), "Pushed byte should be at top of stack");
-                Assert.That(executionContext.StackChanges.Count, Is.EqualTo(1), "One stack change should be recorded");
-                Assert.That(executionContext.StackChanges[0].Key, Is.EqualTo(0xFF), "Stack change address should be correct");
-                Assert.That(executionContext.StackChanges[0].Value, Is.EqualTo(0x12), "Stack change value should be correct");
             });
         }
 
@@ -97,7 +93,7 @@ namespace CPU.Tests
             var memory = new Memory(256);
             var stack = new Stack(memory, 0xFF);
             byte testAddress = 0x12;
-            stack.PushAddress(testAddress, new ExecutionContext()); // Push without recording to avoid interference
+            stack.PushAddress(testAddress);
 
             // Act
             var poppedAddress = stack.PopAddress();
@@ -117,7 +113,7 @@ namespace CPU.Tests
             var memory = new Memory(256);
             var stack = new Stack(memory, 0xFF);
             byte testAddress = 0x12;
-            stack.PushAddress(testAddress, new ExecutionContext());
+            stack.PushAddress(testAddress);
 
             // Act
             var peekedAddress = stack.PeekAddress();
@@ -137,19 +133,15 @@ namespace CPU.Tests
             // Arrange
             var memory = new Memory(256);
             var stack = new Stack(memory, 0xFF);
-            var executionContext = new ExecutionContext();
 
             // Act
-            stack.PushByte(0x12, executionContext);
+            stack.PushByte(0x12);
 
             // Assert
             Assert.Multiple(() =>
             {
                 Assert.That(stack.SP, Is.EqualTo(0xFE), "SP should be decremented by 1");
                 Assert.That(memory.ReadByte(0xFF), Is.EqualTo(0x12), "Pushed byte should be at top of stack");
-                Assert.That(executionContext.StackChanges.Count, Is.EqualTo(1), "One stack change should be recorded");
-                Assert.That(executionContext.StackChanges[0].Key, Is.EqualTo(0xFF), "Stack change address should be correct");
-                Assert.That(executionContext.StackChanges[0].Value, Is.EqualTo(0x12), "Stack change value should be correct");
             });
         }
 
@@ -160,7 +152,7 @@ namespace CPU.Tests
             var memory = new Memory(256);
             var stack = new Stack(memory, 0xFF);
             byte testAddress = 0x12;
-            stack.PushByte(testAddress, new ExecutionContext());
+            stack.PushByte(testAddress);
 
             // Act
             var poppedAddress = stack.PopByte();
@@ -180,7 +172,7 @@ namespace CPU.Tests
             var memory = new Memory(256);
             var stack = new Stack(memory, 0xFF);
             byte testAddress = 0x12;
-            stack.PushByte(testAddress, new ExecutionContext());
+            stack.PushByte(testAddress);
 
             // Act
             var peekedAddress = stack.PeekByte();

@@ -1,16 +1,36 @@
-﻿using CPU.components;
+using CPU.components;
+using CPU.microcode;
 
 namespace CPU.opcodes
 {
-    [Opcode(OpcodeBaseCode.BTI, OpcodeGroupBaseCode.SingleRegisterLogicOne, RegisterArgsCount.One, OperandType.Immediate)]
-    internal class BTI(State cpuState, Memory memory, Stack stack, OpcodeArgs args) : IOpcode
+    [Opcode(OpcodeBaseCode.BTI, OpcodeGroupBaseCode.SingleRegisterLogicOne)]
+    internal class BTI : BaseOpcode
     {
-        public void Execute(ExecutionContext executionContext)
+        public BTI(byte instructionByte, State state, Memory memory, Stack stack)
         {
-            var currentValue = cpuState.GetRegister(args.LowRegisterIdx);
-            var immediateValue = args.ImmediateValue;
-            var test = (byte)(currentValue & immediateValue);
-            cpuState.SetZeroFlag(test != 0); // Test if any bit matches and value is not zero
+            _state = state;
+            _memory = memory;
+            _registerIdx = OpcodeHelpers.GetLowRegisterIdx(instructionByte);
+            SetPhases(ReadImmediateValue, AluOp);
         }
+
+        private MicroPhase ReadImmediateValue()
+        {
+            _immediateValue = _memory.ReadByte(_state.GetPC());
+            _state.IncrementPC();
+            return MicroPhase.MemoryRead;
+        }
+
+        private MicroPhase AluOp()
+        {
+            var test = (byte)(_state.GetRegister(_registerIdx) & _immediateValue);
+            _state.SetZeroFlag(test != 0); // Test if any bit matches and value is not zero
+            return MicroPhase.AluOp;
+        }
+
+        private byte _immediateValue;
+        private readonly byte _registerIdx;
+        private readonly State _state;
+        private readonly Memory _memory;
     }
 }

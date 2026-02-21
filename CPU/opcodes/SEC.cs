@@ -1,13 +1,15 @@
 ﻿using CPU.components;
+using CPU.microcode;
 
 namespace CPU.opcodes
 {
-    [Opcode(OpcodeBaseCode.SEC, OpcodeGroupBaseCode.SystemAndJump, RegisterArgsCount.Zero, OperandType.None)]
-    internal class SEC(State cpuState, Memory memory, Stack stack, OpcodeArgs args) : IOpcode
+    [Opcode(OpcodeBaseCode.SEC, OpcodeGroupBaseCode.SystemAndJump)]
+    internal class SEC(byte instructionByte, State state, Memory memory, Stack stack) : IOpcode
     {
-        public void Execute(ExecutionContext executionContext)
+        public MicroPhase Tick(int phaseCount)
         {
-            cpuState.SetCarryFlag(true);
+            state.SetCarryFlag(true);
+            return MicroPhase.Done;
         }
     }
 }

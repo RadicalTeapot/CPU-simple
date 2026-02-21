@@ -24,11 +24,11 @@ namespace CPU.components
             _memory.Clear();
         }
 
-        public void PushByte(byte value, ExecutionContext executionContext)
+        public void PushByte(byte value)
         {
             if (SP == 0)
                 throw new InvalidOperationException("Stack overflow");
-            _memory.WriteByte(SP--, value, executionContext.RecordStackChange);
+            _memory.WriteByte(SP--, value);
         }
 
         public byte PopByte()
@@ -46,12 +46,12 @@ namespace CPU.components
         }
 
 #if x16
-        private void PushWord(ushort value, ExecutionContext executionContext)
+        private void PushWord(ushort value)
         {
             if (SP < 2)
                 throw new InvalidOperationException("Stack overflow");
-            _memory.WriteByte(SP--, (byte)((value >> 8) & 0xFF), executionContext.RecordStackChange);
-            _memory.WriteByte(SP--, (byte)(value & 0xFF), executionContext.RecordStackChange);            
+            _memory.WriteByte(SP--, (byte)((value >> 8) & 0xFF));
+            _memory.WriteByte(SP--, (byte)(value & 0xFF));
         }
 
         private ushort PopWord()
@@ -72,11 +72,11 @@ namespace CPU.components
             return (ushort)(low | (high << 8));
         }
 
-        public void PushAddress(ushort value, ExecutionContext executionContext) => PushWord(value, executionContext);
+        public void PushAddress(ushort value) => PushWord(value);
         public ushort PopAddress() => PopWord();
         public ushort PeekAddress() => PeekWord();
 #else
-        public void PushAddress(byte value, ExecutionContext executionContext) => PushByte(value, executionContext);
+        public void PushAddress(byte value) => PushByte(value);
         public byte PopAddress() => PopByte();
         public byte PeekAddress() => PeekByte();
 #endif

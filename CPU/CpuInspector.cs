@@ -86,13 +86,10 @@ namespace CPU
             }
         }
 
-        internal static CpuInspector Create(int cycle, State state, Stack stack, Memory memory, bool programLoaded, ExecutionContext executionContext)
+        internal static CpuInspector Create(int cycle, State state, Stack stack, Memory memory, bool programLoaded)
         {
             var builder = new Builder()
                 .SetCycle(cycle)
-                .SetLastInstruction(executionContext.LastInstruction)
-                .SetMemoryChanges([..executionContext.MemoryChanges])
-                .SetStackChanges([..executionContext.StackChanges])
                 .SetProgramLoaded(programLoaded);
             state.UpdateCpuInspectorBuilder(builder);
             stack.UpdateCpuInspectorBuilder(builder);

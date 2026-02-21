@@ -3,25 +3,20 @@ using CPU.microcode;
 
 namespace CPU.opcodes
 {
-    [Opcode(OpcodeBaseCode.DEC, OpcodeGroupBaseCode.SingleRegisterLogicOne, RegisterArgsCount.One, OperandType.None)]
-    internal class DEC : IOpcode
+    [Opcode(OpcodeBaseCode.DEC, OpcodeGroupBaseCode.SingleRegisterLogicOne)]
+    internal class DEC : BaseOpcode
     {
         public DEC(byte instructionByte, State state, Memory memory, Stack stack)
         {
             _registerIdx = OpcodeHelpers.GetLowRegisterIdx(instructionByte);
             _state = state;
-            _phases = [Phase1, () => MicroPhase.Done];
+            SetPhases(AluOp);
         }
 
-        public MicroPhase Tick(int phaseCount)
-        {
-            return _phases[phaseCount].Invoke();
-        }
-
-        private MicroPhase Phase1()
+        private MicroPhase AluOp()
         {
             var registerValue = _state.GetRegister(_registerIdx);
-            var newValue = (byte)(registerValue - 1);
+            var newValue = (byte)(registerValue - 1); // Wrap around on underflow
             _state.SetRegister(_registerIdx, newValue);
             _state.SetZeroFlag(newValue == 0);
             return MicroPhase.AluOp;
@@ -29,6 +24,5 @@ namespace CPU.opcodes
 
         private readonly byte _registerIdx;
         private readonly State _state;
-        private readonly Func<MicroPhase>[] _phases;
     }
 }

@@ -1,14 +1,28 @@
-﻿using CPU.components;
+using CPU.components;
+using CPU.microcode;
 
 namespace CPU.opcodes
 {
-    [Opcode(OpcodeBaseCode.PSH, OpcodeGroupBaseCode.StoreAndIndirect, RegisterArgsCount.One, OperandType.None)]
-    internal class PSH(State cpuState, Memory memory, Stack stack, OpcodeArgs args) : IOpcode
+    [Opcode(OpcodeBaseCode.PSH, OpcodeGroupBaseCode.StoreAndIndirect)]
+    internal class PSH : BaseOpcode
     {
-        public void Execute(ExecutionContext executionContext)
+        public PSH(byte instructionByte, State state, Memory memory, Stack stack)
         {
-            var value = cpuState.GetRegister(args.LowRegisterIdx);
-            stack.PushByte(value, executionContext);
+            _state = state;
+            _stack = stack;
+            _registerIdx = OpcodeHelpers.GetLowRegisterIdx(instructionByte);
+            SetPhases(Push);
         }
+
+        private MicroPhase Push()
+        {
+            var value = _state.GetRegister(_registerIdx);
+            _stack.PushByte(value);
+            return MicroPhase.MemoryWrite;
+        }
+
+        private readonly byte _registerIdx;
+        private readonly State _state;
+        private readonly Stack _stack;
     }
 }

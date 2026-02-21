@@ -46,7 +46,7 @@ namespace CPU.microcode
                 return;
             }
 
-            _currentPhase = MicroPhase.FetchOp8;
+            _currentPhase = MicroPhase.FetchOp;
             _phaseCount = 0;
 
             var instruction = _memory.ReadByte(_state.GetPC());
@@ -66,8 +66,8 @@ namespace CPU.microcode
         private void TickCurrentInstruction()
         {
             Debug.Assert(_currentOpcode != null, "Current opcode should not be null when ticking an instruction.");
-            _phaseCount++;
             _currentPhase = _currentOpcode.Tick(_phaseCount);
+            _phaseCount++;
         }
 
         private MicroPhase _currentPhase = MicroPhase.Done;

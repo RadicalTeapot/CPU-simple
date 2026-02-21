@@ -6,6 +6,30 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Educational 8-bit CPU simulator in C# with a complete assembler toolchain, backend debugger, LSP language server, and Neovim IDE integration. Targets .NET 10.0.
 
+## Coding Principles
+
+These principles apply to all code changes:
+
+1. **Think before coding** — State assumptions explicitly. If multiple interpretations exist, surface them. If something is unclear, ask rather than guess.
+2. **Simplicity first** — Minimum code that solves the problem. No speculative features, abstractions for single-use code, or unasked-for flexibility.
+3. **Surgical changes** — Touch only what is necessary. Match existing style. Don't refactor adjacent code. If you notice unrelated dead code, mention it but don't delete it. Remove only imports/variables/functions that *your* changes made unused.
+4. **Goal-driven execution** — Transform tasks into verifiable goals. For multi-step tasks, state a brief plan with success criteria before starting.
+
+## Code Guidelines
+
+These guidelines apply to all languages used in this codebase (C#, lua):
+
+Declare members in the following order: `public` first, then `protected`, then `private`. This applies to both types (classes, structs, enums) and their members (fields, properties, methods).
+
+For `public` avoid fields, using properties instead. Exception: `const` fields go at the very top of the class. Order: const fields (if any) → properties → static builder / factory (if any) → constructor → methods
+For `protected` avoid fields, using properties instead. Order: properties → methods
+For `private` fields should be at the end of the class. Lock objects (e.g., for synchronization used in protected/private methods) are treated as private fields and belong in this block. Order: methods → const fields (if any) → lock objects (if any) → regular fields → readonly fields
+
+If inheriting, `override` methods go last in their respective accessor blocks.
+
+In case of doubt: arrange functions so that callers appear above callees. The most important/high-level concepts come first, details follow. Readers can stop reading once they have enough context (From Clean Code (Robert C. Martin))
+
+
 ## Build & Test Commands
 
 ```bash
@@ -69,6 +93,8 @@ Assembly source (.csasm) → Lexer → Parser → Analyser → Emitter → Machi
 - **tree-sitter-grammar/** - Tree-sitter grammar for `.csasm` assembly syntax highlighting.
 
 ## Key Patterns
+
+- **Opcode timing model**: `docs/projects/cpu-simple/micro-code.md` is the **authoritative reference** for opcode phase design. Every opcode must follow the tick rules defined there — each tick is either a single bus transaction (memory read/write, stack push/pop) OR a single internal operation (ALU, flag update, PC/EA update), never both. Bookkeeping (`PC++`, `SP±`) is allowed alongside a bus tick. Effective address calculations (indexed addressing) require their own internal tick. Refer to the doc when deciding how many phases an opcode needs and what `MicroPhase` value each should return.
 
 - **8-bit vs 16-bit builds**: Controlled by `#if x16` conditional compilation. The `DebugX16`/`ReleaseX16` configurations define the `x16` symbol, which changes address sizes from 1 byte to 2 bytes throughout CPU and Assembler.
 - **Attribute-based discovery**: Both opcodes (`[Opcode]` attribute + `IOpcode` interface) and backend commands (`[Command]` attribute + `ICommand` interface) use reflection-based registries to auto-discover implementations.

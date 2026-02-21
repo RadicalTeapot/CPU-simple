@@ -192,32 +192,25 @@ Register reads happen instantly as part of the bus write operation—no separate
 
 #### Control flow operations
 
-**Unconditional jump (JMP [addr]): 1 internal tick (PC update)**
+**Unconditional jump (JMP [addr]): 0 internal tick (PC update)**
 
 8-bit mode (2 bytes):
 1. Fetch opcode, PC++
-2. Fetch addr, PC++
-3. Internal: PC ← addr
+2. Fetch addr, PC ← addr
 
-**Total: 3 ticks**
+**Total: 2 ticks**
 
 16-bit mode (3 bytes):
 1. Fetch opcode, PC++
 2. Fetch addr_low, PC++
-3. Fetch addr_high, PC++ (addr composition happens here as combinational decode)
-4. Internal: PC ← (addr_high << 8) | addr_low
+3. Fetch addr_high, addr composition happens here as combinational decode, PC ← (addr_high << 8) | addr_low
 
-**Total: 4 ticks**
+**Total: 3 ticks**
 
 **Conditional jump (JCC, JCS, JZC, JZS [addr])**
 
-Same as JMP, but internal tick only executes if condition is met:
-
-**Taken branch total: same as JMP**
-**Not-taken branch total: Fetch ticks only** (no internal PC update)
-
-8-bit mode taken: 3 ticks, not-taken: 2 ticks
-16-bit mode taken: 4 ticks, not-taken: 3 ticks
+Same as JMP, checking for the condition is combinational logic which is allowed to be done on the fetch tick.
+This means that the cost is the same whether the branch were taken or not
 
 **Subroutine call (CAL [addr])**
 
@@ -277,9 +270,8 @@ Pops return address from stack.
 | `ADA R0, [0x10]` | 2 | 2 | 1 bus + 1 int | 4 | 2 fetch + 1 read + 1 ALU+writeback |
 | `PSH R0` | 1 | 1 | 1 bus | 2 | 1 fetch + 1 stack write |
 | `POP R0` | 1 | 1 | 1 bus + 1 int | 3 | 1 fetch + 1 stack read + 1 writeback |
-| `JMP [label]` | 2 | 2 | 1 int | 3 | 2 fetch + 1 PC update |
-| `JZS [label]` (taken) | 2 | 2 | 1 int | 3 | 2 fetch + 1 PC update |
-| `JZS [label]` (not taken) | 2 | 2 | 0 | 2 | 2 fetch only |
+| `JMP [label]` | 2 | 2 | 0 | 2 | 2 fetch |
+| `JZS [label]` | 2 | 2 | 0 | 2 | 2 fetch |
 | `CAL [label]` | 2 | 2 | 1 bus + 1 int | 4 | 2 fetch + 1 push + 1 PC update |
 | `RET` | 1 | 1 | 1 bus + 1 int | 3 | 1 fetch + 1 pop + 1 PC update |
 
@@ -291,9 +283,8 @@ Instructions with memory addresses or 16-bit immediates use 3 bytes:
 |-------------|-------|-------|---------|-------|-----------|
 | `LDA R0, [0x1234]` | 3 | 3 | 1 bus + 1 int | 5 | 3 fetch + 1 read + 1 writeback |
 | `STA R0, [0x1234]` | 3 | 3 | 1 bus | 4 | 3 fetch + 1 write |
-| `JMP [label]` | 3 | 3 | 1 int | 4 | 3 fetch + 1 PC update |
-| `JZS [label]` (taken) | 3 | 3 | 1 int | 4 | 3 fetch + 1 PC update |
-| `JZS [label]` (not taken) | 3 | 3 | 0 | 3 | 3 fetch only |
+| `JMP [label]` | 3 | 3 | 0 | 3 | 3 fetch |
+| `JZS [label]` | 3 | 3 | 0 | 3 | 3 fetch |
 | `CAL [label]` | 3 | 3 | 2 bus + 1 int | 6 | 3 fetch + 2 push (16-bit) + 1 PC update |
 | `RET` | 1 | 1 | 2 bus + 1 int | 4 | 1 fetch + 2 pop (16-bit) + 1 PC update |
 
@@ -317,15 +308,14 @@ Phase 3: INTERNAL  - r0 ← data, update flags → DONE
 Total: 4 ticks
 ```
 
-### `JZS rel8` (8-bit mode conditional jump, PC-relative)
+### `JZS rel8` (8-bit mode conditional jump, absolute address)
 ```
 Phase 0: BUS READ  - fetch opcode → IR, PC++ (PC: 0x10 → 0x11)
-Phase 1: BUS READ  - fetch offset → op8, PC++ (PC: 0x11 → 0x12)
-Phase 2: INTERNAL  - if Z==0: PC ← PC + signext(op8) → DONE
-                     else: DONE (fall through)
+Phase 1: BUS READ  - fetch address → op8
+                     if Z==0: PC ← op8 → DONE
+                     else: PC++ → DONE
 
-Taken:     3 ticks (2 fetch + 1 internal PC update)
-Not taken: 2 ticks (2 fetch only)
+Total: 2 ticks
 ```
 
 ### `CAL [0x0050]` (8-bit mode subroutine call)
@@ -360,72 +350,7 @@ Phase 5: INTERNAL  - PC ← target_addr → DONE
 Total: 6 ticks
 ```
 
-## Microcode Control Flow
-
-### State Machine Approach
-
-Each instruction is implemented as a state machine where each phase (tick) performs one operation and returns the next phase to execute:
-
-```csharp
-public enum MicroPhase {
-    DONE,           // Instruction complete
-    FETCH_OP8,      // Fetch operand byte
-    FETCH_OP16_LOW, // Fetch low byte of 16-bit operand
-    FETCH_OP16_HIGH,// Fetch high byte of 16-bit operand
-    CALC_EA,        // Calculate effective address (internal)
-    MEM_READ,       // Read from memory (bus)
-    MEM_WRITE,      // Write to memory (bus)
-    ALU_OP,         // Perform ALU operation (internal)
-    WRITEBACK,      // Write result to register (internal)
-    UPDATE_PC,      // Update program counter (internal)
-    // ... more phases as needed
-}
-
-// Each opcode implements:
-public MicroPhase ExecutePhase(int currentPhase) {
-    switch (currentPhase) {
-        case 0:
-            // First phase after fetch
-            return NextPhase();
-        case 1:
-            // Second phase
-            return AnotherPhase();
-        // ...
-    }
-}
-```
-
-Conditional flow (like branches) naturally jumps to different phases or directly to `DONE`.
-
-### Shared Micro-Operations
-
-Common operations should be implemented as reusable helper phases to avoid duplication:
-- `PUSH_8` / `PUSH_16`: Push 8-bit or 16-bit value to stack
-- `POP_8` / `POP_16`: Pop 8-bit or 16-bit value from stack
-- `CALC_EA_INDEXED`: Compute base+offset effective address
-- `ALU_WRITEBACK`: Perform ALU operation and write result with flags
-
 ## Implementation Considerations
-
-### Tick Function
-
-The CPU provides a single `Tick()` function that executes exactly one tick:
-
-```csharp
-public void Tick() {
-    if (currentPhase == MicroPhase.DONE) {
-        // Start new instruction fetch
-        BusFetch();  // Fetch first byte into IR, PC++
-        currentInstruction = DecodeOpcode(IR);
-        currentPhase = currentInstruction.StartPhase();
-    } else {
-        // Continue current instruction
-        currentPhase = currentInstruction.ExecutePhase(currentPhase);
-    }
-
-    tickCounter++;
-}
-```
 
 ### Debugger Integration
 
@@ -489,7 +414,7 @@ This tick-level timing model reflects real hardware constraints:
 
 1. **Memory is slower than registers**: Every memory access adds latency (bus tick)
 2. **Instruction bytes must be fetched sequentially**: Longer instructions take more bus ticks
-3. **Decode is "free"**: Simple CPUs use combinational logic that operates in parallel with fetch
+3. **Decode is fast**: Simple CPUs use combinational logic that operates in parallel with fetch
 4. **Bus ticks are atomic**: Each memory transaction takes time and exclusive bus access
 5. **Internal operations have cost**: ALU computations and register updates require time
 6. **Bookkeeping is bundled**: Simple pointer increments (PC++, SP±) can happen during related bus operations without separate ticks
@@ -497,8 +422,19 @@ This tick-level timing model reflects real hardware constraints:
 The model maintains CPU-simple's educational simplicity while introducing realistic performance characteristics. This affects program optimization decisions:
 - Prefer register operations over memory operations
 - Keep frequently-accessed data in registers
-- Understand that taken branches cost more than not-taken branches
 - Recognize that 16-bit mode operations cost more due to longer addresses
+
+### Rules of thumb for a single tick's worth of work
+
+- Only a single bus operation can be done per tick (memory read, write). 
+- Some ticks are internal only, for those no bus operation can be carried
+- Decoding is fast and can be bundled with other tick operation (e.g., decoding a register index while fetch the opcode byte)
+- Reading and writing to registers is fast and can be bundled with other tick operations
+  - This is due to the low number of registers enabling bus access while retaining register file access (using mux and latches)
+  - Reads happen at the tick start and writes commits at the end (so writing then reading a register within a tick results in reading the "old" value) 
+- ALU work takes time, only a single operation can be carried per tick. The only exception to this is PC and SP book-keeping (those have dedicated paths to don't use "spend" ALU time)
+  - Counts as ALU op: add/sub/and/or/xor/shift/compare, effective-address math, PC-relative branch add, etc.
+  - Doesn’t count (bookkeeping): PC++ after fetch, SP++/-- as part of push/pop
 
 ## Summary
 
@@ -514,7 +450,6 @@ Total ticks = Fetch ticks + Execute ticks
 - ALU operations (1 internal tick each)
 - Register writebacks with flag updates (1 internal tick)
 - Addressing mode (direct vs indexed)
-- Branch taken vs not-taken
 - Architecture mode (8-bit vs 16-bit affects instruction sizes and PC width)
 
 This model provides accurate cycle-counting for performance analysis while maintaining clear, debuggable execution semantics.

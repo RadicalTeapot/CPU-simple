@@ -1,16 +1,30 @@
-﻿using CPU.components;
+using CPU.components;
+using CPU.microcode;
 
 namespace CPU.opcodes
 {
-    [Opcode(OpcodeBaseCode.CMP, OpcodeGroupBaseCode.TwoRegistersCompare, RegisterArgsCount.Two, OperandType.None)]
-    internal class CMP(State cpuState, Memory memory, Stack stack, OpcodeArgs args) : IOpcode
+    [Opcode(OpcodeBaseCode.CMP, OpcodeGroupBaseCode.TwoRegistersCompare)]
+    internal class CMP : BaseOpcode
     {
-        public void Execute(ExecutionContext executionContext)
+        public CMP(byte instructionByte, State state, Memory memory, Stack stack)
         {
-            var source = cpuState.GetRegister(args.HighRegisterIdx);
-            var destination = cpuState.GetRegister(args.LowRegisterIdx);            
-            cpuState.SetZeroFlag(destination == source);
-            cpuState.SetCarryFlag(destination >= source); // Similar to SUB (no borrow), but without actual subtraction
+            _state = state;
+            _highRegisterIdx = OpcodeHelpers.GetHighRegisterIdx(instructionByte);
+            _lowRegisterIdx = OpcodeHelpers.GetLowRegisterIdx(instructionByte);
+            SetPhases(AluOp);
         }
+
+        public MicroPhase AluOp()
+        {
+            var source = _state.GetRegister(_highRegisterIdx);
+            var destination = _state.GetRegister(_lowRegisterIdx);
+            _state.SetZeroFlag(destination == source);
+            _state.SetCarryFlag(destination >= source); // Similar to SUB (no borrow), but without actual subtraction
+            return MicroPhase.AluOp;
+        }
+
+        private readonly byte _highRegisterIdx;
+        private readonly byte _lowRegisterIdx;
+        private readonly State _state;
     }
 }

@@ -1,13 +1,15 @@
 ﻿using CPU.components;
+using CPU.microcode;
 
 namespace CPU.opcodes
 {
-    [Opcode(OpcodeBaseCode.CLZ, OpcodeGroupBaseCode.SystemAndJump, RegisterArgsCount.Zero, OperandType.None)]
-    internal class CLZ(State cpuState, Memory memory, Stack stack, OpcodeArgs args) : IOpcode
+    [Opcode(OpcodeBaseCode.CLZ, OpcodeGroupBaseCode.SystemAndJump)]
+    internal class CLZ(byte instructionByte, State state, Memory memory, Stack stack) : IOpcode
     {
-        public void Execute(ExecutionContext executionContext)
+        public MicroPhase Tick(int phaseCount)
         {
-            cpuState.SetZeroFlag(false);
+            state.SetZeroFlag(false);
+            return MicroPhase.Done;
         }
     }
 }

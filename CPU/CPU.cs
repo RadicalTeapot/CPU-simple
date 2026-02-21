@@ -21,12 +21,11 @@ namespace CPU
             _cycle = 0;
             _opcodeFactory = new OpcodeFactory();
             _tickHandler = new TickHandler(new TickHandlerConfig(_state, _memory, _stack, _opcodeFactory));
-            _executionContext = new();
             _programLoaded = false;
         }
 
         public CpuInspector GetInspector()
-            => CpuInspector.Create(_cycle, _state, _stack, _memory, _programLoaded, _executionContext);
+            => CpuInspector.Create(_cycle, _state, _stack, _memory, _programLoaded);
 
         public void Reset()
         {
@@ -34,7 +33,6 @@ namespace CPU
             _stack.Reset();
             _cycle = 0;
             // Note: Memory is not cleared on reset
-            _executionContext = new();
         }
 
         public void LoadProgram(byte[] program)
@@ -79,7 +77,7 @@ namespace CPU
             try
             {
                 var result = _tickHandler.Tick();
-                while (result.CurrentPhase != MicroPhase.Done)
+                while (!result.IsInstructionComplete)
                 {
                     result = _tickHandler.Tick();
                 }
@@ -117,8 +115,6 @@ namespace CPU
         private readonly OpcodeFactory _opcodeFactory;
         private int _cycle = 0;
         private readonly TickHandler _tickHandler;
-        /// <remarks>DEPRECATED</remarks>
-        private ExecutionContext _executionContext;
         private bool _programLoaded;
 #if x16
         public const int AddressSize = 2;

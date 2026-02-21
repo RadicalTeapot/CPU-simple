@@ -1,14 +1,28 @@
-﻿using CPU.components;
+using CPU.components;
+using CPU.microcode;
 
 namespace CPU.opcodes
 {
-    [Opcode(OpcodeBaseCode.PEK, OpcodeGroupBaseCode.Load, RegisterArgsCount.One, OperandType.None)]
-    internal class PEK(State cpuState, Memory memory, Stack stack, OpcodeArgs args) : IOpcode
+    [Opcode(OpcodeBaseCode.PEK, OpcodeGroupBaseCode.Load)]
+    internal class PEK : BaseOpcode
     {
-        public void Execute(ExecutionContext executionContext)
+        public PEK(byte instructionByte, State state, Memory memory, Stack stack)
         {
-            var value = stack.PeekByte();
-            cpuState.SetRegister(args.LowRegisterIdx, value);
+            _state = state;
+            _stack = stack;
+            _registerIdx = OpcodeHelpers.GetLowRegisterIdx(instructionByte);
+            SetPhases(Peek);
         }
+
+        private MicroPhase Peek()
+        {
+            var value = _stack.PeekByte();
+            _state.SetRegister(_registerIdx, value);
+            return MicroPhase.MemoryRead;
+        }
+
+        private readonly byte _registerIdx;
+        private readonly State _state;
+        private readonly Stack _stack;
     }
 }

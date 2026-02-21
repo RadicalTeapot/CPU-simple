@@ -1,18 +1,69 @@
 ﻿using CPU.components;
+using CPU.microcode;
 
 namespace CPU.opcodes
 {
-    [Opcode(OpcodeBaseCode.ADA, OpcodeGroupBaseCode.SingleRegisterALU, RegisterArgsCount.One, OperandType.Address)]
-    internal class ADA(State cpuState, Memory memory, Stack stack, OpcodeArgs args) : IOpcode
+    [Opcode(OpcodeBaseCode.ADA, OpcodeGroupBaseCode.SingleRegisterALU)]
+    internal class ADA: BaseOpcode
     {
-        public void Execute(ExecutionContext executionContext)
+        public ADA(byte instructionByte, State state, Memory memory, Stack stack)
         {
-            var currentValue = cpuState.GetRegister(args.LowRegisterIdx);
-            var memoryValue = memory.ReadByte(args.AddressValue);
-            var result = currentValue + memoryValue + cpuState.GetCarryFlagAsInt();
-            cpuState.SetRegister(args.LowRegisterIdx, (byte)result); // Wrap around on overflow
-            cpuState.SetCarryFlag(result > 0xFF);
-            cpuState.SetZeroFlag(result == 0);
+            _state = state;
+            _memory = memory;
+            _registerIdx = OpcodeHelpers.GetLowRegisterIdx(instructionByte);
+#if x16
+            SetPhases(Read1, Read2, GetMemoryValue, AluOp);
+#else
+            SetPhases(Read1, GetMemoryValue, AluOp);
+#endif
         }
+
+        private MicroPhase Read1()
+        {
+#if x16
+            _addressLow = _memory.ReadByte(_state.GetPC());
+#else
+            _effectiveAddress = _memory.ReadByte(_state.GetPC());
+#endif
+            _state.IncrementPC();
+            return MicroPhase.MemoryRead;
+        }
+
+#if x16
+        private MicroPhase Read2() 
+        {
+            var addressHigh = _memory.ReadByte(_state.GetPC());
+            _effectiveAddress = ByteConversionHelper.ToUShort(addressHigh, _addressLow);
+            _state.IncrementPC();
+            return MicroPhase.MemoryRead;
+        }
+#endif
+
+        private MicroPhase GetMemoryValue()
+        {
+            _addressValue = _memory.ReadByte(_effectiveAddress);
+            return MicroPhase.MemoryRead;
+        }
+
+        private MicroPhase AluOp()
+        {
+            var registerValue = _state.GetRegister(_registerIdx);
+            var result = _addressValue + registerValue + _state.GetCarryFlagAsInt();
+            _state.SetRegister(_registerIdx, (byte)result); // Wrap around on overflow
+            _state.SetCarryFlag(result > 0xFF);
+            _state.SetZeroFlag(result == 0);
+            return MicroPhase.AluOp;
+        }
+
+#if x16
+        private byte _addressLow;
+        private ushort _effectiveAddress;
+#else
+        private byte _effectiveAddress;
+#endif
+        private byte _addressValue;
+        private readonly byte _registerIdx;
+        private readonly State _state;
+        private readonly Memory _memory;
     }
 }
