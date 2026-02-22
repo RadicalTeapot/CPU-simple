@@ -149,18 +149,17 @@ I did review and tested the code but exercise caution when using it.
 
 ## To do (in no particular order)
 
-- [ ] Write a bank of small programs for 8 and 16 bit version
 - [ ] Re-implement the ExecutionContext behavior (using info from micro-ticks)
-- [ ] Add micro-code oriented tests
 - [ ] Add missing info to MicrocodeTickResult (see [Debugger Integration](docs/projects/cpu-simple/micro-code.md#debugger-integration))
-- [ ] Make sure all phases are the proper ones (specially for the fetchop phase)
 - [ ] Implement CPU IDE ([inspiration for some UI](https://github.com/AfaanBilal/NanoCore/blob/master/assets/NanoCoreTUI.gif)) in Neovim
-  - [x] Highlight memory address under cursor in memory panel (taking offsets into account)
+  - [ ] Use micro-code in IDE
   - [ ] When assembled, if sidebar was never opened, open the configured panels, otherwise just re-open sidebar
   - [ ] Test if assembler errors are handled
   - [ ] Error when loading CPU dump of 16bit version
 - [ ] Implement PPU and map some memory for it (for 16-bit version)
+  - [ ] This will necessitate interrupts
 - [ ] Implement sound chip and map some memory for it too (for 16-bit version)
   - [ ] Write a small MIDI player application
 - [ ] Cleanup opcode constructors to take only necessary parameters (or use an interface to mask un-necessary parameters)
+- [ ] Write a bank of small programs for 8 and 16 bit version and document them
 - [/] Cleanup docs and document design choices
