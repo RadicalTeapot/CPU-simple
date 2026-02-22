@@ -52,7 +52,7 @@ namespace CPU
             {
                 try
                 {
-                    _lastTickResult = _tickHandler.Tick();
+                    _tickHandler.Tick();
                 }
                 catch (OpcodeException.HaltException)
                 {
@@ -75,17 +75,17 @@ namespace CPU
         /// <throws>OpcodeException.HaltException when a HALT instruction is executed.</throws>
         public void Step()
         {
-            _lastTickResult = _tickHandler.Tick();
-            while (!_lastTickResult.IsInstructionComplete)
+            var result = _tickHandler.Tick();
+            while (!result.IsInstructionComplete)
             {
-                _lastTickResult = _tickHandler.Tick();
+                result = _tickHandler.Tick();
             }
         }
 
         /// <summary>
         /// Advances the timer or scheduler by one tick, triggering any actions scheduled for this interval.
         /// </summary>
-        public void Tick() => _lastTickResult = _tickHandler.Tick();
+        public MicrocodeTickResult Tick() => _tickHandler.Tick();
 
         private void Dump()
         {
@@ -98,7 +98,6 @@ namespace CPU
 
         private int _cycle;
         private bool _programLoaded;
-        private MicrocodeTickResult _lastTickResult;
         private readonly State _state;
         private readonly Stack _stack;
         private readonly Memory _memory;

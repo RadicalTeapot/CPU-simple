@@ -1,7 +1,7 @@
 ﻿using CPU.opcodes;
 namespace CPU.microcode
 {
-    internal record MicrocodeTickResult(
+    public record MicrocodeTickResult(
         ulong TickCount,
         MicroPhase NextPhase,
         uint PhaseCount,

@@ -11,7 +11,7 @@ namespace CPU.opcodes
             _state = state;
             _memory = memory;
             _registerIdx = OpcodeHelpers.GetDestinationRegisterIdx(instructionByte);
-            SetPhases(MicroPhase.MemoryRead, ReadOffsetAndImmediate, AluOp, GetMemoryValue);
+            SetPhases(MicroPhase.FetchOperand, ReadOffsetAndImmediate, AluOp, GetMemoryValue);
         }
 
         private MicroPhase ReadOffsetAndImmediate()

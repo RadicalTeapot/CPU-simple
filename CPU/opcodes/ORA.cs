@@ -12,9 +12,9 @@ namespace CPU.opcodes
             _memory = memory;
             _registerIdx = OpcodeHelpers.GetDestinationRegisterIdx(instructionByte);
 #if x16
-            SetPhases(MicroPhase.MemoryRead, Read1, Read2, GetMemoryValue, AluOp);
+            SetPhases(MicroPhase.FetchOperand16Low, Read1, Read2, GetMemoryValue, AluOp);
 #else
-            SetPhases(MicroPhase.MemoryRead, Read1, GetMemoryValue, AluOp);
+            SetPhases(MicroPhase.FetchOperand, Read1, GetMemoryValue, AluOp);
 #endif
         }
 
@@ -22,11 +22,13 @@ namespace CPU.opcodes
         {
 #if x16
             _addressLow = _memory.ReadByte(_state.GetPC());
+            _state.IncrementPC();
+            return MicroPhase.FetchOperand16High;
 #else
             _effectiveAddress = _memory.ReadByte(_state.GetPC());
-#endif
             _state.IncrementPC();
             return MicroPhase.MemoryRead;
+#endif
         }
 
 #if x16

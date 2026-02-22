@@ -21,7 +21,6 @@ namespace CPU.opcodes
         {
 #if x16
             _returnAddressLow = _stack.PopByte();
-            _state.IncrementPC();
             return MicroPhase.MemoryRead;
 #else
             var returnAddress = _stack.PopByte();

@@ -23,7 +23,7 @@ namespace CPU.microcode
             _tickCounter++;
             var isInstructionComplete = false;
 
-            if (_currentPhase == MicroPhase.FetchOp)
+            if (_currentPhase == MicroPhase.FetchOpcode)
             {
                 FetchCurrentInstruction();
 
@@ -33,7 +33,7 @@ namespace CPU.microcode
                     // Zero-execute-tick instruction (NOP, MOV, CLC, etc.)
                     _currentOpcode.Tick(0);
                     isInstructionComplete = true;
-                    _currentPhase = MicroPhase.FetchOp;
+                    _currentPhase = MicroPhase.FetchOpcode;
                 }
                 else
                 {
@@ -49,7 +49,7 @@ namespace CPU.microcode
                 if (nextPhase == MicroPhase.Done)
                 {
                     isInstructionComplete = true;
-                    _currentPhase = MicroPhase.FetchOp;
+                    _currentPhase = MicroPhase.FetchOpcode;
                 }
                 else
                 {
@@ -84,7 +84,7 @@ namespace CPU.microcode
             // Implementation of jumping to the interrupt handler would go here.
         }
 
-        private MicroPhase _currentPhase = MicroPhase.FetchOp;
+        private MicroPhase _currentPhase = MicroPhase.FetchOpcode;
         private uint _phaseCount = 0;
         private ulong _tickCounter = 0;
         private bool _pendingInterrupt = false;

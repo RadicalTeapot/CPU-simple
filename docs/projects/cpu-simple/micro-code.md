@@ -19,19 +19,22 @@ This design choice provides:
 
 ### Tick Types
 
-**Bus Tick**
-- Performs one memory transaction (read or write)
-- May include simple bookkeeping operations that don't violate the single-purpose rule:
-  - `PC++` increment after instruction fetch (part of fetch mechanism)
-  - `SP++` or `SP--` during stack operations (part of stack transaction)
-  - Latching data into registers (`IR`, `op8`, `data`)
-  - Simple muxing/selection
+**Bus Ticks — fetch and memory**
+
+Each bus tick performs one memory transaction and may include simple bookkeeping:
+
+| Phase | Description |
+|---|---|
+| `FetchOpcode` | Read the instruction opcode byte from PC, PC++ (handled by TickHandler) |
+| `FetchOperand` | Read a single-byte instruction operand (immediate value, 8-bit address, or reg+offset encoding), PC++ |
+| `FetchOperand16Low` | Read the low byte of a 16-bit address operand, PC++ |
+| `FetchOperand16High` | Read the high byte of a 16-bit address operand, PC++ |
+| `MemoryRead` | Read data from memory or stack (not an instruction byte) |
+| `MemoryWrite` | Write data to memory or stack |
 
 **Internal Tick**
 - Performs ALU computations and control updates
-- Updates architecturally-visible registers
-- Computes effective addresses
-- Sets or clears flags
+- Computes effective addresses for indexed addressing
 - Makes control flow decisions (conditional branches)
 
 ### The Boundary: What Requires an Internal Tick?
@@ -42,6 +45,10 @@ This design choice provides:
 - Latching data into internal registers (`IR`, `op8`, `op16`, `data`)
 - Simple muxing/selection of register sources
 - Combinational decode (determining addressing mode, register IDs from opcode bits)
+- Writing to any destination register (latching — committed at end of tick)
+- Updating flags Z and C (latching — committed at end of tick)
+- Writing PC from a fetched or combinationally-selected value (latching — same rules as register writes)
+- Conditional branch evaluation (combinational — comparing a flag and selecting a new PC)
 
 **❌ Requires its own internal tick:**
 - Any ALU computation that produces an architecturally meaningful value:
@@ -51,10 +58,8 @@ This design choice provides:
   - Comparisons (they update flags)
   - Effective address calculation for indexed addressing (base + offset)
   - 16-bit value composition in 16-bit mode (may change—see note below)
-- Register writebacks that update flags
-- PC updates (jumps, calls, returns)
 
-**Pedagogical rule**: *If an operation changes a programmer-visible register/flag or produces an address/value that will be used later, it gets its own internal tick.*
+**Pedagogical rule**: *If an operation requires ALU computation (add, subtract, shift, compare, EA arithmetic), it gets its own internal tick. Latching any value — including writing to destination registers, flags, or PC — is free and can be bundled with any bus tick.*
 
 ### Decode Phase
 
@@ -108,6 +113,7 @@ Execute costs depend on the operation type:
 - Flag operations: `CLC`, `SEC`, `CLZ`, `SEZ`
 - Halt: `HLT`
 - No-op: `NOP`
+- Immediate loads: `LDI Rd, #imm`
 
 These complete without additional ticks—values are simply latched from one register to another during the decode phase, which is combinational.
 
@@ -119,27 +125,34 @@ Operations that only touch registers (no memory access):
 - Register shifts/rotates: `LSH Rd`, `RSH Rd`, `LRT Rd`, `RRT Rd`
 - Register increment/decrement: `INC Rd`, `DEC Rd`
 
-One internal tick performs:
-1. Read source register values (instant)
+The immediate byte is fetched in a `FetchOperand` tick, one `AluOp` internal tick follows to perform the computation.
+
+`AluOp` tick performs:
+1. Read source register values (latching)
 2. Execute ALU computation
-3. Write result to destination register
-4. Update flags (Zero, Carry)
+3. Write result to destination register (latching)
+4. Update flags (Zero, Carry) (latching)
 
 **Total cost = Fetch ticks + 1 internal tick**
 
 #### Immediate ALU operations: **1 tick (internal)**
 ALU operations with immediate operands:
-- Immediate loads: `LDI Rd, #imm`
 - Immediate arithmetic: `ADI Rd, #imm`, `SBI Rd, #imm`
 - Immediate logic: `ANI Rd, #imm`, `ORI Rd, #imm`, `XRI Rd, #imm`
 - Immediate compare: `CPI Rd, #imm`
 - Immediate bit test: `BTI Rd, #imm`
 
-The immediate value is fetched during the fetch phase and latched into `op8` (or `op16` in 16-bit mode). One internal tick performs the ALU operation and register writeback.
+The immediate byte is fetched in a `FetchOperand` tick, one `AluOp` internal tick follows to perform the computation.
+
+`AluOp` tick performs:
+1. Read source register values (latching)
+2. Execute ALU computation
+3. Write result to destination register (latching)
+4. Update flags (Zero, Carry) (latching)
 
 **Total cost = Fetch ticks + 1 internal tick**
 
-#### Memory read operations: **1 bus tick (read) + 1 internal tick (writeback)**
+#### Memory read operations: **1 bus tick (read)**
 Operations that read from memory (beyond instruction fetch):
 - Memory loads: `LDA Rd, [addr]`, `LDX Rd, [Rs + offset]`
 - Memory-based ALU: `ADA Rd, [addr]`, `SBA Rd, [addr]`, `CPA Rd, [addr]`, `ANA Rd, [addr]`, `ORA Rd, [addr]`, `XRA Rd, [addr]`
@@ -147,15 +160,17 @@ Operations that read from memory (beyond instruction fetch):
 - Stack pop: `POP Rd`, `PEK Rd`
 
 Cost breakdown:
-1. **Fetch ticks**: Read instruction bytes and address/offset
+1. **Fetch ticks**: Read instruction bytes and address/offset operand(s)
 2. **Internal tick (if indexed addressing)**: Compute effective address (EA = base + offset)
-3. **Bus tick**: Read from memory into `data` latch
-4. **Internal tick**: Write to destination register, update flags
+3. **Bus tick**: Read from memory; latch result into destination register (or `data` for ALU ops)
+4. **Internal tick (ALU ops only)**: Compute ALU result, update flags
 
-**Direct addressing total cost = Fetch + 1 bus read + 1 internal**
-**Indexed addressing total cost = Fetch + 1 internal (EA calc) + 1 bus read + 1 internal (writeback)**
+Register writebacks and flag updates for non-ALU loads (LDA, POP, PEK) are free latching bundled with the `MemoryRead` tick — no extra internal tick needed.
 
-*Note*: For direct addressing in 16-bit mode, the 16-bit address composition happens during fetch as combinational decode, not as a separate internal tick.
+**Direct addressing (non-ALU) total cost = Fetch ticks + 1 bus read**
+**Direct addressing (ALU) total cost = Fetch ticks + 1 bus read + 1 internal**
+**Indexed addressing (non-ALU) total cost = Fetch ticks + 1 internal (EA calc) + 1 bus read**
+**Indexed addressing (ALU) total cost = Fetch ticks + 1 internal (EA calc) + 1 bus read + 1 internal**
 
 #### Memory write operations: **1 bus tick (write)**
 Operations that write to memory:
@@ -166,127 +181,124 @@ Cost breakdown:
 2. **Internal tick (if indexed addressing)**: Compute effective address (EA = base + offset)
 3. **Bus tick**: Write register value to memory
 
-**Direct addressing total cost = Fetch + 1 bus write**
-**Indexed addressing total cost = Fetch + 1 internal (EA calc) + 1 bus write**
+**Direct addressing total cost = Fetch ticks + 1 bus write**
+**Indexed addressing total cost = Fetch ticks + 1 internal (EA calc) + 1 bus write**
 
 Register reads happen instantly as part of the bus write operation—no separate internal tick needed.
 
 #### Stack operations
 
 **Push (PSH Rs): 1 bus tick (write)**
-1. **Fetch tick**: Read opcode, PC++
+1. **Fetch tick**: FetchOpcode, PC++
 2. **Bus tick**: Write Rs to mem[SP], SP-- (bookkeeping)
 
 **Total: 2 ticks**
 
-**Pop (POP Rd): 1 bus tick (read) + 1 internal tick (writeback)**
-1. **Fetch tick**: Read opcode, PC++
-2. **Bus tick**: Read mem[SP] into `data`, SP++ (bookkeeping)
-3. **Internal tick**: Write `data` to Rd, update flags
+**Pop (POP Rd): 1 bus tick (read)**
+1. **Fetch tick**: FetchOpcode, PC++
+2. **Bus tick**: Read mem[SP] into Rd (latching), SP++ (bookkeeping)
 
-**Total: 3 ticks**
+**Total: 2 ticks**
 
 **Peek (PEK Rd): same as POP but SP unchanged**
 
-**Total: 3 ticks**
+**Total: 2 ticks**
 
 #### Control flow operations
 
-**Unconditional jump (JMP [addr]): 0 internal tick (PC update)**
+**Unconditional jump (JMP [addr]): 0 internal ticks (PC update is latching)**
 
 8-bit mode (2 bytes):
-1. Fetch opcode, PC++
-2. Fetch addr, PC ← addr
+1. FetchOpcode, PC++
+2. FetchOperand: addr → PC (latching)
 
 **Total: 2 ticks**
 
 16-bit mode (3 bytes):
-1. Fetch opcode, PC++
-2. Fetch addr_low, PC++
-3. Fetch addr_high, addr composition happens here as combinational decode, PC ← (addr_high << 8) | addr_low
+1. FetchOpcode, PC++
+2. FetchOperand16Low: addr_low, PC++
+3. FetchOperand16High: addr_high, addr composition as combinational decode, PC ← (addr_high << 8) | addr_low (latching)
 
 **Total: 3 ticks**
 
 **Conditional jump (JCC, JCS, JZC, JZS [addr])**
 
-Same as JMP, checking for the condition is combinational logic which is allowed to be done on the fetch tick.
-This means that the cost is the same whether the branch were taken or not
+Same as JMP; checking the condition is combinational logic allowed on the fetch tick.
+The cost is the same whether the branch is taken or not.
 
 **Subroutine call (CAL [addr])**
 
-Pushes return address to stack, then jumps.
+Pushes return address to stack, then jumps. PC ← addr is free latching bundled with the final push tick.
 
 8-bit mode (2 bytes, 8-bit return address):
-1. Fetch opcode, PC++
-2. Fetch addr, PC++
-3. Bus: Write PC to mem[SP], SP-- (bookkeeping)
-4. Internal: PC ← addr
-
-**Total: 4 ticks**
-
-16-bit mode (3 bytes, 16-bit return address):
-1. Fetch opcode, PC++
-2. Fetch addr_low, PC++
-3. Fetch addr_high, PC++ (addr composition as combinational decode)
-4. Bus: Write PC_low to mem[SP], SP-- (bookkeeping)
-5. Bus: Write PC_high to mem[SP], SP-- (bookkeeping)
-6. Internal: PC ← (addr_high << 8) | addr_low
-
-**Total: 6 ticks**
-
-**Return from subroutine (RET)**
-
-Pops return address from stack.
-
-8-bit mode (1 byte, 8-bit return address):
-1. Fetch opcode, PC++
-2. Bus: Read mem[SP] into `data`, SP++ (bookkeeping)
-3. Internal: PC ← data
+1. FetchOpcode, PC++
+2. FetchOperand: addr, PC++ (now PC points past the instruction)
+3. MemoryWrite: Write PC to mem[SP], SP-- ; PC ← addr (latching)
 
 **Total: 3 ticks**
 
+16-bit mode (3 bytes, 16-bit return address):
+1. FetchOpcode, PC++
+2. FetchOperand16Low: addr_low, PC++
+3. FetchOperand16High: addr_high, PC++ (addr composition as combinational decode)
+4. MemoryWrite: Write PC_high to mem[SP], SP-- (push high byte first)
+5. MemoryWrite: Write PC_low to mem[SP], SP-- ; PC ← target_addr (latching)
+
+**Total: 5 ticks**
+
+**Return from subroutine (RET)**
+
+Pops return address from stack. PC ← popped value is free latching bundled with the final pop tick.
+
+8-bit mode (1 byte, 8-bit return address):
+1. FetchOpcode, PC++
+2. MemoryRead: Read mem[SP] → PC (latching), SP++ (bookkeeping)
+
+**Total: 2 ticks**
+
 16-bit mode (1 byte, 16-bit return address):
-1. Fetch opcode, PC++
-2. Bus: Read mem[SP] into PC_low, SP++ (bookkeeping)
-3. Bus: Read mem[SP] into PC_high, SP++ (bookkeeping)
-4. Internal: PC ← (PC_high << 8) | PC_low
+1. FetchOpcode, PC++
+2. MemoryRead: Read mem[SP] → PC_low, SP++ (bookkeeping)
+3. MemoryRead: Read mem[SP] → PC_high, SP++ ; PC ← (PC_high << 8) | PC_low (latching)
 
-**Total: 4 ticks**
+**Total: 3 ticks**
 
-*Note*: The 16-bit composition `(PC_high << 8) | PC_low` currently happens in a single internal tick. This may change in future revisions to separate the composition (1 tick) from the PC update (1 tick), which would add 1 tick to all 16-bit control flow operations.
+*Note*: The 16-bit composition `(PC_high << 8) | PC_low` currently happens as combinational decode on the final pop tick. This may change in future revisions to a separate internal tick, which would add 1 tick to all 16-bit control flow operations.
 
 ## Complete Timing Tables
 
 ### 8-bit Mode Examples
 
-| Instruction | Bytes | Fetch | Execute | Total | Breakdown |
-|-------------|-------|-------|---------|-------|-----------|
-| `NOP` | 1 | 1 | 0 | 1 | Fetch only |
-| `MOV R0, R1` | 1 | 1 | 0 | 1 | Register latch only |
-| `ADD R0, R1` | 1 | 1 | 1 int | 2 | 1 fetch + 1 ALU internal |
-| `LDI R0, #0x05` | 2 | 2 | 1 int | 3 | 2 fetch + 1 load internal |
-| `LDA R0, [0x0C]` | 2 | 2 | 1 bus + 1 int | 4 | 2 fetch + 1 read + 1 writeback |
-| `STA R0, [0x0C]` | 2 | 2 | 1 bus | 3 | 2 fetch + 1 write |
-| `ADA R0, [0x10]` | 2 | 2 | 1 bus + 1 int | 4 | 2 fetch + 1 read + 1 ALU+writeback |
-| `PSH R0` | 1 | 1 | 1 bus | 2 | 1 fetch + 1 stack write |
-| `POP R0` | 1 | 1 | 1 bus + 1 int | 3 | 1 fetch + 1 stack read + 1 writeback |
-| `JMP [label]` | 2 | 2 | 0 | 2 | 2 fetch |
-| `JZS [label]` | 2 | 2 | 0 | 2 | 2 fetch |
-| `CAL [label]` | 2 | 2 | 1 bus + 1 int | 4 | 2 fetch + 1 push + 1 PC update |
-| `RET` | 1 | 1 | 1 bus + 1 int | 3 | 1 fetch + 1 pop + 1 PC update |
+| Instruction | Bytes | Total | Breakdown |
+|-------------|-------|-------|-----------|
+| `NOP` | 1 | 1 | FetchOpcode only |
+| `MOV R0, R1` | 1 | 1 | FetchOpcode (register latch) |
+| `ADD R0, R1` | 1 | 2 | FetchOpcode + AluOp |
+| `LDI R0, #0x05` | 2 | 2 | FetchOpcode + FetchOperand (imm→Rd) |
+| `ADI R0, #0x05` | 2 | 3 | FetchOpcode + FetchOperand + AluOp |
+| `LDA R0, [0x0C]` | 2 | 3 | FetchOpcode + FetchOperand (addr) + MemoryRead (data→Rd) |
+| `STA R0, [0x0C]` | 2 | 3 | FetchOpcode + FetchOperand (addr) + MemoryWrite |
+| `ADA R0, [0x10]` | 2 | 4 | FetchOpcode + FetchOperand (addr) + MemoryRead + AluOp |
+| `PSH R0` | 1 | 2 | FetchOpcode + MemoryWrite (stack push) |
+| `POP R0` | 1 | 2 | FetchOpcode + MemoryRead (pop→Rd) |
+| `JMP [label]` | 2 | 2 | FetchOpcode + FetchOperand (addr→PC) |
+| `JZS [label]` | 2 | 2 | FetchOpcode + FetchOperand (addr→PC if Z) |
+| `CAL [label]` | 2 | 3 | FetchOpcode + FetchOperand (addr) + MemoryWrite (push+jump) |
+| `RET` | 1 | 2 | FetchOpcode + MemoryRead (pop→PC) |
 
 ### 16-bit Mode Examples
 
-Instructions with memory addresses or 16-bit immediates use 3 bytes:
+Instructions with memory addresses use 3 bytes:
 
-| Instruction | Bytes | Fetch | Execute | Total | Breakdown |
-|-------------|-------|-------|---------|-------|-----------|
-| `LDA R0, [0x1234]` | 3 | 3 | 1 bus + 1 int | 5 | 3 fetch + 1 read + 1 writeback |
-| `STA R0, [0x1234]` | 3 | 3 | 1 bus | 4 | 3 fetch + 1 write |
-| `JMP [label]` | 3 | 3 | 0 | 3 | 3 fetch |
-| `JZS [label]` | 3 | 3 | 0 | 3 | 3 fetch |
-| `CAL [label]` | 3 | 3 | 2 bus + 1 int | 6 | 3 fetch + 2 push (16-bit) + 1 PC update |
-| `RET` | 1 | 1 | 2 bus + 1 int | 4 | 1 fetch + 2 pop (16-bit) + 1 PC update |
+| Instruction | Bytes | Total | Breakdown |
+|-------------|-------|-------|-----------|
+| `LDA R0, [0x1234]` | 3 | 4 | FetchOpcode + FetchOperand16Low + FetchOperand16High + MemoryRead (data→Rd) |
+| `STA R0, [0x1234]` | 3 | 4 | FetchOpcode + FetchOperand16Low + FetchOperand16High + MemoryWrite |
+| `ADA R0, [0x1234]` | 3 | 5 | FetchOpcode + 2×FetchOperand16 + MemoryRead + AluOp |
+| `JMP [label]` | 3 | 3 | FetchOpcode + FetchOperand16Low + FetchOperand16High (→PC) |
+| `JZS [label]` | 3 | 3 | FetchOpcode + FetchOperand16Low + FetchOperand16High (→PC if Z) |
+| `CAL [label]` | 3 | 5 | FetchOpcode + FetchOperand16Low + FetchOperand16High + 2×MemoryWrite |
+| `RET` | 1 | 3 | FetchOpcode + 2×MemoryRead |
 
 ## Micro-Step Examples
 
@@ -294,25 +306,31 @@ These examples show the tick-by-tick execution using the state machine approach:
 
 ### `ADD r0, r1` (register ALU)
 ```
-Phase 0: BUS READ  - fetch opcode → IR, PC++ (PC: 0x00 → 0x01)
+Phase 0: BUS READ  - FetchOpcode → IR, PC++ (PC: 0x00 → 0x01)
 Phase 1: INTERNAL  - r0 ← r0 + r1, update flags → DONE
+Total: 2 ticks
+```
+
+### `LDI r0, #0x05` (8-bit immediate load)
+```
+Phase 0: BUS READ  - FetchOpcode → IR, PC++ (PC: 0x00 → 0x01)
+Phase 1: BUS READ  - FetchOperand → r0 = 0x05, PC++ (PC: 0x01 → 0x02) → DONE
 Total: 2 ticks
 ```
 
 ### `LDA r0, [0x0C]` (8-bit mode memory load)
 ```
-Phase 0: BUS READ  - fetch opcode → IR, PC++ (PC: 0x00 → 0x01)
-Phase 1: BUS READ  - fetch addr → op8, PC++ (PC: 0x01 → 0x02)
-Phase 2: BUS READ  - read mem[0x0C] → data
-Phase 3: INTERNAL  - r0 ← data, update flags → DONE
-Total: 4 ticks
+Phase 0: BUS READ  - FetchOpcode → IR, PC++ (PC: 0x00 → 0x01)
+Phase 1: BUS READ  - FetchOperand: addr=0x0C, PC++ (PC: 0x01 → 0x02)
+Phase 2: BUS READ  - MemoryRead: r0 ← mem[0x0C] → DONE
+Total: 3 ticks
 ```
 
-### `JZS rel8` (8-bit mode conditional jump, absolute address)
+### `JZS [label]` (8-bit mode conditional jump, absolute address)
 ```
-Phase 0: BUS READ  - fetch opcode → IR, PC++ (PC: 0x10 → 0x11)
-Phase 1: BUS READ  - fetch address → op8
-                     if Z==0: PC ← op8 → DONE
+Phase 0: BUS READ  - FetchOpcode → IR, PC++ (PC: 0x10 → 0x11)
+Phase 1: BUS READ  - FetchOperand: address → op8
+                     if Z==1: PC ← op8 → DONE
                      else: PC++ → DONE
 
 Total: 2 ticks
@@ -320,34 +338,31 @@ Total: 2 ticks
 
 ### `CAL [0x0050]` (8-bit mode subroutine call)
 ```
-Phase 0: BUS READ  - fetch opcode → IR, PC++ (PC: 0x20 → 0x21)
-Phase 1: BUS READ  - fetch addr → op8, PC++ (PC: 0x21 → 0x22)
-Phase 2: BUS WRITE - write PC (0x22) to mem[SP], SP-- (SP: 0xFF → 0xFE)
-Phase 3: INTERNAL  - PC ← op8 (0x50) → DONE
-Total: 4 ticks
+Phase 0: BUS READ  - FetchOpcode → IR, PC++ (PC: 0x20 → 0x21)
+Phase 1: BUS READ  - FetchOperand: addr=0x50, PC++ (PC: 0x21 → 0x22)
+Phase 2: BUS WRITE - MemoryWrite: write PC (0x22) to mem[SP], SP-- ; PC ← 0x50 → DONE
+Total: 3 ticks
 ```
 
 ### `LDA r0, [0x1234]` (16-bit mode memory load)
 ```
-Phase 0: BUS READ  - fetch opcode → IR, PC++ (PC: 0x0100 → 0x0101)
-Phase 1: BUS READ  - fetch addr_low → op8_low, PC++ (PC: 0x0101 → 0x0102)
-Phase 2: BUS READ  - fetch addr_high → op8_high, PC++ (PC: 0x0102 → 0x0103)
-                     [EA = (op8_high << 8) | op8_low computed as combinational decode]
-Phase 3: BUS READ  - read mem[0x1234] → data
-Phase 4: INTERNAL  - r0 ← data, update flags → DONE
-Total: 5 ticks
+Phase 0: BUS READ  - FetchOpcode → IR, PC++ (PC: 0x0100 → 0x0101)
+Phase 1: BUS READ  - FetchOperand16Low: addr_low=0x34, PC++ (PC: 0x0101 → 0x0102)
+Phase 2: BUS READ  - FetchOperand16High: addr_high=0x12, PC++ (PC: 0x0102 → 0x0103)
+                     [EA = (0x12 << 8) | 0x34 = 0x1234 computed as combinational decode]
+Phase 3: BUS READ  - MemoryRead: r0 ← mem[0x1234] → DONE
+Total: 4 ticks
 ```
 
 ### `CAL [0x8000]` (16-bit mode subroutine call)
 ```
-Phase 0: BUS READ  - fetch opcode → IR, PC++
-Phase 1: BUS READ  - fetch addr_low → op8_low, PC++
-Phase 2: BUS READ  - fetch addr_high → op8_high, PC++
-                     [target_addr = (op8_high << 8) | op8_low computed as decode]
-Phase 3: BUS WRITE - write PC_low to mem[SP], SP--
-Phase 4: BUS WRITE - write PC_high to mem[SP], SP--
-Phase 5: INTERNAL  - PC ← target_addr → DONE
-Total: 6 ticks
+Phase 0: BUS READ  - FetchOpcode → IR, PC++
+Phase 1: BUS READ  - FetchOperand16Low: addr_low, PC++
+Phase 2: BUS READ  - FetchOperand16High: addr_high, PC++
+                     [target_addr = (addr_high << 8) | addr_low computed as decode]
+Phase 3: BUS WRITE - MemoryWrite: write PC_high to mem[SP], SP--
+Phase 4: BUS WRITE - MemoryWrite: write PC_low to mem[SP], SP-- ; PC ← target_addr → DONE
+Total: 5 ticks
 ```
 
 ## Implementation Considerations
@@ -380,7 +395,7 @@ This trace format makes watchpoints, breakpoints, and "why did memory change?" d
 
 **Interrupt rule**: Interrupts may be signaled at any time (external line sampled each tick), but are serviced only at instruction boundaries.
 
-When a tick returns `MicroPhase.DONE`:
+When a tick returns `MicroPhase.Done`:
 1. Check `pendingInterrupt` flag
 2. If set, begin interrupt service routine (push PC, jump to vector)
 3. Otherwise, fetch next instruction
@@ -400,11 +415,11 @@ This design choice favors **educational clarity** over hardware quirk simulation
 
 ### Future Enhancement: 16-bit Composition Separation
 
-**Current behavior**: 16-bit value composition `(high << 8) | low` and register/PC update happen in a single internal tick.
+**Current behavior**: 16-bit value composition `(high << 8) | low` and register/PC update happen as combinational decode bundled with the final fetch or pop tick.
 
-**Potential future change**: Separate composition from update into two internal ticks:
+**Potential future change**: Separate composition from update into an explicit internal tick:
 1. Internal tick: Compute `temp ← (high << 8) | low`
-2. Internal tick: `PC ← temp` (or `Rd ← temp`)
+2. Register/PC update as bookkeeping on the next tick
 
 This would add 1 tick to all 16-bit control flow operations (JMP, CAL, RET in 16-bit mode) and some 16-bit data operations. The change would more accurately reflect ALU pipeline stages but adds complexity. This decision is deferred pending implementation experience.
 
@@ -416,8 +431,8 @@ This tick-level timing model reflects real hardware constraints:
 2. **Instruction bytes must be fetched sequentially**: Longer instructions take more bus ticks
 3. **Decode is fast**: Simple CPUs use combinational logic that operates in parallel with fetch
 4. **Bus ticks are atomic**: Each memory transaction takes time and exclusive bus access
-5. **Internal operations have cost**: ALU computations and register updates require time
-6. **Bookkeeping is bundled**: Simple pointer increments (PC++, SP±) can happen during related bus operations without separate ticks
+5. **Internal operations have cost**: ALU computations require time; register writes and flag updates do not (they are latching)
+6. **Bookkeeping is bundled**: Simple pointer increments (PC++, SP±), register writes, and flag updates can happen during related bus operations without separate ticks
 
 The model maintains CPU-simple's educational simplicity while introducing realistic performance characteristics. This affects program optimization decisions:
 - Prefer register operations over memory operations
@@ -426,15 +441,16 @@ The model maintains CPU-simple's educational simplicity while introducing realis
 
 ### Rules of thumb for a single tick's worth of work
 
-- Only a single bus operation can be done per tick (memory read, write). 
-- Some ticks are internal only, for those no bus operation can be carried
-- Decoding is fast and can be bundled with other tick operation (e.g., decoding a register index while fetch the opcode byte)
+- Only a single bus operation can be done per tick (memory read, write).
+- Some ticks are internal only; for those no bus operation can be carried
+- Decoding is fast and can be bundled with other tick operations (e.g., decoding a register index while fetching the opcode byte)
 - Reading and writing to registers is fast and can be bundled with other tick operations
   - This is due to the low number of registers enabling bus access while retaining register file access (using mux and latches)
-  - Reads happen at the tick start and writes commits at the end (so writing then reading a register within a tick results in reading the "old" value) 
-- ALU work takes time, only a single operation can be carried per tick. The only exception to this is PC and SP book-keeping (those have dedicated paths to don't use "spend" ALU time)
+  - Reads happen at the tick start and writes commit at the end (so writing then reading a register within a tick results in reading the "old" value)
+  - This applies to flags and PC as well — they are just special-purpose registers
+- ALU work takes time; only a single operation can be carried per tick. The only exception is PC and SP book-keeping (those have dedicated paths and don't "spend" ALU time)
   - Counts as ALU op: add/sub/and/or/xor/shift/compare, effective-address math, PC-relative branch add, etc.
-  - Doesn’t count (bookkeeping): PC++ after fetch, SP++/-- as part of push/pop
+  - Doesn't count (bookkeeping): PC++ after fetch, SP++/-- as part of push/pop
 
 ## Summary
 
@@ -448,8 +464,8 @@ Total ticks = Fetch ticks + Execute ticks
 - Instruction size (1-3 bytes)
 - Memory accesses (each is 1 bus tick)
 - ALU operations (1 internal tick each)
-- Register writebacks with flag updates (1 internal tick)
-- Addressing mode (direct vs indexed)
+- Register writes, flag updates, PC writes (free — bundled as latching with any bus tick)
+- Addressing mode (direct vs indexed — indexed adds 1 AluOp tick for EA calculation)
 - Architecture mode (8-bit vs 16-bit affects instruction sizes and PC width)
 
 This model provides accurate cycle-counting for performance analysis while maintaining clear, debuggable execution semantics.
