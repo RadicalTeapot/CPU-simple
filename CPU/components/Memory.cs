@@ -35,7 +35,6 @@ namespace CPU.components
 
             _memory[address] = value;
             Recorder?.RecordWrite(address, value, BusType.Memory);
-            reporter?.Invoke(address, value);
         }
 #else
         public byte ReadByte(byte address)
