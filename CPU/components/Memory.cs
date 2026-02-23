@@ -1,8 +1,12 @@
-﻿namespace CPU.components
+﻿using CPU.microcode;
+
+namespace CPU.components
 {
     public class Memory(int size)
     {
         public int Size { get; } = size;
+
+        internal BusRecorder? Recorder { get; set; }
 
 #if x16
         public byte ReadByte(ushort address)
@@ -10,7 +14,9 @@
             if (address >= Size)
                 throw new ArgumentOutOfRangeException(nameof(address), $"Memory read address out of bounds: {address}.");
 
-            return _memory[address];
+            var value = _memory[address];
+            Recorder?.RecordRead(address, value);
+            return value;
         }
 
         public byte[] ReadBytes(ushort address, int length)
@@ -29,6 +35,7 @@
                 throw new ArgumentOutOfRangeException(nameof(address), $"Memory write address out of bounds: {address}.");
 
             _memory[address] = value;
+            Recorder?.RecordWrite(address, value);
             reporter?.Invoke(address, value);
         }
 #else
@@ -36,7 +43,9 @@
         {
             if (address >= Size)
                 throw new ArgumentOutOfRangeException(nameof(address), $"Memory read address out of bounds: {address}.");
-            return _memory[address];
+            var value = _memory[address];
+            Recorder?.RecordRead(address, value);
+            return value;
         }
 
         public byte[] ReadBytes(byte address, int length)
@@ -54,6 +63,7 @@
             if (address >= Size)
                 throw new ArgumentOutOfRangeException(nameof(address), $"Memory write address out of bounds: {address}.");
             _memory[address] = value;
+            Recorder?.RecordWrite(address, value);
             reporter?.Invoke(address, value);
         }
 #endif

@@ -1,4 +1,4 @@
-﻿using Backend.CpuStates;
+using Backend.CpuStates;
 using Backend.IO;
 using CPU;
 using System.Text;
@@ -39,31 +39,19 @@ namespace Backend.Commands.GlobalCommands
             {
                 sb.Append("Last Instruction: N/A ");
             }
-            if (inspector.MemoryChanges.Length > 0)
+            if (inspector.Traces.Length > 0)
             {
-                sb.Append("Memory Changes: ");
-                foreach (var (address, value) in inspector.MemoryChanges)
+                sb.Append("Traces: ");
+                foreach (var trace in inspector.Traces)
                 {
-                    sb.Append($"[{address:X2}]: {value} ");
+                    sb.Append($"[T{trace.TickNumber} {trace.Phase} {trace.Type}] ");
                 }
             }
             else
             {
-                sb.Append("Memory Changes: N/A ");
+                sb.Append("Traces: N/A ");
             }
-            if (inspector.StackChanges.Length > 0)
-            {
-                sb.Append("Stack Changes: ");
-                foreach (var (address, value) in inspector.StackChanges)
-                {
-                    sb.Append($"[{address:X2}]: {value} ");
-                }
-            }
-            else
-            {
-                sb.Append("Stack Changes: N/A ");
-            }
-            
+
             return new GlobalCommandResult(Success: true, Message: sb.ToString());
         }
     }

@@ -1,4 +1,4 @@
-﻿using CPU.opcodes;
+using CPU.opcodes;
 namespace CPU.microcode
 {
     public record MicrocodeTickResult(
@@ -6,6 +6,7 @@ namespace CPU.microcode
         MicroPhase NextPhase,
         uint PhaseCount,
         OpcodeBaseCode CurrentOpcode,
-        bool IsInstructionComplete = false
+        bool IsInstructionComplete = false,
+        TickTrace? Trace = null
     ) { }
 }

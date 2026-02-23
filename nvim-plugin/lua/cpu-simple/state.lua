@@ -25,21 +25,22 @@ function M.update_status(json)
     end
   end
 
+  -- Extract memory_changes and stack_changes from traces
   local memory_changes = {}
-  if json.memory_changes then
-    for _, change in pairs(json.memory_changes) do
-      local addr = change.Key
-      local val = change.Value
-      memory_changes[addr] = val
-    end
-  end
-
   local stack_changes = {}
-  if json.stack_changes then
-    for _, change in pairs(json.stack_changes) do
-      local index = change.Key
-      local val = change.Value
-      stack_changes[index] = val
+  if json.traces then
+    for _, trace in ipairs(json.traces) do
+      if trace.bus and trace.bus.direction == "Write" then
+        -- Classify based on phase: MemoryWrite on main memory vs stack
+        if trace.phase == "MemoryWrite" then
+          -- Check sp_before vs sp_after to distinguish stack writes from memory writes
+          if trace.sp_before ~= trace.sp_after then
+            stack_changes[trace.bus.address] = trace.bus.data
+          else
+            memory_changes[trace.bus.address] = trace.bus.data
+          end
+        end
+      end
     end
   end
 

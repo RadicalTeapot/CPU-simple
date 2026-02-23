@@ -1,4 +1,5 @@
-﻿using CPU.components;
+using CPU.components;
+using CPU.microcode;
 
 namespace CPU
 {
@@ -13,8 +14,7 @@ namespace CPU
         public string[] LastInstruction { get; private set; } = [];
         public byte[] StackContents { get; private set; } = [];
         public byte[] MemoryContents { get; private set; } = [];
-        public KeyValuePair<int, byte>[] MemoryChanges { get; private set; } = [];
-        public KeyValuePair<int, byte>[] StackChanges { get; private set; } = [];
+        public TickTrace[] Traces { get; private set; } = [];
         public bool ProgramLoaded { get; private set; } = false;
 
         internal class Builder()
@@ -65,14 +65,9 @@ namespace CPU
                 _inspector.MemoryContents = memory;
                 return this;
             }
-            public Builder SetMemoryChanges(KeyValuePair<int, byte>[] changes)
+            public Builder SetTraces(TickTrace[] traces)
             {
-                _inspector.MemoryChanges = [..changes];
-                return this;
-            }
-            public Builder SetStackChanges(KeyValuePair<int, byte>[] changes)
-            {
-                _inspector.StackChanges = [..changes];
+                _inspector.Traces = traces;
                 return this;
             }
             public Builder SetProgramLoaded(bool loaded)
@@ -86,11 +81,12 @@ namespace CPU
             }
         }
 
-        internal static CpuInspector Create(int cycle, State state, Stack stack, Memory memory, bool programLoaded)
+        internal static CpuInspector Create(int cycle, State state, Stack stack, Memory memory, bool programLoaded, TickTrace[] traces)
         {
             var builder = new Builder()
                 .SetCycle(cycle)
-                .SetProgramLoaded(programLoaded);
+                .SetProgramLoaded(programLoaded)
+                .SetTraces(traces);
             state.UpdateCpuInspectorBuilder(builder);
             stack.UpdateCpuInspectorBuilder(builder);
             memory.UpdateCpuInspectorBuilder(builder);

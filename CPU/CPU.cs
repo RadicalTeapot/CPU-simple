@@ -1,4 +1,4 @@
-﻿using CPU.components;
+using CPU.components;
 using CPU.microcode;
 using CPU.opcodes;
 using System.Diagnostics;
@@ -25,13 +25,14 @@ namespace CPU
         }
 
         public CpuInspector GetInspector()
-            => CpuInspector.Create(_cycle, _state, _stack, _memory, _programLoaded);
+            => CpuInspector.Create(_cycle, _state, _stack, _memory, _programLoaded, [.. _lastTraces]);
 
         public void Reset()
         {
             _state.Reset();
             _stack.Reset();
             _cycle = 0;
+            _lastTraces.Clear();
             // Note: Memory is not cleared on reset
         }
 
@@ -75,17 +76,26 @@ namespace CPU
         /// <throws>OpcodeException.HaltException when a HALT instruction is executed.</throws>
         public void Step()
         {
+            _lastTraces.Clear();
             var result = _tickHandler.Tick();
+            if (result.Trace != null) _lastTraces.Add(result.Trace);
             while (!result.IsInstructionComplete)
             {
                 result = _tickHandler.Tick();
+                if (result.Trace != null) _lastTraces.Add(result.Trace);
             }
         }
 
         /// <summary>
         /// Advances the timer or scheduler by one tick, triggering any actions scheduled for this interval.
         /// </summary>
-        public MicrocodeTickResult Tick() => _tickHandler.Tick();
+        public MicrocodeTickResult Tick()
+        {
+            _lastTraces.Clear();
+            var result = _tickHandler.Tick();
+            if (result.Trace != null) _lastTraces.Add(result.Trace);
+            return result;
+        }
 
         private void Dump()
         {
@@ -98,6 +108,7 @@ namespace CPU
 
         private int _cycle;
         private bool _programLoaded;
+        private readonly List<TickTrace> _lastTraces = [];
         private readonly State _state;
         private readonly Stack _stack;
         private readonly Memory _memory;

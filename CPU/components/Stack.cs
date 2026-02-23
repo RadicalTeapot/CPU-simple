@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using CPU.microcode;
+using System.Diagnostics;
 
 namespace CPU.components
 {
@@ -6,6 +7,8 @@ namespace CPU.components
     {
         public byte SP { get; private set; } // Note: Keep as byte for both 8-bit and 16-bit architectures, stack size is max 256 bytes
         public int Size => _memory.Size;
+
+        internal BusRecorder? Recorder { get; set; }
 
         public Stack(int stackSize): this(new Memory(stackSize), (byte)(stackSize - 1)) { }
 
@@ -28,14 +31,18 @@ namespace CPU.components
         {
             if (SP == 0)
                 throw new InvalidOperationException("Stack overflow");
+            var address = SP;
             _memory.WriteByte(SP--, value);
+            Recorder?.RecordWrite(address, value);
         }
 
         public byte PopByte()
         {
             if (SP == _pointerStartAddress)
                 throw new InvalidOperationException("Stack underflow");
-            return _memory.ReadByte(++SP);
+            var value = _memory.ReadByte(++SP);
+            Recorder?.RecordRead(SP, value);
+            return value;
         }
 
         public byte PeekByte()
@@ -50,8 +57,14 @@ namespace CPU.components
         {
             if (SP < 2)
                 throw new InvalidOperationException("Stack overflow");
-            _memory.WriteByte(SP--, (byte)((value >> 8) & 0xFF));
-            _memory.WriteByte(SP--, (byte)(value & 0xFF));
+            var highByte = (byte)((value >> 8) & 0xFF);
+            var addrHigh = SP;
+            _memory.WriteByte(SP--, highByte);
+            Recorder?.RecordWrite(addrHigh, highByte);
+            var lowByte = (byte)(value & 0xFF);
+            var addrLow = SP;
+            _memory.WriteByte(SP--, lowByte);
+            Recorder?.RecordWrite(addrLow, lowByte);
         }
 
         private ushort PopWord()
@@ -59,7 +72,9 @@ namespace CPU.components
             if (SP > _pointerStartAddress - 2)
                 throw new InvalidOperationException("Stack underflow");
             ushort low = _memory.ReadByte(++SP);
-            ushort high = _memory.ReadByte(++SP);            
+            Recorder?.RecordRead(SP, (byte)low);
+            ushort high = _memory.ReadByte(++SP);
+            Recorder?.RecordRead(SP, (byte)high);
             return (ushort)(low | (high << 8));
         }
 

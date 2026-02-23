@@ -369,27 +369,34 @@ Total: 5 ticks
 
 ### Debugger Integration
 
-The tick-level model enables rich debugging capabilities:
+The tick-level model enables rich debugging capabilities. Every tick produces a `TickTrace` record captured by `TickHandler` and exposed via `CpuInspector.Traces`. When stepping a full instruction (`CPU.Step()`), all tick traces are concatenated so callers see every micro-step.
 
-**Minimum trace information per tick:**
-- Tick number (cumulative counter)
-- Tick type: `BUS_READ` / `BUS_WRITE` / `INTERNAL`
-- Current phase (micro-step identifier)
-- PC before/after
-- SP before/after
-- Current instruction (IR or decoded instruction name)
+**`TickTrace` fields:**
 
-**For bus ticks, also log:**
-- Bus address
-- Bus data value
-- Read/Write direction
+| Field | Description |
+|---|---|
+| `TickNumber` | Cumulative tick counter across the lifetime of the CPU |
+| `Type` | `BusRead`, `BusWrite`, or `Internal` |
+| `Phase` | The `MicroPhase` executed on this tick |
+| `PcBefore` / `PcAfter` | PC value at the start and end of the tick |
+| `SpBefore` / `SpAfter` | SP value at the start and end of the tick |
+| `Instruction` | Name of the current opcode (from `OpcodeBaseCode`) |
+| `RegisterChanges` | Array of `RegisterChange(Index, OldValue, NewValue)` — only registers that changed |
+| `ZeroFlagBefore` / `ZeroFlagAfter` | Zero flag state before and after |
+| `CarryFlagBefore` / `CarryFlagAfter` | Carry flag state before and after |
+| `Bus` | `BusAccess(Address, Data, Direction)` for bus ticks; `null` for internal ticks |
 
-**For internal ticks, optionally log:**
-- Register writeback (which register, new value)
-- Flag changes
-- ALU operation performed
+**Bus recording** is handled transparently via a `BusRecorder` instance wired to `Memory.Recorder` and `Stack.Recorder` by `TickHandler`. Opcodes do not need to report their bus activity — the recorder captures it from the normal `ReadByte`/`WriteByte` calls. Only typed bus calls (the ones opcodes actually use) are recorded; debug helpers like `ReadByte(int)` and `LoadBytes` are not.
 
-This trace format makes watchpoints, breakpoints, and "why did memory change?" debugging straightforward.
+**Phase classification** into `TickType` follows these rules:
+
+| `MicroPhase` | `TickType` |
+|---|---|
+| `FetchOpcode`, `FetchOperand`, `FetchOperand16Low`, `FetchOperand16High`, `MemoryRead` | `BusRead` |
+| `MemoryWrite` | `BusWrite` |
+| `AluOp`, `Done` | `Internal` |
+
+This trace format makes watchpoints, breakpoints, and "why did memory change?" debugging straightforward. See `docs/projects/cpu-simple/debugging.md` for the full pipeline from CPU to IDE.
 
 ### Interrupt Handling
 

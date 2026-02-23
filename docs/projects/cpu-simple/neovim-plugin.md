@@ -174,6 +174,62 @@ vim.filetype.add({ extension = { csasm = "csasm" } })
 
 Then add the language to Neovim, connect the parser to the language and connect the file extension with the language.
 
+### Backend JSON protocol
+
+The plugin communicates with the backend exclusively through JSON messages on stdin/stdout.
+
+#### Status response
+
+After each step/tick the backend emits a `status` message. The key field for the plugin is `traces` — an array of per-tick records that replaced the old `memory_changes`/`stack_changes` flat lists:
+
+```json
+{
+  "type": "status",
+  "cycle": 12,
+  "pc": 3,
+  "sp": 15,
+  "registers": [5, 0, 0, 0],
+  "zero_flag": false,
+  "carry_flag": false,
+  "traces": [
+    {
+      "tick": 10,
+      "tick_type": "BusRead",
+      "phase": "FetchOpcode",
+      "pc_before": 2, "pc_after": 3,
+      "sp_before": 15, "sp_after": 15,
+      "instruction": "LDI",
+      "register_changes": [],
+      "zero_flag_before": false, "zero_flag_after": false,
+      "carry_flag_before": false, "carry_flag_after": false,
+      "bus": { "address": 2, "data": 16, "direction": "Read" }
+    },
+    {
+      "tick": 11,
+      "tick_type": "BusRead",
+      "phase": "FetchOperand",
+      "pc_before": 3, "pc_after": 4,
+      "sp_before": 15, "sp_after": 15,
+      "instruction": "LDI",
+      "register_changes": [{ "index": 0, "old_value": 0, "new_value": 5 }],
+      "zero_flag_before": false, "zero_flag_after": false,
+      "carry_flag_before": false, "carry_flag_after": false,
+      "bus": { "address": 3, "data": 5, "direction": "Read" }
+    }
+  ],
+  "program_loaded": true
+}
+```
+
+#### How `state.lua` derives memory/stack changes from traces
+
+`state.lua` does not receive `memory_changes`/`stack_changes` directly. Instead it iterates `traces` and classifies bus write events:
+
+- A `MemoryWrite` tick where `sp_before != sp_after` → stack write → `stack_changes[address] = data`
+- A `MemoryWrite` tick where SP did not change → main memory write → `memory_changes[address] = data`
+
+`M.status.memory_changes` and `M.status.stack_changes` are populated from this classification, keeping the downstream display modules (`display/memory.lua`) unchanged.
+
 ### Next steps
 
 Follow-up cleanup backlog:
@@ -181,6 +237,7 @@ Follow-up cleanup backlog:
 - Move command metadata (name, args, desc, handler) to a single declarative table to reduce command boilerplate.
 - Replace optimistic `state.loaded_program` assignment on `CpuLoad` with an explicit backend acknowledgement flow.
 - Add more feature-level specs for navigation and source annotation edge-cases around missing/partial debug info.
+- Consider surfacing per-tick trace data in the sidebar (e.g., a "tick log" panel) for instruction-level introspection.
 
 ### Troubleshooting
 

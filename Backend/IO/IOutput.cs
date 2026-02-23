@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 
 namespace Backend.IO
 {
@@ -25,8 +25,33 @@ namespace Backend.IO
                 registers = inspector.Registers.Select(v => (int)v).ToArray(), // Convert bytes to ints for JSON serialization
                 zero_flag = inspector.ZeroFlag,
                 carry_flag = inspector.CarryFlag,
-                memory_changes = inspector.MemoryChanges,
-                stack_changes = inspector.StackChanges,
+                traces = inspector.Traces.Select(t => new
+                {
+                    tick = t.TickNumber,
+                    tick_type = t.Type.ToString(),
+                    phase = t.Phase.ToString(),
+                    pc_before = t.PcBefore,
+                    pc_after = t.PcAfter,
+                    sp_before = t.SpBefore,
+                    sp_after = t.SpAfter,
+                    instruction = t.Instruction,
+                    register_changes = t.RegisterChanges.Select(rc => new
+                    {
+                        index = rc.Index,
+                        old_value = (int)rc.OldValue,
+                        new_value = (int)rc.NewValue,
+                    }).ToArray(),
+                    zero_flag_before = t.ZeroFlagBefore,
+                    zero_flag_after = t.ZeroFlagAfter,
+                    carry_flag_before = t.CarryFlagBefore,
+                    carry_flag_after = t.CarryFlagAfter,
+                    bus = t.Bus == null ? null : new
+                    {
+                        address = t.Bus.Address,
+                        data = (int)t.Bus.Data,
+                        direction = t.Bus.Direction.ToString(),
+                    },
+                }).ToArray(),
                 program_loaded = inspector.ProgramLoaded
             });
         }
