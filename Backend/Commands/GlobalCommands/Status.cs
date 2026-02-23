@@ -27,18 +27,6 @@ namespace Backend.Commands.GlobalCommands
             }
             sb.Append($"Zero: {inspector.ZeroFlag} ");
             sb.Append($"Carry: {inspector.CarryFlag} ");
-            if (inspector.LastInstruction.Length > 0)
-            {
-                sb.Append("Last Instruction: ");
-                for (int i = 0; i < inspector.LastInstruction.Length; i++)
-                {
-                    sb.Append($"{inspector.LastInstruction[i]} ");
-                }
-            }
-            else
-            {
-                sb.Append("Last Instruction: N/A ");
-            }
             if (inspector.Traces.Length > 0)
             {
                 sb.Append("Traces: ");

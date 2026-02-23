@@ -13,7 +13,6 @@ namespace Backend
         {
             _logger = logger;
             _output = output;
-            _inspector = new CpuInspector();
             _cpu = new CPU.CPU(config);
             _breakpointContainer = new BreakpointContainer();
             _cpuStateFactory = new CpuStateFactory(_cpu, _logger, _output, _breakpointContainer, cpuCommandRegistry);
@@ -62,7 +61,6 @@ namespace Backend
         }
 
         private ICpuState _currentState;
-        private readonly CpuInspector _inspector;
         private readonly CPU.CPU _cpu;
         private readonly CpuStateFactory _cpuStateFactory;
         private readonly ILogger _logger;

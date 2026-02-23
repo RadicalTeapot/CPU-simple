@@ -5,7 +5,7 @@ This document describes how debugging works end-to-end in CPU-simple: from the t
 ## Architecture Overview
 
 ```
-CPU (TickHandler)
+CPU (TickTracer)
    │  captures TickTrace per tick
    ▼
 CpuInspector.Traces
@@ -27,22 +27,26 @@ Neovim buffer (sidebar + source file)
 
 ## 1. Trace Capture (CPU layer)
 
-### TickHandler
+### TickTracer
 
-Every call to `TickHandler.Tick()` performs one micro-step and produces a `TickTrace`. The handler:
+`TickTracer` owns all trace-capture responsibility. `CPU` holds a `TickTracer` instance and calls it around every `TickHandler.Tick()` call:
 
-1. **Clears** the `BusRecorder`.
-2. **Snapshots** PC, SP, registers, Z, C before running any logic.
-3. **Records the executed phase** (`executedPhase = _currentPhase`) before advancing the state machine.
-4. **Runs existing tick logic** unchanged — fetch or opcode `Tick()` call.
-5. **Diffs** registers to find changes.
-6. **Reads** `BusRecorder.LastAccess` for the bus transaction (if any).
-7. **Classifies** the executed phase into `TickType` (BusRead / BusWrite / Internal).
-8. **Constructs** and returns a `TickTrace` embedded in `MicrocodeTickResult`.
+1. **`Prepare()`** — called *before* each `TickHandler.Tick()`:
+   - Clears the `BusRecorder`.
+   - Snapshots PC, SP, registers, Z, C.
+
+2. **`TickHandler.Tick()`** — executes one micro-step and returns a `MicrocodeTickResult` containing `ExecutedPhase` (the phase that was run) and `NextPhase` (the next phase to run).
+
+3. **`Record(MicrocodeTickResult)`** — called *after* each tick:
+   - Reads after-state (PC, SP, flags, registers) from the CPU components.
+   - Diffs registers against the snapshot to find changes.
+   - Reads `BusRecorder.LastAccess` for the bus transaction (if any).
+   - Classifies `ExecutedPhase` into `TickType` (`Bus` or `Internal`).
+   - Constructs a `TickTrace` and appends it to the internal list.
 
 ### BusRecorder
 
-A shared `BusRecorder` instance is wired to both `Memory.Recorder` and `Stack.Recorder` in the `TickHandler` constructor. When an opcode calls `ReadByte` or `WriteByte` on either object, the recorder silently captures the address, data, and direction without any opcode knowing about it.
+A shared `BusRecorder` instance is wired to both `Memory.Recorder` and `Stack.Recorder` in the `TickTracer` constructor. When an opcode calls `ReadByte` or `WriteByte` on either object, the recorder silently captures the address, data, and direction without any opcode knowing about it.
 
 **What gets recorded:**
 - Typed memory reads/writes: `Memory.ReadByte(byte/ushort)`, `Memory.WriteByte(byte/ushort, …)`
@@ -57,14 +61,14 @@ A shared `BusRecorder` instance is wired to both `Memory.Recorder` and `Stack.Re
 
 ```csharp
 // CPU/microcode/TickTrace.cs
-public enum TickType { BusRead, BusWrite, Internal }
+public enum TickType { Bus, Internal }
 public enum BusDirection { Read, Write }
 public record BusAccess(int Address, byte Data, BusDirection Direction, BusType Type);
 public record RegisterChange(int Index, byte OldValue, byte NewValue);
 public record TickTrace(
     ulong TickNumber,
     TickType Type,
-    MicroPhase Phase,
+    MicroPhase NextPhase,
     int PcBefore, int PcAfter,
     int SpBefore, int SpAfter,
     string Instruction,
@@ -79,14 +83,14 @@ public record TickTrace(
 
 ## 2. Trace Exposure (CPU public API)
 
-`CPU.Step()` and `CPU.Tick()` both clear `_lastTraces` before running, then collect traces from each `MicrocodeTickResult`.
+`CPU.Step()` and `CPU.Tick()` both call `_tracer.Clear()` before running, then call `_tracer.Prepare()` / `TickHandler.Tick()` / `_tracer.Record()` for each tick.
 
-- `CPU.Step()` accumulates one trace per micro-tick across the full instruction.
-- `CPU.Tick()` accumulates a single trace for the one micro-tick it executes.
+- `CPU.Step()` loops until the instruction is complete, accumulating one trace per micro-tick.
+- `CPU.Tick()` runs a single micro-tick and accumulates one trace.
 
-`CPU.GetInspector()` passes `[.. _lastTraces]` to `CpuInspector.Create(...)`, which stores them in `CpuInspector.Traces`. `Reset()` clears `_lastTraces`.
+`CPU.GetInspector()` passes `_tracer` directly to the `CpuInspector` constructor, which reads `tracer.LastTraces` into `CpuInspector.Traces`. `Reset()` calls `_tracer.Clear()`.
 
-The Backend accesses traces only via `GetInspector()` — it never touches `TickHandler` directly.
+The Backend accesses traces only via `GetInspector()` — it never touches `TickHandler` or `TickTracer` directly.
 
 ---
 
@@ -99,8 +103,8 @@ Relevant JSON fields per trace:
 | JSON field | Source |
 |---|---|
 | `tick` | `TickTrace.TickNumber` |
-| `tick_type` | `TickTrace.Type.ToString()` — `"BusRead"`, `"BusWrite"`, `"Internal"` |
-| `phase` | `TickTrace.Phase.ToString()` — matches `MicroPhase` enum name |
+| `tick_type` | `TickTrace.Type.ToString()` — `"Bus"` or `"Internal"` |
+| `next_phase` | `TickTrace.NextPhase.ToString()` — the phase that will execute *next* |
 | `pc_before` / `pc_after` | PC before/after the tick |
 | `sp_before` / `sp_after` | SP before/after the tick |
 | `instruction` | Opcode name (e.g. `"LDA"`, `"ADD"`) |
@@ -122,16 +126,14 @@ The `status` command handler (`Backend/Commands/GlobalCommands/Status.cs`) shows
 `M.update_status(json)` iterates `json.traces` to derive memory and stack change maps:
 
 ```lua
--- Bus writes where SP changed = stack write
--- Bus writes where SP unchanged = main memory write
+-- Bus writes where bus.type == "Stack" = stack write
+-- Bus writes where bus.type == "Memory" = main memory write
 for _, trace in ipairs(json.traces) do
-    if trace.bus and trace.bus.direction == "Write" then
-        if trace.phase == "MemoryWrite" then
-            if trace.sp_before ~= trace.sp_after then
-                stack_changes[trace.bus.address] = trace.bus.data
-            else
-                memory_changes[trace.bus.address] = trace.bus.data
-            end
+    if trace.tick_type == "Bus" and trace.bus and trace.bus.direction == "Write" then
+        if trace.bus.type == "Stack" then
+            stack_changes[trace.bus.address] = trace.bus.data
+        else
+            memory_changes[trace.bus.address] = trace.bus.data
         end
     end
 end
@@ -178,23 +180,23 @@ Instruction bytes: `[0x14, 0x0C]` — 3 ticks total.
 After `CPU.Step()`, `CpuInspector.Traces` contains:
 
 ```
-Trace[0]: TickNumber=N  Phase=FetchOpcode  Type=BusRead
+Trace[0]: TickNumber=N  Type=Bus  NextPhase=FetchOperand
           PcBefore=0  PcAfter=1
           Bus={ Address=0, Data=0x14, Direction=Read, Type=Memory }
           RegisterChanges=[]
 
-Trace[1]: TickNumber=N+1  Phase=FetchOperand  Type=BusRead
+Trace[1]: TickNumber=N+1  Type=Bus  NextPhase=MemoryRead
           PcBefore=1  PcAfter=2
           Bus={ Address=1, Data=0x0C, Direction=Read, Type=Memory }
           RegisterChanges=[]
 
-Trace[2]: TickNumber=N+2  Phase=MemoryRead  Type=BusRead
+Trace[2]: TickNumber=N+2  Type=Bus  NextPhase=FetchOpcode
           PcBefore=2  PcAfter=2
           Bus={ Address=0x0C, Data=<mem[0x0C]>, Direction=Read, Type=Memory }
           RegisterChanges=[{ Index=0, OldValue=?, NewValue=<mem[0x0C]> }]
 ```
 
-The plugin receives all three traces in the `status.traces` array. Since none are `MemoryWrite` bus events, `memory_changes` and `stack_changes` remain empty — only the register display updates.
+The plugin receives all three traces in the `status.traces` array. Since none have `bus.direction == "Write"`, `memory_changes` and `stack_changes` remain empty — only the register display updates.
 
 ---
 
@@ -203,13 +205,12 @@ The plugin receives all three traces in the `status.traces` array. Since none ar
 Instruction bytes: `[0x24, 0x10]` — 3 ticks. Assuming `r0 = 0x42`.
 
 ```
-Trace[0]: Phase=FetchOpcode   Type=BusRead   Bus={0, 0x24, Read, Memory}
-Trace[1]: Phase=FetchOperand  Type=BusRead   Bus={1, 0x10, Read, Memory}
-Trace[2]: Phase=MemoryWrite   Type=BusWrite  Bus={0x10, 0x42, Write, Memory}
-          SpBefore=SpAfter (no SP change → main memory write)
+Trace[0]: Type=Bus  NextPhase=FetchOperand  Bus={0, 0x24, Read, Memory}
+Trace[1]: Type=Bus  NextPhase=MemoryWrite   Bus={1, 0x10, Read, Memory}
+Trace[2]: Type=Bus  NextPhase=FetchOpcode   Bus={0x10, 0x42, Write, Memory}
 ```
 
-The plugin classifies Trace[2] as a memory write (SP unchanged), so `memory_changes[0x10] = 0x42`. The memory display panel highlights address `0x10`.
+The plugin sees `bus.direction == "Write"` and `bus.type == "Memory"` on Trace[2], so `memory_changes[0x10] = 0x42`. The memory display panel highlights address `0x10`.
 
 ---
 
@@ -218,11 +219,11 @@ The plugin classifies Trace[2] as a memory write (SP unchanged), so `memory_chan
 Instruction bytes: `[0x20]` — 2 ticks. Assuming SP starts at 15, `r0 = 0x07`.
 
 ```
-Trace[0]: Phase=FetchOpcode  Type=BusRead   Bus={0, 0x20, Read, Stack}
+Trace[0]: Type=Bus  NextPhase=MemoryWrite  Bus={0, 0x20, Read, Memory}
           SpBefore=15  SpAfter=15
 
-Trace[1]: Phase=MemoryWrite  Type=BusWrite  Bus={15, 0x07, Write, Stack}
-          SpBefore=15  SpAfter=14           ← SP changed
+Trace[1]: Type=Bus  NextPhase=FetchOpcode  Bus={15, 0x07, Write, Stack}
+          SpBefore=15  SpAfter=14
 ```
 
-The plugin sees `sp_before != sp_after` on Trace[1], so classifies it as a stack write: `stack_changes[15] = 0x07`. The stack display panel highlights that address.
+The plugin sees `bus.direction == "Write"` and `bus.type == "Stack"` on Trace[1], so `stack_changes[15] = 0x07`. The stack display panel highlights that address.

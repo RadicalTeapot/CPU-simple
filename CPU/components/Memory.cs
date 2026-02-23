@@ -85,13 +85,6 @@ namespace CPU.components
             Array.Clear(_memory);
         }
 
-        internal void UpdateCpuInspectorBuilder(CpuInspector.Builder inspectorBuilder)
-        {
-            var memory = new byte[_memory.Length];
-            Array.Copy(_memory, memory, _memory.Length); // Create a copy to avoid external modifications
-            inspectorBuilder.SetMemory(memory);
-        }
-
         private readonly byte[] _memory = new byte[size];
     }
 

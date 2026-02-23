@@ -21,18 +21,19 @@ namespace CPU
             _cycle = 0;
             _opcodeFactory = new OpcodeFactory();
             _tickHandler = new TickHandler(new TickHandlerConfig(_state, _memory, _stack, _opcodeFactory));
+            _tracer = new TickTracer(_state, _stack, _memory);
             _programLoaded = false;
         }
 
         public CpuInspector GetInspector()
-            => CpuInspector.Create(_cycle, _state, _stack, _memory, _programLoaded, [.. _lastTraces]);
+            => new CpuInspector(_cycle, _state, _stack, _memory, _programLoaded, _tracer);
 
         public void Reset()
         {
             _state.Reset();
             _stack.Reset();
             _cycle = 0;
-            _lastTraces.Clear();
+            _tracer.Clear();
             // Note: Memory is not cleared on reset
         }
 
@@ -76,14 +77,14 @@ namespace CPU
         /// <throws>OpcodeException.HaltException when a HALT instruction is executed.</throws>
         public void Step()
         {
-            _lastTraces.Clear();
-            var result = _tickHandler.Tick();
-            if (result.Trace != null) _lastTraces.Add(result.Trace);
-            while (!result.IsInstructionComplete)
+            _tracer.Clear();
+            MicrocodeTickResult result;
+            do
             {
+                _tracer.Prepare();
                 result = _tickHandler.Tick();
-                if (result.Trace != null) _lastTraces.Add(result.Trace);
-            }
+                _tracer.Record(result);
+            } while (!result.IsInstructionComplete);
         }
 
         /// <summary>
@@ -91,9 +92,10 @@ namespace CPU
         /// </summary>
         public MicrocodeTickResult Tick()
         {
-            _lastTraces.Clear();
+            _tracer.Clear();
+            _tracer.Prepare();
             var result = _tickHandler.Tick();
-            if (result.Trace != null) _lastTraces.Add(result.Trace);
+            _tracer.Record(result);
             return result;
         }
 
@@ -108,7 +110,7 @@ namespace CPU
 
         private int _cycle;
         private bool _programLoaded;
-        private readonly List<TickTrace> _lastTraces = [];
+        private readonly TickTracer _tracer;
         private readonly State _state;
         private readonly Stack _stack;
         private readonly Memory _memory;

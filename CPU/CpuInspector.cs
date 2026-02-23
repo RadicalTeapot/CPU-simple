@@ -3,94 +3,46 @@ using CPU.microcode;
 
 namespace CPU
 {
-    public class CpuInspector()
+    public class CpuInspector
     {
-        public int Cycle { get; private set; } = 0;
-        public int PC { get; private set; } = 0;
-        public int SP { get; private set; } = 0;
-        public byte[] Registers { get; private set; } = [];
-        public bool ZeroFlag { get; private set; } = false;
-        public bool CarryFlag { get; private set; } = false;
-        public string[] LastInstruction { get; private set; } = [];
-        public byte[] StackContents { get; private set; } = [];
-        public byte[] MemoryContents { get; private set; } = [];
-        public TickTrace[] Traces { get; private set; } = [];
-        public bool ProgramLoaded { get; private set; } = false;
+        public int Cycle { get; }
+        public int PC { get; }
+        public int SP { get; }
+        public byte[] Registers { get; }
+        public bool ZeroFlag { get; }
+        public bool CarryFlag { get; }
+        public byte[] StackContents { get; }
+        public byte[] MemoryContents { get; }
+        public TickTrace[] Traces { get; }
+        public bool ProgramLoaded { get; }
 
-        internal class Builder()
+        internal CpuInspector(int cycle, State state, Stack stack, Memory memory, bool programLoaded, TickTracer tracer)
         {
-            private readonly CpuInspector _inspector = new();
-            public Builder SetCycle(int cycle)
+            Cycle = cycle;
+            ProgramLoaded = programLoaded;
+            PC = state.GetPC();
+            ZeroFlag = state.Z;
+            CarryFlag = state.C;
+            var registers = new byte[state.RegisterCount];
+            for (int i = 0; i < state.RegisterCount; i++)
             {
-                _inspector.Cycle = cycle;
-                return this;
+                registers[i] = state.GetRegister(i);
             }
-            public Builder SetPC(int pc)
+            Registers = registers;
+            SP = stack.SP;
+            var stackContents = new byte[stack.Size];
+            for (int i = 0; i < stack.Size; i++)
             {
-                _inspector.PC = pc;
-                return this;
+                stackContents[i] = stack.PeekByte(i);
             }
-            public Builder SetSP(int sp)
+            StackContents = stackContents;
+            var memoryContents = new byte[memory.Size];
+            for (int i = 0; i < memory.Size; i++)
             {
-                _inspector.SP = sp;
-                return this;
+                memoryContents[i] = memory.ReadByte(i);
             }
-            public Builder SetRegisters(byte[] registers)
-            {
-                _inspector.Registers = registers;
-                return this;
-            }
-            public Builder SetZeroFlag(bool zeroFlag)
-            {
-                _inspector.ZeroFlag = zeroFlag;
-                return this;
-            }
-            public Builder SetCarryFlag(bool carryFlag)
-            {
-                _inspector.CarryFlag = carryFlag;
-                return this;
-            }
-            public Builder SetLastInstruction(string[] lastInstruction)
-            {
-                _inspector.LastInstruction = lastInstruction;
-                return this;
-            }
-            public Builder SetStack(byte[] stack)
-            {
-                _inspector.StackContents = stack;
-                return this;
-            }
-            public Builder SetMemory(byte[] memory)
-            {
-                _inspector.MemoryContents = memory;
-                return this;
-            }
-            public Builder SetTraces(TickTrace[] traces)
-            {
-                _inspector.Traces = traces;
-                return this;
-            }
-            public Builder SetProgramLoaded(bool loaded)
-            {
-                _inspector.ProgramLoaded = loaded;
-                return this;
-            }
-            public CpuInspector Build()
-            {
-                return _inspector;
-            }
-        }
-
-        internal static CpuInspector Create(int cycle, State state, Stack stack, Memory memory, bool programLoaded, TickTrace[] traces)
-        {
-            var builder = new Builder()
-                .SetCycle(cycle)
-                .SetProgramLoaded(programLoaded)
-                .SetTraces(traces);
-            state.UpdateCpuInspectorBuilder(builder);
-            stack.UpdateCpuInspectorBuilder(builder);
-            memory.UpdateCpuInspectorBuilder(builder);
-            return builder.Build();
+            MemoryContents = memoryContents;
+            Traces = tracer.LastTraces;
         }
     }
 }

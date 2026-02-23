@@ -104,17 +104,6 @@ namespace CPU.components
             return _memory.ReadByte(offset);
         }
 
-        internal void UpdateCpuInspectorBuilder(CpuInspector.Builder inspectorBuilder)
-        {
-            inspectorBuilder.SetSP(SP);
-            var stackBytes = new byte[Size];
-            for (int i = 0; i < Size; i++)
-            {
-                stackBytes[i] = _memory.ReadByte(i);
-            }
-            inspectorBuilder.SetStack(stackBytes);
-        }
-
         private readonly Memory _memory;
         private readonly byte _pointerStartAddress;
     }

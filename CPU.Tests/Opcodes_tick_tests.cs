@@ -269,14 +269,14 @@ namespace CPU.Tests
                 out _,
                 out _);
 
-            var result = cpu.Tick();
+            cpu.Tick();
+            var trace = cpu.GetInspector().Traces[0];
 
-            Assert.That(result.Trace, Is.Not.Null);
-            Assert.That(result.Trace!.Type, Is.EqualTo(TickType.Bus));
-            Assert.That(result.Trace.Bus, Is.Not.Null);
-            Assert.That(result.Trace.Bus!.Address, Is.EqualTo(0));
-            Assert.That(result.Trace.Bus.Data, Is.EqualTo((byte)OpcodeBaseCode.NOP));
-            Assert.That(result.Trace.Bus.Direction, Is.EqualTo(BusDirection.Read));
+            Assert.That(trace.Type, Is.EqualTo(TickType.Bus));
+            Assert.That(trace.Bus, Is.Not.Null);
+            Assert.That(trace.Bus!.Address, Is.EqualTo(0));
+            Assert.That(trace.Bus.Data, Is.EqualTo((byte)OpcodeBaseCode.NOP));
+            Assert.That(trace.Bus.Direction, Is.EqualTo(BusDirection.Read));
         }
 
         [Test]
@@ -294,20 +294,20 @@ namespace CPU.Tests
             // First tick: FetchOpcode
             cpu.Tick();
             // Second tick: AluOp
-            var result = cpu.Tick();
+            cpu.Tick();
+            var trace = cpu.GetInspector().Traces[0];
 
-            Assert.That(result.Trace, Is.Not.Null);
-            Assert.That(result.Trace!.Type, Is.EqualTo(TickType.Internal));
+            Assert.That(trace.Type, Is.EqualTo(TickType.Internal));
 
             // Register r0 changed from 0x80 to 0x00
-            Assert.That(result.Trace.RegisterChanges, Has.Length.EqualTo(1));
-            Assert.That(result.Trace.RegisterChanges[0].Index, Is.EqualTo(0));
-            Assert.That(result.Trace.RegisterChanges[0].OldValue, Is.EqualTo(0x80));
-            Assert.That(result.Trace.RegisterChanges[0].NewValue, Is.EqualTo(0x00));
+            Assert.That(trace.RegisterChanges, Has.Length.EqualTo(1));
+            Assert.That(trace.RegisterChanges[0].Index, Is.EqualTo(0));
+            Assert.That(trace.RegisterChanges[0].OldValue, Is.EqualTo(0x80));
+            Assert.That(trace.RegisterChanges[0].NewValue, Is.EqualTo(0x00));
 
             // Carry flag: false → true (overflow)
-            Assert.That(result.Trace.CarryFlagBefore, Is.False);
-            Assert.That(result.Trace.CarryFlagAfter, Is.True);
+            Assert.That(trace.CarryFlagBefore, Is.False);
+            Assert.That(trace.CarryFlagAfter, Is.True);
         }
 
         [Test]
@@ -321,17 +321,11 @@ namespace CPU.Tests
                 out _);
             state.SetRegister(0, 0x42);
 
-            // Tick through the instruction collecting traces
-            var traces = new List<TickTrace>();
-            MicrocodeTickResult result;
-            do
-            {
-                result = cpu.Tick();
-                if (result.Trace != null) traces.Add(result.Trace);
-            } while (!result.IsInstructionComplete);
+            cpu.Step();
+            var traces = cpu.GetInspector().Traces;
 
             // Find the bus write trace
-            var writeTrace = traces.Find(t => t.Type == TickType.Bus && t.Bus!.Direction == BusDirection.Write);
+            var writeTrace = traces.First(t => t.Type == TickType.Bus && t.Bus!.Direction == BusDirection.Write);
             Assert.That(writeTrace, Is.Not.Null);
             Assert.That(writeTrace!.Bus, Is.Not.Null);
             Assert.That(writeTrace.Bus!.Address, Is.EqualTo(0x10));
