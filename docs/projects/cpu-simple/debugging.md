@@ -59,7 +59,7 @@ A shared `BusRecorder` instance is wired to both `Memory.Recorder` and `Stack.Re
 // CPU/microcode/TickTrace.cs
 public enum TickType { BusRead, BusWrite, Internal }
 public enum BusDirection { Read, Write }
-public record BusAccess(int Address, byte Data, BusDirection Direction);
+public record BusAccess(int Address, byte Data, BusDirection Direction, BusType Type);
 public record RegisterChange(int Index, byte OldValue, byte NewValue);
 public record TickTrace(
     ulong TickNumber,
@@ -107,7 +107,7 @@ Relevant JSON fields per trace:
 | `register_changes` | Array of `{ index, old_value, new_value }` |
 | `zero_flag_before` / `zero_flag_after` | Zero flag state |
 | `carry_flag_before` / `carry_flag_after` | Carry flag state |
-| `bus` | `{ address, data, direction }` or `null` |
+| `bus` | `{ address, data, direction, type }` or `null` |
 
 The `status` command handler (`Backend/Commands/GlobalCommands/Status.cs`) shows a compact human-readable summary: `[T{tick} {phase} {type}]` per trace.
 
@@ -180,17 +180,17 @@ After `CPU.Step()`, `CpuInspector.Traces` contains:
 ```
 Trace[0]: TickNumber=N  Phase=FetchOpcode  Type=BusRead
           PcBefore=0  PcAfter=1
-          Bus={ Address=0, Data=0x14, Direction=Read }
+          Bus={ Address=0, Data=0x14, Direction=Read, Type=Memory }
           RegisterChanges=[]
 
 Trace[1]: TickNumber=N+1  Phase=FetchOperand  Type=BusRead
           PcBefore=1  PcAfter=2
-          Bus={ Address=1, Data=0x0C, Direction=Read }
+          Bus={ Address=1, Data=0x0C, Direction=Read, Type=Memory }
           RegisterChanges=[]
 
 Trace[2]: TickNumber=N+2  Phase=MemoryRead  Type=BusRead
           PcBefore=2  PcAfter=2
-          Bus={ Address=0x0C, Data=<mem[0x0C]>, Direction=Read }
+          Bus={ Address=0x0C, Data=<mem[0x0C]>, Direction=Read, Type=Memory }
           RegisterChanges=[{ Index=0, OldValue=?, NewValue=<mem[0x0C]> }]
 ```
 
@@ -203,9 +203,9 @@ The plugin receives all three traces in the `status.traces` array. Since none ar
 Instruction bytes: `[0x24, 0x10]` — 3 ticks. Assuming `r0 = 0x42`.
 
 ```
-Trace[0]: Phase=FetchOpcode   Type=BusRead   Bus={0, 0x24, Read}
-Trace[1]: Phase=FetchOperand  Type=BusRead   Bus={1, 0x10, Read}
-Trace[2]: Phase=MemoryWrite   Type=BusWrite  Bus={0x10, 0x42, Write}
+Trace[0]: Phase=FetchOpcode   Type=BusRead   Bus={0, 0x24, Read, Memory}
+Trace[1]: Phase=FetchOperand  Type=BusRead   Bus={1, 0x10, Read, Memory}
+Trace[2]: Phase=MemoryWrite   Type=BusWrite  Bus={0x10, 0x42, Write, Memory}
           SpBefore=SpAfter (no SP change → main memory write)
 ```
 
@@ -218,10 +218,10 @@ The plugin classifies Trace[2] as a memory write (SP unchanged), so `memory_chan
 Instruction bytes: `[0x20]` — 2 ticks. Assuming SP starts at 15, `r0 = 0x07`.
 
 ```
-Trace[0]: Phase=FetchOpcode  Type=BusRead   Bus={0, 0x20, Read}
+Trace[0]: Phase=FetchOpcode  Type=BusRead   Bus={0, 0x20, Read, Stack}
           SpBefore=15  SpAfter=15
 
-Trace[1]: Phase=MemoryWrite  Type=BusWrite  Bus={15, 0x07, Write}
+Trace[1]: Phase=MemoryWrite  Type=BusWrite  Bus={15, 0x07, Write, Stack}
           SpBefore=15  SpAfter=14           ← SP changed
 ```
 

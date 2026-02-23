@@ -50,6 +50,7 @@ namespace Backend.IO
                         address = t.Bus.Address,
                         data = (int)t.Bus.Data,
                         direction = t.Bus.Direction.ToString(),
+                        type = t.Bus.Type.ToString(),
                     },
                 }).ToArray(),
                 program_loaded = inspector.ProgramLoaded

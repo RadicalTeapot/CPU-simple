@@ -273,7 +273,7 @@ namespace CPU.Tests
 
             Assert.That(result.Trace, Is.Not.Null);
             Assert.That(result.Trace!.Phase, Is.EqualTo(MicroPhase.FetchOpcode));
-            Assert.That(result.Trace.Type, Is.EqualTo(TickType.BusRead));
+            Assert.That(result.Trace.Type, Is.EqualTo(TickType.Bus));
             Assert.That(result.Trace.Bus, Is.Not.Null);
             Assert.That(result.Trace.Bus!.Address, Is.EqualTo(0));
             Assert.That(result.Trace.Bus.Data, Is.EqualTo((byte)OpcodeBaseCode.NOP));
@@ -335,7 +335,7 @@ namespace CPU.Tests
             // Find the MemoryWrite trace
             var writeTrace = traces.Find(t => t.Phase == MicroPhase.MemoryWrite);
             Assert.That(writeTrace, Is.Not.Null);
-            Assert.That(writeTrace!.Type, Is.EqualTo(TickType.BusWrite));
+            Assert.That(writeTrace!.Type, Is.EqualTo(TickType.Bus));
             Assert.That(writeTrace.Bus, Is.Not.Null);
             Assert.That(writeTrace.Bus!.Address, Is.EqualTo(0x10));
             Assert.That(writeTrace.Bus.Data, Is.EqualTo(0x42));

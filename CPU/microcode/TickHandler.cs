@@ -20,6 +20,7 @@ namespace CPU.microcode
             _stack = context.Stack;
             _opcodeFactory = context.OpcodeFactory;
             _registersBefore = new byte[_state.RegisterCount];
+            _busRecorder = new BusRecorder();
             _memory.Recorder = _busRecorder;
             _stack.Recorder = _busRecorder;
         }
@@ -144,12 +145,12 @@ namespace CPU.microcode
 
         private static TickType ClassifyPhase(MicroPhase phase) => phase switch
         {
-            MicroPhase.FetchOpcode => TickType.BusRead,
-            MicroPhase.FetchOperand => TickType.BusRead,
-            MicroPhase.FetchOperand16Low => TickType.BusRead,
-            MicroPhase.FetchOperand16High => TickType.BusRead,
-            MicroPhase.MemoryRead => TickType.BusRead,
-            MicroPhase.MemoryWrite => TickType.BusWrite,
+            MicroPhase.FetchOpcode => TickType.Bus,
+            MicroPhase.FetchOperand => TickType.Bus,
+            MicroPhase.FetchOperand16Low => TickType.Bus,
+            MicroPhase.FetchOperand16High => TickType.Bus,
+            MicroPhase.MemoryRead => TickType.Bus,
+            MicroPhase.MemoryWrite => TickType.Bus,
             _ => TickType.Internal,
         };
 
@@ -159,7 +160,7 @@ namespace CPU.microcode
         private bool _pendingInterrupt = false;
         private OpcodeBaseCode _currentBaseCode = OpcodeBaseCode.NOP;
         private IOpcode? _currentOpcode = null;
-        private readonly BusRecorder _busRecorder = new();
+        private readonly BusRecorder _busRecorder;
         private readonly byte[] _registersBefore;
         private readonly State _state;
         private readonly Memory _memory;

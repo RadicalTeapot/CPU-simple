@@ -33,7 +33,7 @@ namespace CPU.components
                 throw new InvalidOperationException("Stack overflow");
             var address = SP;
             _memory.WriteByte(SP--, value);
-            Recorder?.RecordWrite(address, value);
+            Recorder?.RecordWrite(address, value, BusType.Stack);
         }
 
         public byte PopByte()
@@ -41,7 +41,7 @@ namespace CPU.components
             if (SP == _pointerStartAddress)
                 throw new InvalidOperationException("Stack underflow");
             var value = _memory.ReadByte(++SP);
-            Recorder?.RecordRead(SP, value);
+            Recorder?.RecordRead(SP, value, BusType.Stack);
             return value;
         }
 
@@ -60,11 +60,11 @@ namespace CPU.components
             var highByte = (byte)((value >> 8) & 0xFF);
             var addrHigh = SP;
             _memory.WriteByte(SP--, highByte);
-            Recorder?.RecordWrite(addrHigh, highByte);
+            Recorder?.RecordWrite(addrHigh, highByte, BusType.Stack);
             var lowByte = (byte)(value & 0xFF);
             var addrLow = SP;
             _memory.WriteByte(SP--, lowByte);
-            Recorder?.RecordWrite(addrLow, lowByte);
+            Recorder?.RecordWrite(addrLow, lowByte, BusType.Stack);
         }
 
         private ushort PopWord()
@@ -72,9 +72,9 @@ namespace CPU.components
             if (SP > _pointerStartAddress - 2)
                 throw new InvalidOperationException("Stack underflow");
             ushort low = _memory.ReadByte(++SP);
-            Recorder?.RecordRead(SP, (byte)low);
+            Recorder?.RecordRead(SP, (byte)low, BusType.Stack);
             ushort high = _memory.ReadByte(++SP);
-            Recorder?.RecordRead(SP, (byte)high);
+            Recorder?.RecordRead(SP, (byte)high, BusType.Stack);
             return (ushort)(low | (high << 8));
         }
 

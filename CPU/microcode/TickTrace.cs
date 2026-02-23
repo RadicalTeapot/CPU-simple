@@ -1,8 +1,9 @@
 namespace CPU.microcode
 {
-    public enum TickType { BusRead, BusWrite, Internal }
+    public enum TickType { Bus, Internal }
     public enum BusDirection { Read, Write }
-    public record BusAccess(int Address, byte Data, BusDirection Direction);
+    public enum BusType { Memory, Stack }
+    public record BusAccess(int Address, byte Data, BusDirection Direction, BusType Type);
     public record RegisterChange(int Index, byte OldValue, byte NewValue);
     public record TickTrace(
         ulong TickNumber,

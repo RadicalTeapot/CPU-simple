@@ -17,7 +17,7 @@ function M.update_status(json)
   if not json then
     return
   end
-
+  
   local registers = {}
   if json.registers then
     for reg, val in pairs(json.registers) do
@@ -30,15 +30,12 @@ function M.update_status(json)
   local stack_changes = {}
   if json.traces then
     for _, trace in ipairs(json.traces) do
-      if trace.bus and trace.bus.direction == "Write" then
+      if trace.bus and trace.bus.direction == "Write" and trace.phase == "MemoryWrite" then
         -- Classify based on phase: MemoryWrite on main memory vs stack
-        if trace.phase == "MemoryWrite" then
-          -- Check sp_before vs sp_after to distinguish stack writes from memory writes
-          if trace.sp_before ~= trace.sp_after then
-            stack_changes[trace.bus.address] = trace.bus.data
-          else
-            memory_changes[trace.bus.address] = trace.bus.data
-          end
+        if trace.bus.type == "Stack" then
+          stack_changes[trace.bus.address] = trace.bus.data
+        else
+          memory_changes[trace.bus.address] = trace.bus.data
         end
       end
     end
@@ -57,6 +54,8 @@ function M.update_status(json)
     stack_changes = stack_changes,
     loaded_program = json.loaded_program == "True",
   }
+
+  -- vim.print("Updated CPU status:", M.status)
 
   -- Apply incremental changes to existing memory/stack arrays
   if M.memory then

@@ -15,7 +15,7 @@ namespace CPU.components
                 throw new ArgumentOutOfRangeException(nameof(address), $"Memory read address out of bounds: {address}.");
 
             var value = _memory[address];
-            Recorder?.RecordRead(address, value);
+            Recorder?.RecordRead(address, value, BusType.Memory);
             return value;
         }
 
@@ -28,14 +28,13 @@ namespace CPU.components
             return result;
         }
 
-        public void WriteByte(ushort address, byte value) => WriteByte(address, value, null);
-        public void WriteByte(ushort address, byte value, Action<int, byte>? reporter)
+        public void WriteByte(ushort address, byte value)
         {
             if (address >= Size)
                 throw new ArgumentOutOfRangeException(nameof(address), $"Memory write address out of bounds: {address}.");
 
             _memory[address] = value;
-            Recorder?.RecordWrite(address, value);
+            Recorder?.RecordWrite(address, value, BusType.Memory);
             reporter?.Invoke(address, value);
         }
 #else
@@ -44,7 +43,7 @@ namespace CPU.components
             if (address >= Size)
                 throw new ArgumentOutOfRangeException(nameof(address), $"Memory read address out of bounds: {address}.");
             var value = _memory[address];
-            Recorder?.RecordRead(address, value);
+            Recorder?.RecordRead(address, value, BusType.Memory);
             return value;
         }
 
@@ -57,14 +56,12 @@ namespace CPU.components
             return result;
         }
 
-        public void WriteByte(byte address, byte value) => WriteByte(address, value, null);
-        public void WriteByte(byte address, byte value, Action<int, byte>? reporter)
+        public void WriteByte(byte address, byte value)
         {
             if (address >= Size)
                 throw new ArgumentOutOfRangeException(nameof(address), $"Memory write address out of bounds: {address}.");
             _memory[address] = value;
-            Recorder?.RecordWrite(address, value);
-            reporter?.Invoke(address, value);
+            Recorder?.RecordWrite(address, value, BusType.Memory);
         }
 #endif
 
