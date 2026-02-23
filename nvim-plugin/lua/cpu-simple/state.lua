@@ -30,8 +30,7 @@ function M.update_status(json)
   local stack_changes = {}
   if json.traces then
     for _, trace in ipairs(json.traces) do
-      if trace.bus and trace.bus.direction == "Write" and trace.phase == "MemoryWrite" then
-        -- Classify based on phase: MemoryWrite on main memory vs stack
+      if trace.tick_type == "Bus" and trace.bus and trace.bus.direction == "Write" then
         if trace.bus.type == "Stack" then
           stack_changes[trace.bus.address] = trace.bus.data
         else

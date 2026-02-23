@@ -81,7 +81,7 @@ namespace CPU.microcode
             var trace = new TickTrace(
                 TickNumber: _tickCounter,
                 Type: ClassifyPhase(executedPhase),
-                Phase: executedPhase,
+                NextPhase: _currentPhase,
                 PcBefore: pcBefore,
                 PcAfter: _state.GetPC(),
                 SpBefore: spBefore,

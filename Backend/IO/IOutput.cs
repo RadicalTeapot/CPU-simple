@@ -29,7 +29,7 @@ namespace Backend.IO
                 {
                     tick = t.TickNumber,
                     tick_type = t.Type.ToString(),
-                    phase = t.Phase.ToString(),
+                    next_phase = t.NextPhase.ToString(),
                     pc_before = t.PcBefore,
                     pc_after = t.PcAfter,
                     sp_before = t.SpBefore,

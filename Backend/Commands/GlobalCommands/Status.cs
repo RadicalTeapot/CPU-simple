@@ -44,7 +44,10 @@ namespace Backend.Commands.GlobalCommands
                 sb.Append("Traces: ");
                 foreach (var trace in inspector.Traces)
                 {
-                    sb.Append($"[T{trace.TickNumber} {trace.Phase} {trace.Type}] ");
+                    if (trace.Type == CPU.microcode.TickType.Bus && trace.Bus != null)
+                        sb.Append($"[T{trace.TickNumber} {trace.Type} {trace.Bus.Direction}] ");
+                    else
+                        sb.Append($"[T{trace.TickNumber} {trace.Type}] ");
                 }
             }
             else

@@ -149,10 +149,12 @@ I did review and tested the code but exercise caution when using it.
 
 ## To do (in no particular order)
 
-- [ ] Re-implement the ExecutionContext behavior (using info from micro-ticks)
-- [ ] Add missing info to MicrocodeTickResult (see [Debugger Integration](docs/projects/cpu-simple/micro-code.md#debugger-integration))
+- [ ] Remove building the tick trace from and into it's own class (using MicrocodeTickResult and components to build it, and integrate _lastTraces into it, that will be passed to the CpuInspector ctor to build it)
+- [ ] CPUInspector doesn't need to be a builder anymore
 - [ ] Implement CPU IDE ([inspiration for some UI](https://github.com/AfaanBilal/NanoCore/blob/master/assets/NanoCoreTUI.gif)) in Neovim
-  - [ ] Use micro-code in IDE
+  - [ ] Add command to step (and run) by tick
+  - [ ] When in tick mode, allow to set breakpoints on specific tick types (memory read, memory write,...)
+  - [ ] Add a tick info panel that reports on the executed tick
   - [ ] When assembled, if sidebar was never opened, open the configured panels, otherwise just re-open sidebar
   - [ ] Test if assembler errors are handled
   - [ ] Error when loading CPU dump of 16bit version

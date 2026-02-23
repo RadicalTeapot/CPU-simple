@@ -272,8 +272,7 @@ namespace CPU.Tests
             var result = cpu.Tick();
 
             Assert.That(result.Trace, Is.Not.Null);
-            Assert.That(result.Trace!.Phase, Is.EqualTo(MicroPhase.FetchOpcode));
-            Assert.That(result.Trace.Type, Is.EqualTo(TickType.Bus));
+            Assert.That(result.Trace!.Type, Is.EqualTo(TickType.Bus));
             Assert.That(result.Trace.Bus, Is.Not.Null);
             Assert.That(result.Trace.Bus!.Address, Is.EqualTo(0));
             Assert.That(result.Trace.Bus.Data, Is.EqualTo((byte)OpcodeBaseCode.NOP));
@@ -298,8 +297,7 @@ namespace CPU.Tests
             var result = cpu.Tick();
 
             Assert.That(result.Trace, Is.Not.Null);
-            Assert.That(result.Trace!.Phase, Is.EqualTo(MicroPhase.AluOp));
-            Assert.That(result.Trace.Type, Is.EqualTo(TickType.Internal));
+            Assert.That(result.Trace!.Type, Is.EqualTo(TickType.Internal));
 
             // Register r0 changed from 0x80 to 0x00
             Assert.That(result.Trace.RegisterChanges, Has.Length.EqualTo(1));
@@ -332,14 +330,12 @@ namespace CPU.Tests
                 if (result.Trace != null) traces.Add(result.Trace);
             } while (!result.IsInstructionComplete);
 
-            // Find the MemoryWrite trace
-            var writeTrace = traces.Find(t => t.Phase == MicroPhase.MemoryWrite);
+            // Find the bus write trace
+            var writeTrace = traces.Find(t => t.Type == TickType.Bus && t.Bus!.Direction == BusDirection.Write);
             Assert.That(writeTrace, Is.Not.Null);
-            Assert.That(writeTrace!.Type, Is.EqualTo(TickType.Bus));
-            Assert.That(writeTrace.Bus, Is.Not.Null);
+            Assert.That(writeTrace!.Bus, Is.Not.Null);
             Assert.That(writeTrace.Bus!.Address, Is.EqualTo(0x10));
             Assert.That(writeTrace.Bus.Data, Is.EqualTo(0x42));
-            Assert.That(writeTrace.Bus.Direction, Is.EqualTo(BusDirection.Write));
         }
 
         [Test]
@@ -362,7 +358,6 @@ namespace CPU.Tests
             // FetchOpcode + FetchOperand + MemoryRead = 3 traces
             Assert.That(inspector.Traces, Has.Length.EqualTo(3));
 #endif
-            Assert.That(inspector.Traces[0].Phase, Is.EqualTo(MicroPhase.FetchOpcode));
         }
 
         private static MicroPhase[] TickSequence(CPU cpu)

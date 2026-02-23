@@ -8,7 +8,7 @@ namespace CPU.microcode
     public record TickTrace(
         ulong TickNumber,
         TickType Type,
-        MicroPhase Phase,
+        MicroPhase NextPhase,
         int PcBefore, int PcAfter,
         int SpBefore, int SpAfter,
         string Instruction,
