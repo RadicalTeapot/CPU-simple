@@ -11,7 +11,7 @@ namespace CPU.opcodes
             _state = state;
             _memory = memory;
             _registerIdx = OpcodeHelpers.GetDestinationRegisterIdx(instructionByte);
-            SetPhases(MicroPhase.FetchOperand, ReadRegisterAndImmediate, AluOp, Write);
+            SetPhases(MicroPhase.FetchOperand, ReadRegisterAndImmediate, EffectiveAddrComputation, Write);
         }
 
         private MicroPhase ReadRegisterAndImmediate()
@@ -20,10 +20,10 @@ namespace CPU.opcodes
             _state.IncrementPC();
             _indirectRegisterIdx = (byte)(value & 0b11);
             _immediateValue = (byte)(value >> 2);
-            return MicroPhase.AluOp;
+            return MicroPhase.EffectiveAddrComputation;
         }
 
-        private MicroPhase AluOp()
+        private MicroPhase EffectiveAddrComputation()
         {
             _effectiveAddress = (byte)(_state.GetRegister(_indirectRegisterIdx) + _immediateValue);
             return MicroPhase.MemoryWrite;

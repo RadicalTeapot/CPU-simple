@@ -104,7 +104,7 @@ Relevant JSON fields per trace:
 |---|---|
 | `tick` | `TickTrace.TickNumber` |
 | `tick_type` | `TickTrace.Type.ToString()` — `"Bus"` or `"Internal"` |
-| `next_phase` | `TickTrace.NextPhase.ToString()` — the phase that will execute *next* |
+| `next_phase` | `TickTrace.NextPhase.ToString()` — the phase that will execute *next* (will be used when debugging in tick mode to break at before given phase types)|
 | `pc_before` / `pc_after` | PC before/after the tick |
 | `sp_before` / `sp_after` | SP before/after the tick |
 | `instruction` | Opcode name (e.g. `"LDA"`, `"ADD"`) |
@@ -113,7 +113,7 @@ Relevant JSON fields per trace:
 | `carry_flag_before` / `carry_flag_after` | Carry flag state |
 | `bus` | `{ address, data, direction, type }` or `null` |
 
-The `status` command handler (`Backend/Commands/GlobalCommands/Status.cs`) shows a compact human-readable summary: `[T{tick} {phase} {type}]` per trace.
+The `status` command handler (`Backend/Commands/GlobalCommands/Status.cs`) shows a compact human-readable summary: `[T{tick} {type} {bus-direction}]` per trace.
 
 ---
 

@@ -84,6 +84,9 @@ namespace CPU
             MicroPhase.FetchOperand16High => TickType.Bus,
             MicroPhase.MemoryRead => TickType.Bus,
             MicroPhase.MemoryWrite => TickType.Bus,
+            MicroPhase.AluOp => TickType.Internal,
+            MicroPhase.EffectiveAddrComputation => TickType.Internal,
+            MicroPhase.ValueComposition => TickType.Internal,
             _ => TickType.Internal,
         };
 

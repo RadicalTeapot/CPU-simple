@@ -149,8 +149,9 @@ I did review and tested the code but exercise caution when using it.
 
 ## To do (in no particular order)
 
+- [ ] Change 16bit implementation so that computing the effective address is an internal ALU operation
 - [ ] Implement CPU IDE ([inspiration for some UI](https://github.com/AfaanBilal/NanoCore/blob/master/assets/NanoCoreTUI.gif)) in Neovim
-  - [ ] Fix issue when not all json is read in one go in neovim
+  - [x] Fix issue when not all json is read in one go in neovim
   - [ ] Add command to swap between step and tick mode (to backend and nvim-plugin)
   - [ ] When in tick mode, allow to set breakpoints on specific tick types (memory read, memory write,...)
   - [ ] Add a tick info panel that reports on the executed tick

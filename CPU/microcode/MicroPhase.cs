@@ -13,6 +13,8 @@ namespace CPU.microcode
 
         // Internal operations
         AluOp,
+        EffectiveAddrComputation, // compute EA = base + offset (indexed addressing)
+        ValueComposition,         // compose a multi-byte value: (high << 8) | low
 
         Done
     }

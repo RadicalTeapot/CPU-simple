@@ -135,7 +135,7 @@ namespace CPU.Tests
                 out _);
 
 #if x16
-            MicroPhase[] expected = [MicroPhase.FetchOperand16Low, MicroPhase.FetchOperand16High, MicroPhase.FetchOpcode];
+            MicroPhase[] expected = [MicroPhase.FetchOperand16Low, MicroPhase.FetchOperand16High, MicroPhase.ValueComposition, MicroPhase.FetchOpcode];
 #else
             MicroPhase[] expected = [MicroPhase.FetchOperand, MicroPhase.FetchOpcode];
 #endif
@@ -152,7 +152,7 @@ namespace CPU.Tests
                 out _);
 
 #if x16
-            MicroPhase[] expected = [MicroPhase.FetchOperand16Low, MicroPhase.FetchOperand16High, MicroPhase.MemoryRead, MicroPhase.FetchOpcode];
+            MicroPhase[] expected = [MicroPhase.FetchOperand16Low, MicroPhase.FetchOperand16High, MicroPhase.ValueComposition, MicroPhase.MemoryRead, MicroPhase.FetchOpcode];
 #else
             MicroPhase[] expected = [MicroPhase.FetchOperand, MicroPhase.MemoryRead, MicroPhase.FetchOpcode];
 #endif
@@ -169,7 +169,7 @@ namespace CPU.Tests
                 out _);
 
 #if x16
-            MicroPhase[] expected = [MicroPhase.FetchOperand16Low, MicroPhase.FetchOperand16High, MicroPhase.MemoryWrite, MicroPhase.FetchOpcode];
+            MicroPhase[] expected = [MicroPhase.FetchOperand16Low, MicroPhase.FetchOperand16High, MicroPhase.ValueComposition, MicroPhase.MemoryWrite, MicroPhase.FetchOpcode];
 #else
             MicroPhase[] expected = [MicroPhase.FetchOperand, MicroPhase.MemoryWrite, MicroPhase.FetchOpcode];
 #endif
@@ -185,7 +185,7 @@ namespace CPU.Tests
                 out _,
                 out _);
 
-            MicroPhase[] expected = [MicroPhase.FetchOperand, MicroPhase.AluOp, MicroPhase.MemoryRead, MicroPhase.FetchOpcode];
+            MicroPhase[] expected = [MicroPhase.FetchOperand, MicroPhase.EffectiveAddrComputation, MicroPhase.MemoryRead, MicroPhase.FetchOpcode];
             Assert.That(TickSequence(cpu), Is.EqualTo(expected));
         }
 
@@ -198,7 +198,7 @@ namespace CPU.Tests
                 out _,
                 out _);
 
-            MicroPhase[] expected = [MicroPhase.FetchOperand, MicroPhase.AluOp, MicroPhase.MemoryWrite, MicroPhase.FetchOpcode];
+            MicroPhase[] expected = [MicroPhase.FetchOperand, MicroPhase.EffectiveAddrComputation, MicroPhase.MemoryWrite, MicroPhase.FetchOpcode];
             Assert.That(TickSequence(cpu), Is.EqualTo(expected));
         }
 
@@ -218,7 +218,7 @@ namespace CPU.Tests
                 out _);
 
 #if x16
-            MicroPhase[] expected = [MicroPhase.FetchOperand16Low, MicroPhase.FetchOperand16High, MicroPhase.MemoryRead, MicroPhase.AluOp, MicroPhase.FetchOpcode];
+            MicroPhase[] expected = [MicroPhase.FetchOperand16Low, MicroPhase.FetchOperand16High, MicroPhase.ValueComposition, MicroPhase.MemoryRead, MicroPhase.AluOp, MicroPhase.FetchOpcode];
 #else
             MicroPhase[] expected = [MicroPhase.FetchOperand, MicroPhase.MemoryRead, MicroPhase.AluOp, MicroPhase.FetchOpcode];
 #endif
@@ -235,7 +235,7 @@ namespace CPU.Tests
                 out _);
 
 #if x16
-            MicroPhase[] expected = [MicroPhase.FetchOperand16Low, MicroPhase.FetchOperand16High, MicroPhase.MemoryWrite, MicroPhase.MemoryWrite, MicroPhase.FetchOpcode];
+            MicroPhase[] expected = [MicroPhase.FetchOperand16Low, MicroPhase.FetchOperand16High, MicroPhase.ValueComposition, MicroPhase.MemoryWrite, MicroPhase.MemoryWrite, MicroPhase.FetchOpcode];
 #else
             MicroPhase[] expected = [MicroPhase.FetchOperand, MicroPhase.MemoryWrite, MicroPhase.FetchOpcode];
 #endif
@@ -253,7 +253,7 @@ namespace CPU.Tests
             stack.PushAddress(0x00);
 
 #if x16
-            MicroPhase[] expected = [MicroPhase.MemoryRead, MicroPhase.MemoryRead, MicroPhase.FetchOpcode];
+            MicroPhase[] expected = [MicroPhase.MemoryRead, MicroPhase.MemoryRead, MicroPhase.ValueComposition, MicroPhase.FetchOpcode];
 #else
             MicroPhase[] expected = [MicroPhase.MemoryRead, MicroPhase.FetchOpcode];
 #endif
@@ -346,8 +346,8 @@ namespace CPU.Tests
             var inspector = cpu.GetInspector();
 
 #if x16
-            // FetchOpcode + FetchOperand16Low + FetchOperand16High + MemoryRead = 4 traces
-            Assert.That(inspector.Traces, Has.Length.EqualTo(4));
+            // FetchOpcode + FetchOperand16Low + FetchOperand16High + ValueComposition + MemoryRead = 5 traces
+            Assert.That(inspector.Traces, Has.Length.EqualTo(5));
 #else
             // FetchOpcode + FetchOperand + MemoryRead = 3 traces
             Assert.That(inspector.Traces, Has.Length.EqualTo(3));

@@ -32,10 +32,13 @@ Each bus tick performs one memory transaction and may include simple bookkeeping
 | `MemoryRead` | Read data from memory or stack (not an instruction byte) |
 | `MemoryWrite` | Write data to memory or stack |
 
-**Internal Tick**
-- Performs ALU computations and control updates
-- Computes effective addresses for indexed addressing
-- Makes control flow decisions (conditional branches)
+**Internal Ticks**
+
+| Phase | Description |
+|---|---|
+| `AluOp` | Perform an arithmetic or logical computation (result written to register/flags) |
+| `EffectiveAddrComputation` | Compute effective address: EA = base register + immediate offset (indexed addressing) |
+| `ValueComposition` | Compose a multi-byte value: `(high << 8) | low` (16-bit address/value assembly) |
 
 ### The Boundary: What Requires an Internal Tick?
 
@@ -56,8 +59,8 @@ Each bus tick performs one memory transaction and may include simple bookkeeping
   - Logical operations (AND, OR, XOR)
   - Shifts and rotates
   - Comparisons (they update flags)
-  - Effective address calculation for indexed addressing (base + offset)
-  - 16-bit value composition in 16-bit mode (may change—see note below)
+  - Effective address calculation for indexed addressing (base + offset) — `EffectiveAddrComputation` phase
+  - 16-bit value composition in 16-bit mode — `ValueComposition` phase
 
 **Pedagogical rule**: *If an operation requires ALU computation (add, subtract, shift, compare, EA arithmetic), it gets its own internal tick. Latching any value — including writing to destination registers, flags, or PC — is free and can be bundled with any bus tick.*
 
@@ -217,13 +220,14 @@ Register reads happen instantly as part of the bus write operation—no separate
 16-bit mode (3 bytes):
 1. FetchOpcode, PC++
 2. FetchOperand16Low: addr_low, PC++
-3. FetchOperand16High: addr_high, addr composition as combinational decode, PC ← (addr_high << 8) | addr_low (latching)
+3. FetchOperand16High: addr_high, PC++
+4. ValueComposition: PC ← (addr_high << 8) | addr_low (latching)
 
-**Total: 3 ticks**
+**Total: 4 ticks**
 
 **Conditional jump (JCC, JCS, JZC, JZS [addr])**
 
-Same as JMP; checking the condition is combinational logic allowed on the fetch tick.
+Same as JMP; checking the condition and conditionally writing PC happens in the `ValueComposition` tick.
 The cost is the same whether the branch is taken or not.
 
 **Subroutine call (CAL [addr])**
@@ -240,11 +244,12 @@ Pushes return address to stack, then jumps. PC ← addr is free latching bundled
 16-bit mode (3 bytes, 16-bit return address):
 1. FetchOpcode, PC++
 2. FetchOperand16Low: addr_low, PC++
-3. FetchOperand16High: addr_high, PC++ (addr composition as combinational decode)
-4. MemoryWrite: Write PC_high to mem[SP], SP-- (push high byte first)
-5. MemoryWrite: Write PC_low to mem[SP], SP-- ; PC ← target_addr (latching)
+3. FetchOperand16High: addr_high, PC++
+4. ValueComposition: target_addr ← (addr_high << 8) | addr_low
+5. MemoryWrite: Write PC_high to mem[SP], SP-- (push high byte first)
+6. MemoryWrite: Write PC_low to mem[SP], SP-- ; PC ← target_addr (latching)
 
-**Total: 5 ticks**
+**Total: 6 ticks**
 
 **Return from subroutine (RET)**
 
@@ -259,11 +264,10 @@ Pops return address from stack. PC ← popped value is free latching bundled wit
 16-bit mode (1 byte, 16-bit return address):
 1. FetchOpcode, PC++
 2. MemoryRead: Read mem[SP] → PC_low, SP++ (bookkeeping)
-3. MemoryRead: Read mem[SP] → PC_high, SP++ ; PC ← (PC_high << 8) | PC_low (latching)
+3. MemoryRead: Read mem[SP] → PC_high, SP++ (bookkeeping)
+4. ValueComposition: PC ← (PC_high << 8) | PC_low (latching)
 
-**Total: 3 ticks**
-
-*Note*: The 16-bit composition `(PC_high << 8) | PC_low` currently happens as combinational decode on the final pop tick. This may change in future revisions to a separate internal tick, which would add 1 tick to all 16-bit control flow operations.
+**Total: 4 ticks**
 
 ## Complete Timing Tables
 
@@ -292,13 +296,13 @@ Instructions with memory addresses use 3 bytes:
 
 | Instruction | Bytes | Total | Breakdown |
 |-------------|-------|-------|-----------|
-| `LDA R0, [0x1234]` | 3 | 4 | FetchOpcode + FetchOperand16Low + FetchOperand16High + MemoryRead (data→Rd) |
-| `STA R0, [0x1234]` | 3 | 4 | FetchOpcode + FetchOperand16Low + FetchOperand16High + MemoryWrite |
-| `ADA R0, [0x1234]` | 3 | 5 | FetchOpcode + 2×FetchOperand16 + MemoryRead + AluOp |
-| `JMP [label]` | 3 | 3 | FetchOpcode + FetchOperand16Low + FetchOperand16High (→PC) |
-| `JZS [label]` | 3 | 3 | FetchOpcode + FetchOperand16Low + FetchOperand16High (→PC if Z) |
-| `CAL [label]` | 3 | 5 | FetchOpcode + FetchOperand16Low + FetchOperand16High + 2×MemoryWrite |
-| `RET` | 1 | 3 | FetchOpcode + 2×MemoryRead |
+| `LDA R0, [0x1234]` | 3 | 5 | FetchOpcode + FetchOperand16Low + FetchOperand16High + ValueComposition + MemoryRead (data→Rd) |
+| `STA R0, [0x1234]` | 3 | 5 | FetchOpcode + FetchOperand16Low + FetchOperand16High + ValueComposition + MemoryWrite |
+| `ADA R0, [0x1234]` | 3 | 6 | FetchOpcode + 2×FetchOperand16 + ValueComposition + MemoryRead + AluOp |
+| `JMP [label]` | 3 | 4 | FetchOpcode + FetchOperand16Low + FetchOperand16High + ValueComposition (→PC) |
+| `JZS [label]` | 3 | 4 | FetchOpcode + FetchOperand16Low + FetchOperand16High + ValueComposition (→PC if Z) |
+| `CAL [label]` | 3 | 6 | FetchOpcode + FetchOperand16Low + FetchOperand16High + ValueComposition + 2×MemoryWrite |
+| `RET` | 1 | 4 | FetchOpcode + 2×MemoryRead + ValueComposition |
 
 ## Micro-Step Examples
 
@@ -349,9 +353,9 @@ Total: 3 ticks
 Phase 0: BUS READ  - FetchOpcode → IR, PC++ (PC: 0x0100 → 0x0101)
 Phase 1: BUS READ  - FetchOperand16Low: addr_low=0x34, PC++ (PC: 0x0101 → 0x0102)
 Phase 2: BUS READ  - FetchOperand16High: addr_high=0x12, PC++ (PC: 0x0102 → 0x0103)
-                     [EA = (0x12 << 8) | 0x34 = 0x1234 computed as combinational decode]
-Phase 3: BUS READ  - MemoryRead: r0 ← mem[0x1234] → DONE
-Total: 4 ticks
+Phase 3: INTERNAL  - ValueComposition: EA = (0x12 << 8) | 0x34 = 0x1234
+Phase 4: BUS READ  - MemoryRead: r0 ← mem[0x1234] → DONE
+Total: 5 ticks
 ```
 
 ### `CAL [0x8000]` (16-bit mode subroutine call)
@@ -359,10 +363,10 @@ Total: 4 ticks
 Phase 0: BUS READ  - FetchOpcode → IR, PC++
 Phase 1: BUS READ  - FetchOperand16Low: addr_low, PC++
 Phase 2: BUS READ  - FetchOperand16High: addr_high, PC++
-                     [target_addr = (addr_high << 8) | addr_low computed as decode]
-Phase 3: BUS WRITE - MemoryWrite: write PC_high to mem[SP], SP--
-Phase 4: BUS WRITE - MemoryWrite: write PC_low to mem[SP], SP-- ; PC ← target_addr → DONE
-Total: 5 ticks
+Phase 3: INTERNAL  - ValueComposition: target_addr = (addr_high << 8) | addr_low
+Phase 4: BUS WRITE - MemoryWrite: write PC_high to mem[SP], SP--
+Phase 5: BUS WRITE - MemoryWrite: write PC_low to mem[SP], SP-- ; PC ← target_addr → DONE
+Total: 6 ticks
 ```
 
 ## Implementation Considerations
@@ -394,7 +398,7 @@ The tick-level model enables rich debugging capabilities. Every tick produces a 
 |---|---|
 | `FetchOpcode`, `FetchOperand`, `FetchOperand16Low`, `FetchOperand16High`, `MemoryRead` | `BusRead` |
 | `MemoryWrite` | `BusWrite` |
-| `AluOp`, `Done` | `Internal` |
+| `AluOp`, `EffectiveAddrComputation`, `ValueComposition`, `Done` | `Internal` |
 
 This trace format makes watchpoints, breakpoints, and "why did memory change?" debugging straightforward. See `docs/projects/cpu-simple/debugging.md` for the full pipeline from CPU to IDE.
 
@@ -419,16 +423,6 @@ In CPU-simple:
 - The tick counts remain accurate to real hardware behavior, but the implementation is simplified
 
 This design choice favors **educational clarity** over hardware quirk simulation. The performance characteristics (instruction timing) match real CPUs, but the bus trace is cleaner and easier to understand.
-
-### Future Enhancement: 16-bit Composition Separation
-
-**Current behavior**: 16-bit value composition `(high << 8) | low` and register/PC update happen as combinational decode bundled with the final fetch or pop tick.
-
-**Potential future change**: Separate composition from update into an explicit internal tick:
-1. Internal tick: Compute `temp ← (high << 8) | low`
-2. Register/PC update as bookkeeping on the next tick
-
-This would add 1 tick to all 16-bit control flow operations (JMP, CAL, RET in 16-bit mode) and some 16-bit data operations. The change would more accurately reflect ALU pipeline stages but adds complexity. This decision is deferred pending implementation experience.
 
 ## Rationale
 
@@ -472,7 +466,7 @@ Total ticks = Fetch ticks + Execute ticks
 - Memory accesses (each is 1 bus tick)
 - ALU operations (1 internal tick each)
 - Register writes, flag updates, PC writes (free — bundled as latching with any bus tick)
-- Addressing mode (direct vs indexed — indexed adds 1 AluOp tick for EA calculation)
+- Addressing mode (direct vs indexed — indexed adds 1 `EffectiveAddrComputation` tick for EA calculation)
 - Architecture mode (8-bit vs 16-bit affects instruction sizes and PC width)
 
 This model provides accurate cycle-counting for performance analysis while maintaining clear, debuggable execution semantics.

@@ -12,7 +12,7 @@ namespace CPU.opcodes
             _memory = memory;
             _stack = stack;
 #if x16
-            SetPhases(MicroPhase.FetchOperand16Low, Read1, Read2, Push1, Push2);
+            SetPhases(MicroPhase.FetchOperand16Low, Read1, Read2, ComposeAddress, Push1, Push2);
 #else
             SetPhases(MicroPhase.FetchOperand, Read1, Push1);
 #endif
@@ -34,9 +34,14 @@ namespace CPU.opcodes
 #if x16
         private MicroPhase Read2()
         {
-            var addressHigh = _memory.ReadByte(_state.GetPC());
-            _address = ByteConversionHelper.ToUShort(addressHigh, _addressLow);
+            _addressHigh = _memory.ReadByte(_state.GetPC());
             _state.IncrementPC();
+            return MicroPhase.ValueComposition;
+        }
+
+        private MicroPhase ComposeAddress()
+        {
+            _address = ByteConversionHelper.ToUShort(_addressHigh, _addressLow);
             return MicroPhase.MemoryWrite;
         }
 #endif
@@ -67,6 +72,7 @@ namespace CPU.opcodes
 
 #if x16
         private byte _addressLow;
+        private byte _addressHigh;
         private ushort _address;
 #else
         private byte _address;
