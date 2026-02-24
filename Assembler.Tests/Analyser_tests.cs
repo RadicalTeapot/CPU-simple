@@ -322,5 +322,69 @@ namespace Assembler.Tests
             var symbols = AnalyserTestsHelper.GetSymbols(program);
             Assert.That(symbols, Has.Count.EqualTo(3)); // start, end, myval
         }
+
+        // === IRQ Section Tests ===
+
+        [Test]
+        public void IrqSection_CreatesAtCorrectAddress()
+        {
+            var program = string.Join("\n", [
+                ".irq",
+                "handler:",
+                "  RTI"
+            ]);
+
+            var bytes = AnalyserTestsHelper.AnalyseAndEmit(program);
+            // IRQ section at address 224 (0xE0), with fill gap from 0 to 0xDF
+            Assert.That(bytes.Length, Is.EqualTo(225)); // 224 bytes fill + 1 byte RTI
+            Assert.That(bytes[224], Is.EqualTo((byte)CPU.opcodes.OpcodeBaseCode.RTI));
+        }
+
+        [Test]
+        public void IrqSection_InstructionsAllowed()
+        {
+            var program = string.Join("\n", [
+                ".irq",
+                "  SEI",
+                "  RTI"
+            ]);
+
+            var emitNodes = AnalyserTestsHelper.AnalyseProgram(program);
+            // Fill node + SEI + RTI
+            Assert.That(emitNodes, Has.Count.EqualTo(3));
+        }
+
+        [Test]
+        public void IrqSection_DataDirectivesRejected()
+        {
+            var program = string.Join("\n", [
+                ".irq",
+                "  .byte #0xFF"
+            ]);
+
+            Assert.Throws<AggregateException>(() => AnalyserTestsHelper.AnalyseProgram(program));
+        }
+
+        [Test]
+        public void IrqSection_DuplicateRejected()
+        {
+            var program = string.Join("\n", [
+                ".irq",
+                "  RTI",
+                ".irq",
+                "  RTI"
+            ]);
+
+            Assert.Throws<AggregateException>(() => AnalyserTestsHelper.AnalyseProgram(program));
+        }
+
+        [TestCase("SEI", (byte)CPU.opcodes.OpcodeBaseCode.SEI)]
+        [TestCase("CLI", (byte)CPU.opcodes.OpcodeBaseCode.CLI)]
+        [TestCase("RTI", (byte)CPU.opcodes.OpcodeBaseCode.RTI)]
+        public void InterruptOpcodes_AssembleCorrectly(string mnemonic, byte expectedByte)
+        {
+            var bytes = AnalyserTestsHelper.AnalyseAndEmit(mnemonic);
+            Assert.That(bytes[0], Is.EqualTo(expectedByte));
+        }
     }
 }

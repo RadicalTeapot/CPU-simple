@@ -13,6 +13,8 @@ namespace CPU.Tests
         [TestCase((byte)OpcodeBaseCode.SEC)]
         [TestCase((byte)OpcodeBaseCode.CLZ)]
         [TestCase((byte)OpcodeBaseCode.SEZ)]
+        [TestCase((byte)OpcodeBaseCode.SEI)]
+        [TestCase((byte)OpcodeBaseCode.CLI)]
         public void ZeroExecute(byte opcodeByte)
         {
             var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
@@ -352,6 +354,25 @@ namespace CPU.Tests
             // FetchOpcode + FetchOperand + MemoryRead = 3 traces
             Assert.That(inspector.Traces, Has.Length.EqualTo(3));
 #endif
+        }
+
+        [Test]
+        public void Rti()
+        {
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.RTI],
+                out _,
+                out var stack,
+                out _);
+            stack.PushByte(0x00); // status byte
+            stack.PushAddress(0x00);
+
+#if x16
+            MicroPhase[] expected = [MicroPhase.MemoryRead, MicroPhase.MemoryRead, MicroPhase.ValueComposition, MicroPhase.MemoryRead, MicroPhase.FetchOpcode];
+#else
+            MicroPhase[] expected = [MicroPhase.MemoryRead, MicroPhase.MemoryRead, MicroPhase.FetchOpcode];
+#endif
+            Assert.That(TickSequence(cpu), Is.EqualTo(expected));
         }
 
         private static MicroPhase[] TickSequence(CPU cpu)

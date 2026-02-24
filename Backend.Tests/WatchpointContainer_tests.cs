@@ -165,6 +165,7 @@ namespace Backend.Tests
                 RegisterChanges: [],
                 ZeroFlagBefore: false, ZeroFlagAfter: false,
                 CarryFlagBefore: false, CarryFlagAfter: false,
+                InterruptDisableFlagBefore: false, InterruptDisableFlagAfter: false,
                 Bus: bus
             );
         }

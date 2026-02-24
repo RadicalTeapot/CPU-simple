@@ -50,7 +50,7 @@ module.exports = grammar({
 
     // Section directives: .text, .data
     header_directive: ($) =>
-      seq(".", choice(/[tT][eE][xX][tT]/, /[dD][aA][tT][aA]/)),
+      seq(".", choice(/[tT][eE][xX][tT]/, /[dD][aA][tT][aA]/, /[iI][rR][qQ]/)),
 
     // Data directives with operands
     directive: ($) =>

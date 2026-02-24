@@ -50,6 +50,7 @@ Section directives are only semantically valid as the first directive of a state
 
 - `.text` defines the program section. It always starts to address `0x00`. Muliple sections are concatenated together when emitting machine code.
 - `.data` defines the data declaration section, typically only one such section is declared. Those are emitted in the same order as declared in program, starting right after `.text` section ends.
+- `.irq` defines the interrupt handler section. Code placed here runs when an interrupt is serviced. Only one `.irq` section is allowed. It is placed at a fixed address near the end of main memory (16 bytes before the stack region). Instructions are allowed; data directives are not.
 
 The following directives are syntactically valid anywhere, but semantically restricted to data section:
 - `.org <addr>, <fill>` move the location counter to `<addr>` and fill the gaps with `<fill>` (If `<fill>` is omitted, the assembler fills gaps with `#00`). Both `addr` and `fill` are byte literals.

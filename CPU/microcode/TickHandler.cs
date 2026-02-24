@@ -8,7 +8,8 @@ namespace CPU.microcode
         State State,
         Memory Memory,
         Stack Stack,
-        OpcodeFactory OpcodeFactory
+        OpcodeFactory OpcodeFactory,
+        int IrqVectorAddress
     ) { }
 
     internal class TickHandler
@@ -19,6 +20,7 @@ namespace CPU.microcode
             _memory = context.Memory;
             _stack = context.Stack;
             _opcodeFactory = context.OpcodeFactory;
+            _irqVectorAddress = context.IrqVectorAddress;
         }
 
         public void RequestInterrupt()
@@ -72,7 +74,7 @@ namespace CPU.microcode
 
         private void FetchCurrentInstruction()
         {
-            if (_pendingInterrupt)
+            if (_pendingInterrupt && !_state.I)
             {
                 JumpToInterrupt();
                 return;
@@ -90,7 +92,10 @@ namespace CPU.microcode
         private void JumpToInterrupt()
         {
             _pendingInterrupt = false;
-            _currentPhase = MicroPhase.JumpToInterrupt;
+            _phaseCount = 0;
+            _currentBaseCode = OpcodeBaseCode.NOP;
+            _currentOpcode = new InterruptServiceRoutine(_state, _stack, _irqVectorAddress);
+            _currentPhase = _currentOpcode.GetStartPhaseType();
         }
 
         private MicroPhase _currentPhase = MicroPhase.FetchOpcode;
@@ -103,5 +108,6 @@ namespace CPU.microcode
         private readonly Memory _memory;
         private readonly Stack _stack;
         private readonly OpcodeFactory _opcodeFactory;
+        private readonly int _irqVectorAddress;
     }
 }

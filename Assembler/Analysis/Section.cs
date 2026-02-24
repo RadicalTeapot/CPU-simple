@@ -5,7 +5,8 @@
         public enum Type
         {
             Text,
-            Data
+            Data,
+            Irq
         }
         public Type SectionType { get; } = sectionType;
         // Note: O(n) recalculated on every access. Could be optimized to a cached

@@ -27,6 +27,7 @@ namespace Backend.Commands.GlobalCommands
             }
             sb.Append($"Zero: {inspector.ZeroFlag} ");
             sb.Append($"Carry: {inspector.CarryFlag} ");
+            sb.Append($"IntDisable: {inspector.InterruptDisableFlag} ");
             if (inspector.Traces.Length > 0)
             {
                 sb.Append("Traces: ");

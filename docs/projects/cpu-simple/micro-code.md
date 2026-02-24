@@ -113,7 +113,7 @@ Execute costs depend on the operation type:
 
 #### Register-only transfers: **0 ticks**
 - Register-to-register moves: `MOV Rd, Rs`
-- Flag operations: `CLC`, `SEC`, `CLZ`, `SEZ`
+- Flag operations: `CLC`, `SEC`, `CLZ`, `SEZ`, `SEI`, `CLI`
 - Halt: `HLT`
 - No-op: `NOP`
 - Immediate loads: `LDI Rd, #imm`
@@ -269,6 +269,49 @@ Pops return address from stack. PC ← popped value is free latching bundled wit
 
 **Total: 4 ticks**
 
+**Return from interrupt (RTI)**
+
+Pops return address from stack, then pops status byte and restores flags (Z, C, I).
+
+8-bit mode (1 byte):
+1. FetchOpcode, PC++
+2. MemoryRead: Read mem[SP] → PC (latching), SP++
+3. MemoryRead: Read mem[SP] → status byte, SP++ ; restore Z, C, I flags (latching)
+
+**Total: 3 ticks**
+
+16-bit mode (1 byte):
+1. FetchOpcode, PC++
+2. MemoryRead: Read mem[SP] → PC_low, SP++
+3. MemoryRead: Read mem[SP] → PC_high, SP++
+4. ValueComposition: PC ← (PC_high << 8) | PC_low
+5. MemoryRead: Read mem[SP] → status byte, SP++ ; restore Z, C, I flags (latching)
+
+**Total: 5 ticks**
+
+## Interrupt Service Routine (ISR) Timing
+
+When an interrupt fires at an instruction boundary, the CPU executes an internal ISR sequence before jumping to the IRQ vector address. The ISR is not a user-visible instruction — it is triggered automatically by the hardware.
+
+**Status byte encoding:** `(I << 2) | (C << 1) | Z`
+
+8-bit mode:
+1. (Interrupt detected at fetch boundary)
+2. MemoryWrite: Push status byte to mem[SP], SP--
+3. MemoryWrite: Push PC to mem[SP], SP-- ; set I flag ; PC ← IRQ vector address
+
+**Total: 3 ticks** (FetchOpcode + 2 MemoryWrite)
+
+16-bit mode:
+1. (Interrupt detected at fetch boundary)
+2. MemoryWrite: Push status byte to mem[SP], SP--
+3. MemoryWrite: Push PC_high to mem[SP], SP--
+4. MemoryWrite: Push PC_low to mem[SP], SP-- ; set I flag ; PC ← IRQ vector address
+
+**Total: 4 ticks** (FetchOpcode + 3 MemoryWrite)
+
+> **NOTE:** The current implementation uses a single fixed IRQ vector address (placed 16 bytes before the stack region). A future upgrade could introduce a vector table for multiple interrupt sources.
+
 ## Complete Timing Tables
 
 ### 8-bit Mode Examples
@@ -289,6 +332,8 @@ Pops return address from stack. PC ← popped value is free latching bundled wit
 | `JZS [label]` | 2 | 2 | FetchOpcode + FetchOperand (addr→PC if Z) |
 | `CAL [label]` | 2 | 3 | FetchOpcode + FetchOperand (addr) + MemoryWrite (push+jump) |
 | `RET` | 1 | 2 | FetchOpcode + MemoryRead (pop→PC) |
+| `SEI` / `CLI` | 1 | 1 | FetchOpcode only (flag latch) |
+| `RTI` | 1 | 3 | FetchOpcode + MemoryRead (pop→PC) + MemoryRead (pop→status) |
 
 ### 16-bit Mode Examples
 
@@ -303,6 +348,7 @@ Instructions with memory addresses use 3 bytes:
 | `JZS [label]` | 3 | 4 | FetchOpcode + FetchOperand16Low + FetchOperand16High + ValueComposition (→PC if Z) |
 | `CAL [label]` | 3 | 6 | FetchOpcode + FetchOperand16Low + FetchOperand16High + ValueComposition + 2×MemoryWrite |
 | `RET` | 1 | 4 | FetchOpcode + 2×MemoryRead + ValueComposition |
+| `RTI` | 1 | 5 | FetchOpcode + 2×MemoryRead + ValueComposition + MemoryRead (pop→status) |
 
 ## Micro-Step Examples
 
@@ -388,6 +434,7 @@ The tick-level model enables rich debugging capabilities. Every tick produces a 
 | `RegisterChanges` | Array of `RegisterChange(Index, OldValue, NewValue)` — only registers that changed |
 | `ZeroFlagBefore` / `ZeroFlagAfter` | Zero flag state before and after |
 | `CarryFlagBefore` / `CarryFlagAfter` | Carry flag state before and after |
+| `InterruptDisableFlagBefore` / `InterruptDisableFlagAfter` | Interrupt disable flag state before and after |
 | `Bus` | `BusAccess(Address, Data, Direction)` for bus ticks; `null` for internal ticks |
 
 **Bus recording** is handled transparently via a `BusRecorder` instance wired to `Memory.Recorder` and `Stack.Recorder` by `TickHandler`. Opcodes do not need to report their bus activity — the recorder captures it from the normal `ReadByte`/`WriteByte` calls. Only typed bus calls (the ones opcodes actually use) are recorded; debug helpers like `ReadByte(int)` and `LoadBytes` are not.
@@ -404,12 +451,15 @@ This trace format makes watchpoints, breakpoints, and "why did memory change?" d
 
 ### Interrupt Handling
 
-**Interrupt rule**: Interrupts may be signaled at any time (external line sampled each tick), but are serviced only at instruction boundaries.
+**Interrupt rule**: Interrupts may be signaled at any time via `CPU.RequestInterrupt()`, but are serviced only at instruction boundaries when the Interrupt Disable flag (I) is clear.
 
-When a tick returns `MicroPhase.Done`:
-1. Check `pendingInterrupt` flag
-2. If set, begin interrupt service routine (push PC, jump to vector)
-3. Otherwise, fetch next instruction
+At each `FetchOpcode` phase:
+1. Check `pendingInterrupt` flag AND `!state.I`
+2. If both true, execute the ISR sequence (push status+PC to stack, set I, jump to IRQ vector)
+3. If interrupt is pending but I is set, the interrupt stays pending until I is cleared
+4. Otherwise, fetch the next instruction normally
+
+The ISR pushes a status byte `(I << 2) | (C << 1) | Z` and the current PC to the stack, then sets the I flag (preventing nested interrupts) and jumps to the IRQ vector address. The `RTI` instruction reverses this: it pops PC and status byte, restoring all flags including I.
 
 This avoids the need to save/restore micro-step state. The instruction always completes atomically before interrupt service begins.
 

@@ -2336,4 +2336,180 @@ namespace CPU.Tests
             Assert.That(memory.ReadByte(0x11), Is.EqualTo(0x42), "Memory address 0x11 should contain value 0x42 after STX.");
         }
     }
+
+    [TestFixture]
+    public class SEI_tests
+    {
+        [Test]
+        public void SEI_SetsInterruptDisableFlag()
+        {
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.SEI],
+                out var state,
+                out _,
+                out _);
+            state.SetInterruptDisableFlag(false);
+
+            cpu.Step();
+
+            Assert.That(state.I, Is.True, "Interrupt disable flag should have been set");
+            Assert.That(state.GetPC(), Is.EqualTo(1), "PC should increment by 1 after SEI instruction");
+        }
+    }
+
+    [TestFixture]
+    public class CLI_tests
+    {
+        [Test]
+        public void CLI_ClearsInterruptDisableFlag()
+        {
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.CLI],
+                out var state,
+                out _,
+                out _);
+            state.SetInterruptDisableFlag(true);
+
+            cpu.Step();
+
+            Assert.That(state.I, Is.False, "Interrupt disable flag should have been cleared");
+            Assert.That(state.GetPC(), Is.EqualTo(1), "PC should increment by 1 after CLI instruction");
+        }
+    }
+
+    [TestFixture]
+    public class RTI_tests
+    {
+        [Test]
+        public void RTI_RestoresFlagsAndPC()
+        {
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.RTI],
+                out var state,
+                out var stack,
+                out _);
+
+            // Push status byte: Z=1, C=1, I=0 → 0b011 = 0x03
+            stack.PushByte(0x03);
+            // Push return address
+            stack.PushAddress(0x42);
+
+            state.SetZeroFlag(false);
+            state.SetCarryFlag(false);
+            state.SetInterruptDisableFlag(true);
+
+            cpu.Step();
+
+            Assert.That(state.GetPC(), Is.EqualTo(0x42), "PC should be restored from stack");
+            Assert.That(state.Z, Is.True, "Zero flag should be restored from status byte");
+            Assert.That(state.C, Is.True, "Carry flag should be restored from status byte");
+            Assert.That(state.I, Is.False, "Interrupt disable flag should be restored from status byte");
+        }
+    }
+
+    [TestFixture]
+    public class Interrupt_tests
+    {
+        [Test]
+        public void Interrupt_WhenEnabled_JumpsToIrqVector()
+        {
+            var state = new State(4);
+            var stack = new components.Stack(16);
+            var memory = new Memory(240); // 256 - 16 (stack) = 240 main memory
+            var irqVectorAddress = 240 - Config.IrqSectionSize; // 224 = 0xE0
+            var cpu = new CPU(state, stack, memory, irqVectorAddress);
+
+            // Place NOP at 0x00 and HLT at 0x01
+            memory.LoadBytes(0, [(byte)OpcodeBaseCode.NOP, (byte)OpcodeBaseCode.HLT]);
+            // Place RTI at IRQ vector address
+            memory.LoadBytes(irqVectorAddress, [(byte)OpcodeBaseCode.RTI]);
+
+            cpu.RequestInterrupt();
+
+            // Execute the NOP (fetch phase will see the pending interrupt instead)
+            cpu.Step(); // ISR: pushes status + PC, jumps to IRQ vector
+
+            Assert.That(state.GetPC(), Is.EqualTo(irqVectorAddress), "PC should be at IRQ vector address");
+            Assert.That(state.I, Is.True, "Interrupt disable flag should be auto-set on interrupt entry");
+        }
+
+        [Test]
+        public void Interrupt_WhenDisabled_StaysPending()
+        {
+            var state = new State(4);
+            var stack = new components.Stack(16);
+            var memory = new Memory(240);
+            var irqVectorAddress = 240 - Config.IrqSectionSize;
+            var cpu = new CPU(state, stack, memory, irqVectorAddress);
+
+            memory.LoadBytes(0, [(byte)OpcodeBaseCode.NOP, (byte)OpcodeBaseCode.HLT]);
+
+            state.SetInterruptDisableFlag(true);
+            cpu.RequestInterrupt();
+
+            cpu.Step(); // Should execute NOP, not ISR
+
+            Assert.That(state.GetPC(), Is.EqualTo(1), "PC should be at 1 after NOP, interrupt should remain pending");
+        }
+
+        [Test]
+        public void Interrupt_PendingAcrossInstructions_FiresWhenEnabled()
+        {
+            var state = new State(4);
+            var stack = new components.Stack(16);
+            var memory = new Memory(240);
+            var irqVectorAddress = 240 - Config.IrqSectionSize;
+            var cpu = new CPU(state, stack, memory, irqVectorAddress);
+
+            // SEI, CLI, NOP — interrupt requested while I is set, should fire after CLI
+            memory.LoadBytes(0, [
+                (byte)OpcodeBaseCode.SEI,
+                (byte)OpcodeBaseCode.CLI,
+                (byte)OpcodeBaseCode.NOP
+            ]);
+            memory.LoadBytes(irqVectorAddress, [(byte)OpcodeBaseCode.RTI]);
+
+            cpu.Step(); // SEI
+            Assert.That(state.I, Is.True);
+
+            cpu.RequestInterrupt();
+            cpu.Step(); // CLI (interrupt still pending because I was set at fetch time)
+            Assert.That(state.I, Is.False);
+
+            cpu.Step(); // ISR fires (interrupt was pending, I now clear)
+            Assert.That(state.GetPC(), Is.EqualTo(irqVectorAddress), "PC should jump to IRQ vector after CLI enables interrupts");
+            Assert.That(state.I, Is.True, "I flag should be auto-set by ISR");
+        }
+
+        [Test]
+        public void Interrupt_FullRoundTrip_ReturnsCorrectly()
+        {
+            var state = new State(4);
+            var stack = new components.Stack(16);
+            var memory = new Memory(240);
+            var irqVectorAddress = 240 - Config.IrqSectionSize;
+            var cpu = new CPU(state, stack, memory, irqVectorAddress);
+
+            // Program: NOP, HLT at 0x00-0x01
+            // IRQ handler: RTI at irqVectorAddress
+            memory.LoadBytes(0, [(byte)OpcodeBaseCode.NOP, (byte)OpcodeBaseCode.HLT]);
+            memory.LoadBytes(irqVectorAddress, [(byte)OpcodeBaseCode.RTI]);
+
+            // Set some flags before interrupt
+            state.SetZeroFlag(true);
+            state.SetCarryFlag(true);
+
+            cpu.RequestInterrupt();
+
+            cpu.Step(); // ISR: pushes flags (Z=1,C=1,I=0 → 0x03) + PC (0x00), jumps to IRQ vector, sets I
+            Assert.That(state.I, Is.True);
+            Assert.That(state.GetPC(), Is.EqualTo(irqVectorAddress));
+
+            cpu.Step(); // RTI: pops PC (0x00), pops status (0x03), restores Z=1,C=1,I=0
+            Assert.That(state.GetPC(), Is.EqualTo(0x00), "PC should be restored to original value after RTI");
+            Assert.That(state.Z, Is.True, "Zero flag should be restored after RTI");
+            Assert.That(state.C, Is.True, "Carry flag should be restored after RTI");
+            Assert.That(state.I, Is.False, "Interrupt disable flag should be restored after RTI");
+        }
+    }
 }

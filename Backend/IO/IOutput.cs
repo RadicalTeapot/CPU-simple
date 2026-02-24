@@ -27,6 +27,7 @@ namespace Backend.IO
                 registers = inspector.Registers.Select(v => (int)v).ToArray(), // Convert bytes to ints for JSON serialization
                 zero_flag = inspector.ZeroFlag,
                 carry_flag = inspector.CarryFlag,
+                interrupt_disable_flag = inspector.InterruptDisableFlag,
                 traces = inspector.Traces.Select(t => new
                 {
                     tick = t.TickNumber,
@@ -47,6 +48,8 @@ namespace Backend.IO
                     zero_flag_after = t.ZeroFlagAfter,
                     carry_flag_before = t.CarryFlagBefore,
                     carry_flag_after = t.CarryFlagAfter,
+                    interrupt_disable_flag_before = t.InterruptDisableFlagBefore,
+                    interrupt_disable_flag_after = t.InterruptDisableFlagAfter,
                     bus = t.Bus == null ? null : new
                     {
                         address = t.Bus.Address,

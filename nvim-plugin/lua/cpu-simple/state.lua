@@ -49,6 +49,7 @@ function M.update_status(json)
     flags = {
       zero = json.zero_flag == "True",
       carry = json.carry_flag == "True",
+      interrupt_disable = json.interrupt_disable_flag == "True",
     },
     memory_changes = memory_changes,
     stack_changes = stack_changes,

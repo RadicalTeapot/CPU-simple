@@ -10,20 +10,23 @@ namespace CPU
         public CPU(Config config) :
             this(new State(config.RegisterCount),
                  new Stack(config.StackSize),
-                 new Memory(config.MemorySize - config.StackSize))
+                 new Memory(config.MemorySize - config.StackSize),
+                 config.IrqVectorAddress)
         { }
 
-        public CPU(State state, Stack stack, Memory memory)
+        public CPU(State state, Stack stack, Memory memory, int irqVectorAddress = 0)
         {
             _state = state;
             _stack = stack;
             _memory = memory;
             _cycle = 0;
             _opcodeFactory = new OpcodeFactory();
-            _tickHandler = new TickHandler(new TickHandlerConfig(_state, _memory, _stack, _opcodeFactory));
+            _tickHandler = new TickHandler(new TickHandlerConfig(_state, _memory, _stack, _opcodeFactory, irqVectorAddress));
             _tracer = new TickTracer(_state, _stack, _memory);
             _programLoaded = false;
         }
+
+        public void RequestInterrupt() => _tickHandler.RequestInterrupt();
 
         public CpuInspector GetInspector()
             => new CpuInspector(_cycle, _state, _stack, _memory, _programLoaded, _tracer);

@@ -12,10 +12,10 @@ public class CompletionHandler : CompletionHandlerBase
     private readonly TokenLocator _locator;
 
     private static readonly string[] Registers = ["r0", "r1", "r2", "r3"];
-    private static readonly string[] DirectiveNames = ["text", "data", "byte", "short", "zero", "org", "string"];
+    private static readonly string[] DirectiveNames = ["text", "data", "irq", "byte", "short", "zero", "org", "string"];
 
     private static readonly HashSet<string> NoOperandOpcodes =
-        ["nop", "hlt", "clc", "sec", "clz", "sez", "ret"];
+        ["nop", "hlt", "clc", "sec", "clz", "sez", "sei", "cli", "ret", "rti"];
     private static readonly HashSet<string> SingleMemoryOpcodes =
         ["jmp", "jcc", "jcs", "jzc", "jzs", "cal"];
     private static readonly HashSet<string> SingleRegisterOpcodes =
@@ -156,6 +156,13 @@ public class CompletionHandler : CompletionHandlerBase
                 Kind = CompletionItemKind.Keyword,
                 Detail = "Switch to data section",
                 InsertText = ".data"
+            },
+            new CompletionItem
+            {
+                Label = ".irq",
+                Kind = CompletionItemKind.Keyword,
+                Detail = "Switch to IRQ handler section",
+                InsertText = ".irq"
             }
         ];
     }

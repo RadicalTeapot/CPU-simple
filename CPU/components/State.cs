@@ -4,6 +4,7 @@
     {
         public bool Z { get; private set; }
         public bool C { get; private set; }
+        public bool I { get; private set; }
         public int RegisterCount { get; }
      
         public State(int registerCount)
@@ -23,6 +24,7 @@
             _pc.Value = 0;
             Z = false;
             C = false;
+            I = false;
             for (int i = 0; i < RegisterCount; i++)
             {
                 _registers[i] = new Register<byte>(0);
@@ -36,6 +38,8 @@
         public int GetZeroFlagAsInt() => Z ? 1 : 0;
         public void SetCarryFlag(bool value) => C = value;
         public int GetCarryFlagAsInt() => C ? 1 : 0;
+        public void SetInterruptDisableFlag(bool value) => I = value;
+        public int GetInterruptDisableFlagAsInt() => I ? 1 : 0;
 
         private readonly Register<byte>[] _registers;
 
@@ -55,7 +59,7 @@
         public static void Dump(this State state)
         {
             Console.WriteLine("State Dump:");
-            Console.WriteLine($"PC: {state.GetPC():X2} Z: {state.Z} C: {state.C}");
+            Console.WriteLine($"PC: {state.GetPC():X2} Z: {state.Z} C: {state.C} I: {state.I}");
             for (int i = 0; i < state.RegisterCount; i++)
             {
                 Console.Write($"R{i}: {state.GetRegister(i):X2} ");
