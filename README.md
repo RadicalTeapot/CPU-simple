@@ -135,7 +135,7 @@ require("cpu-simple").setup({
 
 ## AI use disclamer
 
-I used Claude to help brainstorm the general architecture and write some unit tests, the vast majority of the functional C# code was written by hand.
+I used Claude to help brainstorm the general architecture and write some unit tests, the majority of the functional C# code was written by hand.
 
 The notable exception for are:
 
@@ -150,10 +150,8 @@ I did review and tested the code but exercise caution when using it.
 ## To do (in no particular order)
 
 - [ ] Implement CPU IDE ([inspiration for some UI](https://github.com/AfaanBilal/NanoCore/blob/master/assets/NanoCoreTUI.gif)) in Neovim
-  - [ ] Add commands to manage watchpoints (list, add, remove) to nvim-plugin
   - [ ] When assembled, if sidebar was never opened, open the configured panels, otherwise just re-open sidebar
   - [ ] Test if assembler errors are handled
-  - [ ] Error when loading CPU dump of 16bit version
 - [ ] Implement PPU and map some memory for it (for 16-bit version)
   - [ ] This will necessitate interrupts
 - [ ] Implement sound chip and map some memory for it too (for 16-bit version)
