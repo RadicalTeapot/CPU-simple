@@ -154,8 +154,9 @@ M.status = {
     stack_changes  = { [addr]=byte, … },         -- 0-based addresses
     loaded_program = bool,
 }
-M.memory = { byte, byte, … }  -- 1-based, full memory image
-M.stack  = { byte, byte, … }  -- 1-based, full stack image
+M.memory      = { byte, byte, … }  -- 1-based, full memory image
+M.stack       = { byte, byte, … }  -- 1-based, full stack image
+M.watchpoints = { { id=number, description=string }, … }
 ```
 
 ---
@@ -164,12 +165,73 @@ M.stack  = { byte, byte, … }  -- 1-based, full stack image
 
 The Backend exposes two granularities:
 
-| Backend command | CPU call | Traces produced |
-|---|---|---|
-| `step` | `CPU.Step()` | One trace per micro-tick across the full instruction |
-| `tick` (if exposed) | `CPU.Tick()` | One trace for the single micro-tick executed |
+| Backend command | Alias | CPU call | Traces produced |
+|---|---|---|---|
+| `step [count]` | `s` | `CPU.Step()` | One trace per micro-tick across the full instruction |
+| `tick [count]` | `t` | `CPU.Tick()` | One trace for the single micro-tick executed |
 
-From the plugin's perspective both produce the same `status` JSON; only the number of entries in `traces` differs.
+From the plugin's perspective both produce the same `status` JSON; only the number of entries in `traces` differs. Both commands accept an optional count (defaulting to 1).
+
+`TickingState` mirrors `SteppingState` exactly but calls `CPU.Tick()` instead of `CPU.Step()`, making it possible to step through individual fetch/decode/execute phases of a single instruction.
+
+---
+
+## 5b. Watchpoints
+
+Watchpoints are conditional breakpoints that fire at tick boundaries. They are checked inside `ExecutingCpuState.Tick()` — after the breakpoint check, before the completion check — so they work during `step`, `tick`, and `run`.
+
+There are two watchpoint types, implemented in `Backend/WatchpointContainer.cs`.
+
+### Types
+
+**`AddressWatchpoint`** — fires when a data memory bus access matching the configured direction and address is recorded in a `TickTrace`.
+
+- Only matches `BusType.Memory` (not `BusType.Stack`). Use `PhaseWatchpoint` with `FetchOpcode` to catch fetch activity.
+- Direction is `BusDirection.Read` (on-read) or `BusDirection.Write` (on-write).
+- Fires *after* the bus access — the data value is visible in `trace.Bus`.
+
+**`PhaseWatchpoint`** — fires when `trace.NextPhase` equals the configured `MicroPhase`.
+
+- Fires *before* the matched phase executes (NextPhase is the upcoming phase, not the one just run).
+- Useful for breaking before any specific micro-step, e.g. `on-phase MemoryWrite` stops before every memory write.
+
+### IDs
+
+Watchpoint IDs are auto-incremented integers starting at 1, assigned by `WatchpointContainer.NextId()`. They never reset within a session (even after `clear`), ensuring old IDs can never collide with new ones.
+
+### Backend commands
+
+```
+watchpoint on-write <address>    # break after a memory write to <address>
+watchpoint on-read  <address>    # break after a memory read from <address>
+watchpoint on-phase <phase>      # break before <phase> executes (MicroPhase enum name)
+watchpoint remove   <id>         # remove watchpoint by id
+watchpoint clear                 # remove all watchpoints
+watchpoint list                  # list all watchpoints with ids and descriptions
+```
+
+Alias: `wp`. Valid `<phase>` names are the `MicroPhase` enum values: `FetchOpcode`, `FetchOperand`, `FetchOperand16Low`, `FetchOperand16High`, `MemoryRead`, `MemoryWrite`, `JumpToInterrupt`, `AluOp`, `EffectiveAddrComputation`, `ValueComposition`, `Done`.
+
+### Backend output
+
+When a watchpoint fires, the backend transitions to `IdleState` and emits:
+
+```json
+{ "type": "watchpoint_hit", "id": 1, "description": "on-write 0x000C" }
+```
+
+After any mutation (`on-write`, `on-read`, `on-phase`, `remove`, `clear`), the backend also emits the full list:
+
+```json
+{ "type": "watchpoint_list", "watchpoints": [{ "id": 1, "description": "on-write 0x000C" }] }
+```
+
+### Semantics summary
+
+| Watchpoint type | When it fires | What is visible in trace |
+|---|---|---|
+| `AddressWatchpoint` (on-write/on-read) | After the bus access completes | `trace.Bus` contains the access (address, data, direction) |
+| `PhaseWatchpoint` | Before the matched phase runs | `trace.NextPhase == phase`, but the phase has not executed yet |
 
 ---
 

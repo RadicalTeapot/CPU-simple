@@ -189,6 +189,12 @@ function M.parse_stdout(data)
   elseif msg_type == "breakpoint_hit" then
     vim.notify("Breakpoint hit!", vim.log.levels.INFO)
     events.emit(events.BREAKPOINT_HIT, {address = json.address})
+  elseif msg_type == "watchpoint_hit" then
+    vim.notify("Watchpoint hit: " .. (json.description or ""), vim.log.levels.INFO)
+    events.emit(events.WATCHPOINT_HIT, {id = json.id, description = json.description})
+  elseif msg_type == "watchpoint_list" then
+    state.set_watchpoints(json)
+    events.emit(events.WATCHPOINT_UPDATED, {})
   else
     -- Fallback for unknown types
     vim.notify("[CPU] Unknown message type: " .. msg_type, vim.log.levels.INFO)

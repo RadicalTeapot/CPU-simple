@@ -8,6 +8,7 @@ M.status = nil   -- { cycles, pc, sp, registers, flags }
 M.stack = nil    -- Array of stack values
 M.memory = nil   -- Array of memory values
 M.breakpoints = {}  -- Array of breakpoint objects (just { address = number } for now)
+M.watchpoints = {}  -- Array of watchpoint objects ({ id = number, description = string })
 M.is_halted = false
 M.loaded_program = false  -- Whether a program is loaded
 
@@ -123,11 +124,29 @@ function M.set_breakpoints(json)
   M.breakpoints = breakpoints
 end
 
+--- Update watchpoint list from backend response
+---@param json table Parsed JSON object from backend
+function M.set_watchpoints(json)
+  if not json then
+    return
+  end
+
+  local watchpoints = {}
+  if json.watchpoints then
+    for _, wp in ipairs(json.watchpoints) do
+      table.insert(watchpoints, { id = wp.id, description = wp.description })
+    end
+  end
+
+  M.watchpoints = watchpoints
+end
+
 --- Clear all CPU state
 function M.clear()
   M.status = nil
   M.stack = nil
   M.memory = nil
+  M.watchpoints = {}
   M.is_halted = false
   M.loaded_program = false
 end

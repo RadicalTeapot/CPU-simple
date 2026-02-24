@@ -10,9 +10,10 @@ namespace Backend.Commands.GlobalCommands
     }
 
     internal record GlobalCommandExecutionContext(
-        CpuInspector Inspector, 
-        ICpuState CurrentState, 
-        BreakpointContainer Breakpoints, 
+        CpuInspector Inspector,
+        ICpuState CurrentState,
+        BreakpointContainer Breakpoints,
+        WatchpointContainer Watchpoints,
         IOutput Output) { }
 
     internal record GlobalCommandResult(

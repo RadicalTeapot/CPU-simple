@@ -25,8 +25,9 @@ namespace Backend.Tests
             var logger = new TestLogger();
             var output = new TestOutput();
             var breakpoints = new BreakpointContainer();
+            var watchpoints = new WatchpointContainer();
             var registry = new StateCommandRegistry();
-            return new CpuStateFactory(cpu, logger, output, breakpoints, registry);
+            return new CpuStateFactory(cpu, logger, output, breakpoints, watchpoints, registry);
         }
 
         private static CPU.CPU GetCpu(CpuStateFactory factory)

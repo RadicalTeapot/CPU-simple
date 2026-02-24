@@ -6,9 +6,10 @@ namespace Backend.CpuStates
     internal class RunningState(
         CpuStateContext context,
         BreakpointContainer breakpointContainer,
+        WatchpointContainer watchpointContainer,
         IOutput output,
         Run.Config config
-        ) : ExecutingCpuState(context, breakpointContainer, output, "running")
+        ) : ExecutingCpuState(context, breakpointContainer, watchpointContainer, output, "running")
     {
         protected override bool IsExecutionComplete { get => _isComplete; }
 

@@ -117,6 +117,11 @@ function M.step()
   program_feature.step()
 end
 
+function M.tick()
+  ensure_features()
+  program_feature.tick()
+end
+
 function M.step_over()
   ensure_features()
   program_feature.step_over()

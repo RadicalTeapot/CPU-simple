@@ -23,12 +23,16 @@ namespace Backend.Tests
         public List<byte[]> StackDumps { get; } = [];
         public List<int[]> BreakpointLists { get; } = [];
         public List<int> BreakpointHits { get; } = [];
+        public List<IWatchpoint> WatchpointHits { get; } = [];
+        public List<IWatchpoint[]> WatchpointLists { get; } = [];
 
         public void WriteStatus(CpuInspector inspector) => StatusWrites.Add(inspector);
         public void WriteMemoryDump(byte[] memoryDump) => MemoryDumps.Add(memoryDump);
         public void WriteStackDump(byte[] stackDump) => StackDumps.Add(stackDump);
         public void WriteBreakpointList(int[] breakpoints) => BreakpointLists.Add(breakpoints);
         public void WriteBreakpointHit(int address) => BreakpointHits.Add(address);
+        public void WriteWatchpointHit(IWatchpoint watchpoint) => WatchpointHits.Add(watchpoint);
+        public void WriteWatchpointList(IWatchpoint[] watchpoints) => WatchpointLists.Add(watchpoints);
     }
 
     internal static class BackendTestHelpers
@@ -40,8 +44,9 @@ namespace Backend.Tests
             var cpu = new CPU.CPU(config);
             var inspector = cpu.GetInspector();
             var breakpoints = new BreakpointContainer();
+            var watchpoints = new WatchpointContainer();
             var output = new TestOutput();
-            return new GlobalCommandExecutionContext(inspector, new FakeIdleState(), breakpoints, output);
+            return new GlobalCommandExecutionContext(inspector, new FakeIdleState(), breakpoints, watchpoints, output);
         }
 
         public static GlobalCommandExecutionContext CreateGlobalContextWithProgram(
@@ -52,8 +57,9 @@ namespace Backend.Tests
             cpu.LoadProgram(program);
             var inspector = cpu.GetInspector();
             var breakpoints = new BreakpointContainer();
+            var watchpoints = new WatchpointContainer();
             var output = new TestOutput();
-            return new GlobalCommandExecutionContext(inspector, new FakeIdleState(), breakpoints, output);
+            return new GlobalCommandExecutionContext(inspector, new FakeIdleState(), breakpoints, watchpoints, output);
         }
     }
 

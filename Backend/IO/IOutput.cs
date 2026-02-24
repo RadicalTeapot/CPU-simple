@@ -9,6 +9,8 @@ namespace Backend.IO
         void WriteStackDump(byte[] stackDump);
         void WriteBreakpointList(int[] breakpoints);
         void WriteBreakpointHit(int address);
+        void WriteWatchpointHit(IWatchpoint watchpoint);
+        void WriteWatchpointList(IWatchpoint[] watchpoints);
     }
 
     // Output is done on STDOUT
@@ -90,6 +92,29 @@ namespace Backend.IO
             {
                 type = "breakpoint_hit",
                 address = address
+            });
+        }
+
+        public void WriteWatchpointHit(IWatchpoint watchpoint)
+        {
+            OutputData(new
+            {
+                type = "watchpoint_hit",
+                id = watchpoint.Id,
+                description = watchpoint.Description
+            });
+        }
+
+        public void WriteWatchpointList(IWatchpoint[] watchpoints)
+        {
+            OutputData(new
+            {
+                type = "watchpoint_list",
+                watchpoints = watchpoints.Select(wp => new
+                {
+                    id = wp.Id,
+                    description = wp.Description
+                }).ToArray()
             });
         }
 

@@ -5,9 +5,10 @@ namespace Backend.CpuStates
     internal class SteppingState(
         CpuStateContext context,
         BreakpointContainer breakpoints,
+        WatchpointContainer watchpoints,
         IOutput output,
         int numberOfInstructions
-        ) : ExecutingCpuState(context, breakpoints, output, "stepping")
+        ) : ExecutingCpuState(context, breakpoints, watchpoints, output, "stepping")
     {
         protected override bool IsExecutionComplete { get => _executedSteps >= numberOfInstructions; }
 

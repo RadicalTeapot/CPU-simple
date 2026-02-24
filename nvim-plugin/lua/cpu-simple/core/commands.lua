@@ -51,6 +51,12 @@ function M.register(ctx, api)
     desc = "Execute one CPU instruction",
   })
 
+  create("CpuTick", function()
+    api.tick()
+  end, {
+    desc = "Execute one CPU micro-tick",
+  })
+
   create("CpuStepOver", function()
     api.step_over()
   end, {
