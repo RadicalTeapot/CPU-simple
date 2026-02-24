@@ -251,7 +251,7 @@ The plugin handles both:
 
 `state.watchpoints` is populated as `{ { id=number, description=string }, … }` and cleared in `state.clear()`.
 
-Watchpoints are managed via raw backend commands (e.g. `api.send("watchpoint on-write 12")`). No dedicated UI exists yet — the backend's human-readable log messages in stderr serve as feedback.
+Watchpoints are managed via the `:CpuWp*` commands (see Commands reference). `state.watchpoints` is always kept in sync because the backend emits a `watchpoint_list` after every mutating operation.
 
 ### Commands reference
 
@@ -273,6 +273,12 @@ Watchpoints are managed via raw backend commands (e.g. `api.send("watchpoint on-
 | `CpuGotoPC` | `]p` | Jump to current PC in source |
 | `CpuGotoDef` | `gd` | Go to symbol definition |
 | `CpuNextBp` / `CpuPrevBp` | `]b` / `[b` | Navigate between breakpoints |
+| `CpuWpWrite <addr>` | — | Add a write watchpoint at address (decimal or `0x` hex) |
+| `CpuWpRead <addr>` | — | Add a read watchpoint at address (decimal or `0x` hex) |
+| `CpuWpPhase <phase>` | — | Add a watchpoint for a micro-phase (tab-complete: `FetchOpcode`, `FetchOperand`, `MemoryRead`, `MemoryWrite`, …) |
+| `CpuWpRemove <id>` | — | Remove a watchpoint by id |
+| `CpuWpClear` | — | Remove all watchpoints |
+| `CpuWpList` | — | Show active watchpoints |
 
 ### Next steps
 
@@ -281,7 +287,6 @@ Follow-up cleanup backlog:
 - Move command metadata (name, args, desc, handler) to a single declarative table to reduce command boilerplate.
 - Replace optimistic `state.loaded_program` assignment on `CpuLoad` with an explicit backend acknowledgement flow.
 - Add more feature-level specs for navigation and source annotation edge-cases around missing/partial debug info.
-- Add commands to manage watchpoints (list, add, remove)
 - Consider surfacing per-tick trace data in the sidebar (e.g., a "tick log" panel) for instruction-level introspection.
 
 ### Troubleshooting
