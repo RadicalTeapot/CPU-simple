@@ -19,5 +19,14 @@ M.RUN_TO = "run to_address"
 -- Stepping commands
 M.STEP_OVER = "stepover"
 M.STEP_OUT = "stepout"
+M.TICK = "tick"
+
+-- Watchpoint commands
+M.WATCH_WRITE = "watchpoint on-write"
+M.WATCH_READ = "watchpoint on-read"
+M.WATCH_PHASE = "watchpoint on-phase"
+M.WATCH_REMOVE = "watchpoint remove"
+M.WATCH_CLR = "watchpoint clear"
+M.WATCH_LIST = "watchpoint list"
 
 return M

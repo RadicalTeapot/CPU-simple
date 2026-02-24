@@ -1,15 +1,27 @@
-﻿using CPU.components;
+using CPU.components;
+using CPU.microcode;
 
 namespace CPU.opcodes
 {
-    [Opcode(OpcodeBaseCode.RRT, OpcodeGroupBaseCode.BitsManipulation, RegisterArgsCount.One, OperandType.None)]
-    internal class RRT(State cpuState, Memory memory, Stack stack, OpcodeArgs args) : IOpcode
+    [Opcode(OpcodeBaseCode.RRT, OpcodeGroupBaseCode.BitsManipulation)]
+    internal class RRT : BaseOpcode
     {
-        public void Execute(ExecutionContext executionContext)
+        public RRT(byte instructionByte, State state, Memory memory, Stack stack)
         {
-            var value = cpuState.GetRegister(args.LowRegisterIdx);
-            var lsb = (byte)(value & 0x01);
-            cpuState.SetRegister(args.LowRegisterIdx, (byte)((value >> 1) | (lsb << 7)));
+            _state = state;
+            _registerIdx = OpcodeHelpers.GetDestinationRegisterIdx(instructionByte);
+            SetPhases(MicroPhase.AluOp, AluOp);
         }
+
+        public MicroPhase AluOp()
+        {
+            var value = _state.GetRegister(_registerIdx);
+            var lsb = (byte)(value & 0x01);
+            _state.SetRegister(_registerIdx, (byte)((value >> 1) | (lsb << 7)));
+            return MicroPhase.Done;
+        }
+
+        private readonly State _state;
+        private readonly byte _registerIdx;
     }
 }

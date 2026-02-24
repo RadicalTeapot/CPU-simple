@@ -121,7 +121,7 @@ namespace CPU.Tests
                 out var state,
                 out var stack,
                 out _);
-            stack.PushAddress(5, new ExecutionContext());
+            stack.PushAddress(5);
             var initialSP = stack.SP;
 
             // Act
@@ -807,7 +807,7 @@ namespace CPU.Tests
                 out var state,
                 out var stack,
                 out _);
-            stack.PushByte(1, new ExecutionContext());
+            stack.PushByte(1);
             var initialSP = stack.SP;
 
             // Act
@@ -828,7 +828,7 @@ namespace CPU.Tests
                 out _,
                 out var stack,
                 out _);
-            stack.PushByte(1, new ExecutionContext());
+            stack.PushByte(1);
 
             // Act
             cpu.Step();
@@ -850,7 +850,7 @@ namespace CPU.Tests
                 out var state,
                 out var stack,
                 out _);
-            stack.PushByte(1, new ExecutionContext());
+            stack.PushByte(1);
             var initialSP = stack.SP;
 
             // Act
@@ -871,8 +871,8 @@ namespace CPU.Tests
                 out var state,
                 out var stack,
                 out _);
-            stack.PushByte(1, new ExecutionContext());
-            stack.PushByte(2, new ExecutionContext());
+            stack.PushByte(1);
+            stack.PushByte(2);
 
             // Act
             cpu.Step();

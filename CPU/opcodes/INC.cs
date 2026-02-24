@@ -1,16 +1,28 @@
 ﻿using CPU.components;
+using CPU.microcode;
 
 namespace CPU.opcodes
 {
-    [Opcode(OpcodeBaseCode.INC, OpcodeGroupBaseCode.SingleRegisterLogicOne, RegisterArgsCount.One, OperandType.None)]
-    internal class INC(State cpuState, Memory memory, Stack stack, OpcodeArgs args) : IOpcode
+    [Opcode(OpcodeBaseCode.INC, OpcodeGroupBaseCode.SingleRegisterLogicOne)]
+    internal class INC : BaseOpcode
     {
-        public void Execute(ExecutionContext executionContext)
+        public INC(byte instructionByte, State state, Memory memory, Stack stack)
         {
-            var registerValue = cpuState.GetRegister(args.LowRegisterIdx);
-            var newValue = (byte)(registerValue + 1);
-            cpuState.SetRegister(args.LowRegisterIdx, newValue);
-            cpuState.SetZeroFlag(newValue == 0);
+            _registerIdx = OpcodeHelpers.GetDestinationRegisterIdx(instructionByte);
+            _state = state;
+            SetPhases(MicroPhase.AluOp, AluOp);
         }
+
+        private MicroPhase AluOp()
+        {
+            var registerValue = _state.GetRegister(_registerIdx);
+            var newValue = (byte)(registerValue + 1); // Wrap around on overflow
+            _state.SetRegister(_registerIdx, newValue);
+            _state.SetZeroFlag(newValue == 0);
+            return MicroPhase.Done;
+        }
+
+        private readonly byte _registerIdx;
+        private readonly State _state;
     }
 }

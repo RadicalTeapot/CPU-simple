@@ -1,13 +1,17 @@
 ﻿using CPU.components;
+using CPU.microcode;
 
 namespace CPU.opcodes
 {
-    [Opcode(OpcodeBaseCode.SEZ, OpcodeGroupBaseCode.SystemAndJump, RegisterArgsCount.Zero, OperandType.None)]
-    internal class SEZ(State cpuState, Memory memory, Stack stack, OpcodeArgs args) : IOpcode
+    [Opcode(OpcodeBaseCode.SEZ, OpcodeGroupBaseCode.SystemAndJump)]
+    internal class SEZ(byte instructionByte, State state, Memory memory, Stack stack) : IOpcode
     {
-        public void Execute(ExecutionContext executionContext)
+        public MicroPhase GetStartPhaseType() => MicroPhase.Done;
+
+        public MicroPhase Tick(uint phaseCount)
         {
-            cpuState.SetZeroFlag(true);
+            state.SetZeroFlag(true);
+            return MicroPhase.Done;
         }
     }
 }

@@ -1,4 +1,4 @@
-﻿using Backend.CpuStates;
+using Backend.CpuStates;
 using Backend.IO;
 using CPU;
 using System.Text;
@@ -27,43 +27,22 @@ namespace Backend.Commands.GlobalCommands
             }
             sb.Append($"Zero: {inspector.ZeroFlag} ");
             sb.Append($"Carry: {inspector.CarryFlag} ");
-            if (inspector.LastInstruction.Length > 0)
+            if (inspector.Traces.Length > 0)
             {
-                sb.Append("Last Instruction: ");
-                for (int i = 0; i < inspector.LastInstruction.Length; i++)
+                sb.Append("Traces: ");
+                foreach (var trace in inspector.Traces)
                 {
-                    sb.Append($"{inspector.LastInstruction[i]} ");
+                    if (trace.Type == CPU.microcode.TickType.Bus && trace.Bus != null)
+                        sb.Append($"[T{trace.TickNumber} {trace.Type} {trace.Bus.Direction}] ");
+                    else
+                        sb.Append($"[T{trace.TickNumber} {trace.Type}] ");
                 }
             }
             else
             {
-                sb.Append("Last Instruction: N/A ");
+                sb.Append("Traces: N/A ");
             }
-            if (inspector.MemoryChanges.Length > 0)
-            {
-                sb.Append("Memory Changes: ");
-                foreach (var (address, value) in inspector.MemoryChanges)
-                {
-                    sb.Append($"[{address:X2}]: {value} ");
-                }
-            }
-            else
-            {
-                sb.Append("Memory Changes: N/A ");
-            }
-            if (inspector.StackChanges.Length > 0)
-            {
-                sb.Append("Stack Changes: ");
-                foreach (var (address, value) in inspector.StackChanges)
-                {
-                    sb.Append($"[{address:X2}]: {value} ");
-                }
-            }
-            else
-            {
-                sb.Append("Stack Changes: N/A ");
-            }
-            
+
             return new GlobalCommandResult(Success: true, Message: sb.ToString());
         }
     }

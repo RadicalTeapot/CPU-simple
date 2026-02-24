@@ -15,6 +15,7 @@ M.stdin = nil
 M.stdout = nil
 M.stderr = nil
 M.running = false
+M.stdout_buffer = ""
 
 -- Configuration (set by start())
 M.config = {
@@ -142,10 +143,15 @@ end
 ---@param data string Data received
 function M.on_stdout(data)
   vim.schedule(function()
-    local lines = vim.split(data, "\n", { trimempty = true })
-    for _, line in ipairs(lines) do
-      if line ~= "" then
-        M.parse_stdout(line)
+    M.stdout_buffer = M.stdout_buffer .. data
+    local lines = vim.split(M.stdout_buffer, "\n") -- Split without trimempty to keep incomplete line (N+1 elements for N lines)
+    -- All elements ending with \n are complete.
+    -- The last element is either "" (data ended with \n) or an incomplete fragment (whihc is then kept in stdout_buffer for next read)
+    M.stdout_buffer = lines[#lines]
+    for i = 1, #lines - 1 do
+      if lines[i] ~= "" then
+        -- Parse each complete line
+        M.parse_stdout(lines[i])
       end
     end
   end)
@@ -183,6 +189,12 @@ function M.parse_stdout(data)
   elseif msg_type == "breakpoint_hit" then
     vim.notify("Breakpoint hit!", vim.log.levels.INFO)
     events.emit(events.BREAKPOINT_HIT, {address = json.address})
+  elseif msg_type == "watchpoint_hit" then
+    vim.notify("Watchpoint hit: " .. (json.description or ""), vim.log.levels.INFO)
+    events.emit(events.WATCHPOINT_HIT, {id = json.id, description = json.description})
+  elseif msg_type == "watchpoint_list" then
+    state.set_watchpoints(json)
+    events.emit(events.WATCHPOINT_UPDATED, {})
   else
     -- Fallback for unknown types
     vim.notify("[CPU] Unknown message type: " .. msg_type, vim.log.levels.INFO)
@@ -248,6 +260,7 @@ function M.cleanup()
   end
   M.pid = nil
   M.running = false
+  M.stdout_buffer = ""
 end
 
 --- Check if backend is running

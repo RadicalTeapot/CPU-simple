@@ -11,6 +11,8 @@ M.MEMORY_UPDATED = "memory_updated"
 M.STEP_COMPLETE = "step_complete"
 M.BREAKPOINT_UPDATED = "breakpoint_updated"
 M.BREAKPOINT_HIT = "breakpoint_hit"
+M.WATCHPOINT_HIT = "watchpoint_hit"
+M.WATCHPOINT_UPDATED = "watchpoint_updated"
 M.BACKEND_STARTED = "backend_started"
 M.BACKEND_STOPPED = "backend_stopped"
 

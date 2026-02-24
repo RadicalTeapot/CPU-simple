@@ -8,6 +8,7 @@ M.status = nil   -- { cycles, pc, sp, registers, flags }
 M.stack = nil    -- Array of stack values
 M.memory = nil   -- Array of memory values
 M.breakpoints = {}  -- Array of breakpoint objects (just { address = number } for now)
+M.watchpoints = {}  -- Array of watchpoint objects ({ id = number, description = string })
 M.is_halted = false
 M.loaded_program = false  -- Whether a program is loaded
 
@@ -17,7 +18,7 @@ function M.update_status(json)
   if not json then
     return
   end
-
+  
   local registers = {}
   if json.registers then
     for reg, val in pairs(json.registers) do
@@ -25,21 +26,18 @@ function M.update_status(json)
     end
   end
 
+  -- Extract memory_changes and stack_changes from traces
   local memory_changes = {}
-  if json.memory_changes then
-    for _, change in pairs(json.memory_changes) do
-      local addr = change.Key
-      local val = change.Value
-      memory_changes[addr] = val
-    end
-  end
-
   local stack_changes = {}
-  if json.stack_changes then
-    for _, change in pairs(json.stack_changes) do
-      local index = change.Key
-      local val = change.Value
-      stack_changes[index] = val
+  if json.traces then
+    for _, trace in ipairs(json.traces) do
+      if trace.tick_type == "Bus" and trace.bus and trace.bus.direction == "Write" then
+        if trace.bus.type == "Stack" then
+          stack_changes[trace.bus.address] = trace.bus.data
+        else
+          memory_changes[trace.bus.address] = trace.bus.data
+        end
+      end
     end
   end
 
@@ -56,6 +54,8 @@ function M.update_status(json)
     stack_changes = stack_changes,
     loaded_program = json.loaded_program == "True",
   }
+
+  -- vim.print("Updated CPU status:", M.status)
 
   -- Apply incremental changes to existing memory/stack arrays
   if M.memory then
@@ -124,11 +124,29 @@ function M.set_breakpoints(json)
   M.breakpoints = breakpoints
 end
 
+--- Update watchpoint list from backend response
+---@param json table Parsed JSON object from backend
+function M.set_watchpoints(json)
+  if not json then
+    return
+  end
+
+  local watchpoints = {}
+  if json.watchpoints then
+    for _, wp in ipairs(json.watchpoints) do
+      table.insert(watchpoints, { id = wp.id, description = wp.description })
+    end
+  end
+
+  M.watchpoints = watchpoints
+end
+
 --- Clear all CPU state
 function M.clear()
   M.status = nil
   M.stack = nil
   M.memory = nil
+  M.watchpoints = {}
   M.is_halted = false
   M.loaded_program = false
 end

@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using CPU.microcode;
+using System.Diagnostics;
 
 namespace CPU.components
 {
@@ -6,6 +7,8 @@ namespace CPU.components
     {
         public byte SP { get; private set; } // Note: Keep as byte for both 8-bit and 16-bit architectures, stack size is max 256 bytes
         public int Size => _memory.Size;
+
+        internal BusRecorder? Recorder { get; set; }
 
         public Stack(int stackSize): this(new Memory(stackSize), (byte)(stackSize - 1)) { }
 
@@ -24,18 +27,22 @@ namespace CPU.components
             _memory.Clear();
         }
 
-        public void PushByte(byte value, ExecutionContext executionContext)
+        public void PushByte(byte value)
         {
             if (SP == 0)
                 throw new InvalidOperationException("Stack overflow");
-            _memory.WriteByte(SP--, value, executionContext.RecordStackChange);
+            var address = SP;
+            _memory.WriteByte(SP--, value);
+            Recorder?.RecordWrite(address, value, BusType.Stack);
         }
 
         public byte PopByte()
         {
             if (SP == _pointerStartAddress)
                 throw new InvalidOperationException("Stack underflow");
-            return _memory.ReadByte(++SP);
+            var value = _memory.ReadByte(++SP);
+            Recorder?.RecordRead(SP, value, BusType.Stack);
+            return value;
         }
 
         public byte PeekByte()
@@ -46,12 +53,18 @@ namespace CPU.components
         }
 
 #if x16
-        private void PushWord(ushort value, ExecutionContext executionContext)
+        private void PushWord(ushort value)
         {
             if (SP < 2)
                 throw new InvalidOperationException("Stack overflow");
-            _memory.WriteByte(SP--, (byte)((value >> 8) & 0xFF), executionContext.RecordStackChange);
-            _memory.WriteByte(SP--, (byte)(value & 0xFF), executionContext.RecordStackChange);            
+            var highByte = (byte)((value >> 8) & 0xFF);
+            var addrHigh = SP;
+            _memory.WriteByte(SP--, highByte);
+            Recorder?.RecordWrite(addrHigh, highByte, BusType.Stack);
+            var lowByte = (byte)(value & 0xFF);
+            var addrLow = SP;
+            _memory.WriteByte(SP--, lowByte);
+            Recorder?.RecordWrite(addrLow, lowByte, BusType.Stack);
         }
 
         private ushort PopWord()
@@ -59,7 +72,9 @@ namespace CPU.components
             if (SP > _pointerStartAddress - 2)
                 throw new InvalidOperationException("Stack underflow");
             ushort low = _memory.ReadByte(++SP);
-            ushort high = _memory.ReadByte(++SP);            
+            Recorder?.RecordRead(SP, (byte)low, BusType.Stack);
+            ushort high = _memory.ReadByte(++SP);
+            Recorder?.RecordRead(SP, (byte)high, BusType.Stack);
             return (ushort)(low | (high << 8));
         }
 
@@ -72,11 +87,11 @@ namespace CPU.components
             return (ushort)(low | (high << 8));
         }
 
-        public void PushAddress(ushort value, ExecutionContext executionContext) => PushWord(value, executionContext);
+        public void PushAddress(ushort value) => PushWord(value);
         public ushort PopAddress() => PopWord();
         public ushort PeekAddress() => PeekWord();
 #else
-        public void PushAddress(byte value, ExecutionContext executionContext) => PushByte(value, executionContext);
+        public void PushAddress(byte value) => PushByte(value);
         public byte PopAddress() => PopByte();
         public byte PeekAddress() => PeekByte();
 #endif
@@ -87,17 +102,6 @@ namespace CPU.components
             if (offset < 0 || offset >= Size)
                 throw new ArgumentOutOfRangeException(nameof(offset), $"Stack read offset out of bounds: {offset}.");
             return _memory.ReadByte(offset);
-        }
-
-        internal void UpdateCpuInspectorBuilder(CpuInspector.Builder inspectorBuilder)
-        {
-            inspectorBuilder.SetSP(SP);
-            var stackBytes = new byte[Size];
-            for (int i = 0; i < Size; i++)
-            {
-                stackBytes[i] = _memory.ReadByte(i);
-            }
-            inspectorBuilder.SetStack(stackBytes);
         }
 
         private readonly Memory _memory;

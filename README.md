@@ -12,7 +12,7 @@ This repository contains the CPU core, a backend server acting a simple debugger
 - `Backend/`: Console application that hosts/runs the CPU to be used for debugging
 - `nvim-plugin/`: Neovim plugin to serve as the IDE
 - `tree-sitter-grammar/`: Tree sitter grammar generator for the assembly language
-- `docs/`: Design and specification documents
+- `docs/`: Design and specification documents (including instruction timing model in `docs/projects/cpu-simple/micro-code.md`)
 
 ## Architectures
 
@@ -135,7 +135,7 @@ require("cpu-simple").setup({
 
 ## AI use disclamer
 
-I used Claude to help brainstorm the general architecture and write some unit tests, the vast majority of the functional C# code was written by hand.
+I used Claude to help brainstorm the general architecture and write some unit tests, the majority of the functional C# code was written by hand.
 
 The notable exception for are:
 
@@ -149,14 +149,13 @@ I did review and tested the code but exercise caution when using it.
 
 ## To do (in no particular order)
 
-- [ ] Write a bank of small programs for 8 and 16 bit version
 - [ ] Implement CPU IDE ([inspiration for some UI](https://github.com/AfaanBilal/NanoCore/blob/master/assets/NanoCoreTUI.gif)) in Neovim
-  - [x] Highlight memory address under cursor in memory panel (taking offsets into account)
   - [ ] When assembled, if sidebar was never opened, open the configured panels, otherwise just re-open sidebar
   - [ ] Test if assembler errors are handled
-  - [ ] Error when loading CPU dump of 16bit version
 - [ ] Implement PPU and map some memory for it (for 16-bit version)
+  - [ ] This will necessitate interrupts
 - [ ] Implement sound chip and map some memory for it too (for 16-bit version)
   - [ ] Write a small MIDI player application
 - [ ] Cleanup opcode constructors to take only necessary parameters (or use an interface to mask un-necessary parameters)
+- [ ] Write a bank of small programs for 8 and 16 bit version and document them
 - [/] Cleanup docs and document design choices

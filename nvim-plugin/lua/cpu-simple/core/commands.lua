@@ -51,6 +51,12 @@ function M.register(ctx, api)
     desc = "Execute one CPU instruction",
   })
 
+  create("CpuTick", function()
+    api.tick()
+  end, {
+    desc = "Execute one CPU micro-tick",
+  })
+
   create("CpuStepOver", function()
     api.step_over()
   end, {
@@ -97,6 +103,68 @@ function M.register(ctx, api)
     api.clear_all_breakpoints()
   end, {
     desc = "Clear all breakpoints",
+  })
+
+  local watchpoints_mod = require("cpu-simple.features.watchpoints")
+
+  create("CpuWpWrite", function(cmd_opts)
+    local address = tonumber(cmd_opts.args)
+    if not address then
+      vim.notify("Invalid address: " .. cmd_opts.args, vim.log.levels.ERROR)
+      return
+    end
+    api.add_write_watchpoint(address)
+  end, {
+    desc = "Add a write watchpoint at the given address",
+    nargs = 1,
+  })
+
+  create("CpuWpRead", function(cmd_opts)
+    local address = tonumber(cmd_opts.args)
+    if not address then
+      vim.notify("Invalid address: " .. cmd_opts.args, vim.log.levels.ERROR)
+      return
+    end
+    api.add_read_watchpoint(address)
+  end, {
+    desc = "Add a read watchpoint at the given address",
+    nargs = 1,
+  })
+
+  create("CpuWpPhase", function(cmd_opts)
+    api.add_phase_watchpoint(cmd_opts.args)
+  end, {
+    desc = "Add a watchpoint for a specific micro-phase",
+    nargs = 1,
+    complete = function(arglead)
+      return vim.tbl_filter(function(p)
+        return p:lower():find(arglead:lower(), 1, true) == 1
+      end, watchpoints_mod.phases)
+    end,
+  })
+
+  create("CpuWpRemove", function(cmd_opts)
+    local id = tonumber(cmd_opts.args)
+    if not id then
+      vim.notify("Invalid watchpoint id: " .. cmd_opts.args, vim.log.levels.ERROR)
+      return
+    end
+    api.remove_watchpoint(id)
+  end, {
+    desc = "Remove a watchpoint by id",
+    nargs = 1,
+  })
+
+  create("CpuWpClear", function()
+    api.clear_all_watchpoints()
+  end, {
+    desc = "Clear all watchpoints",
+  })
+
+  create("CpuWpList", function()
+    api.list_watchpoints()
+  end, {
+    desc = "List all active watchpoints",
   })
 
   create("CpuNextBp", function()

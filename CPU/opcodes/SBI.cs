@@ -1,17 +1,39 @@
 ﻿using CPU.components;
+using CPU.microcode;
 
 namespace CPU.opcodes
 {
-    [Opcode(OpcodeBaseCode.SBI, OpcodeGroupBaseCode.SingleRegisterALU, RegisterArgsCount.One, OperandType.Immediate)]
-    internal class SBI(State cpuState, Memory memory, Stack stack, OpcodeArgs args) : IOpcode
+    [Opcode(OpcodeBaseCode.SBI, OpcodeGroupBaseCode.SingleRegisterALU)]
+    internal class SBI : BaseOpcode
     {
-        public void Execute(ExecutionContext executionContext)
+        public SBI(byte instructionByte, State state, Memory memory, Stack stack)
         {
-            var currentValue = cpuState.GetRegister(args.LowRegisterIdx);
-            var result = currentValue - args.ImmediateValue - (1 - cpuState.GetCarryFlagAsInt());
-            cpuState.SetRegister(args.LowRegisterIdx, (byte)result); // Wrap around on underflow
-            cpuState.SetCarryFlag(result >= 0); // No borrow carry
-            cpuState.SetZeroFlag(result == 0);
+            _state = state;
+            _memory = memory;
+            _registerIdx = OpcodeHelpers.GetDestinationRegisterIdx(instructionByte);
+            SetPhases(MicroPhase.FetchOperand, ReadImmediateValue, AluOp);
         }
+
+        private MicroPhase ReadImmediateValue()
+        {
+            _immediateValue = _memory.ReadByte(_state.GetPC());
+            _state.IncrementPC();
+            return MicroPhase.AluOp;
+        }
+
+        private MicroPhase AluOp()
+        {
+            var registerValue = _state.GetRegister(_registerIdx);
+            var result = registerValue - _immediateValue - (1 - _state.GetCarryFlagAsInt());
+            _state.SetRegister(_registerIdx, (byte)result); // Wrap around on underflow
+            _state.SetCarryFlag(result >= 0); // No borrow carry
+            _state.SetZeroFlag(result == 0);
+            return MicroPhase.Done;
+        }
+
+        private byte _immediateValue;
+        private readonly byte _registerIdx;
+        private readonly State _state;
+        private readonly Memory _memory;
     }
 }

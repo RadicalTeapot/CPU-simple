@@ -1,12 +1,13 @@
 using CPU.components;
 
-using OpcodeConstrutor = System.Func<CPU.components.State, CPU.components.Memory, CPU.components.Stack, CPU.opcodes.OpcodeArgs, CPU.opcodes.IOpcode>;
+using OpcodeConstrutor = System.Func<byte, CPU.components.State, CPU.components.Memory, CPU.components.Stack, CPU.opcodes.IOpcode>;
 
 namespace CPU.opcodes
 {
     /// <summary>
     /// Defines the number of register arguments an opcode has.
     /// </summary>
+    /// <remarks>DEPRECATED</remarks>
     internal enum RegisterArgsCount
     {
         Zero,
@@ -17,6 +18,7 @@ namespace CPU.opcodes
     /// <summary>
     /// Defines the type of operand an opcode uses.
     /// </summary>
+    /// <remarks>DEPRECATED</remarks>
     internal enum OperandType
     {
         None,
@@ -31,14 +33,10 @@ namespace CPU.opcodes
     [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
     internal sealed class OpcodeAttribute(
         OpcodeBaseCode baseCode,
-        OpcodeGroupBaseCode groupCode,
-        RegisterArgsCount registerArgsCount,
-        OperandType operandType) : Attribute
+        OpcodeGroupBaseCode groupCode) : Attribute
     {
         public OpcodeBaseCode BaseCode { get; } = baseCode;
         public OpcodeGroupBaseCode GroupCode { get; } = groupCode;
-        public RegisterArgsCount RegisterArgsCount { get; } = registerArgsCount;
-        public OperandType OperandType { get; } = operandType;
     }
 
     /// <summary>
@@ -47,50 +45,6 @@ namespace CPU.opcodes
     internal record class OpcodeMetadata(
         OpcodeConstrutor Constructor,
         OpcodeBaseCode BaseCode,
-        OpcodeGroupBaseCode GroupCode,
-        RegisterArgsCount RegisterArgsCount,
-        OperandType OperandType)
+        OpcodeGroupBaseCode GroupCode)
     { }
-
-    /// <summary>
-    /// Result of the decode phase: contains the opcode, its metadata, and parsed arguments.
-    /// </summary>
-    internal record class DecodedInstruction(
-        OpcodeMetadata Metadata,
-        OpcodeArgs Args,
-        byte RawInstruction)
-    {
-        public IOpcode CreateOpcode(State cpuState, Memory memory, Stack stack)
-            => Metadata.Constructor(cpuState, memory, stack, Args);
-
-        public string[] AsStringArray()
-        {
-            var parts = new List<string> { Metadata.BaseCode.ToString() };
-
-            if (Metadata.RegisterArgsCount == RegisterArgsCount.Two)
-            {
-                parts.Add($"R{Args.LowRegisterIdx}");
-                parts.Add($"R{Args.HighRegisterIdx}");
-            }
-            else if (Metadata.RegisterArgsCount == RegisterArgsCount.One)
-            {
-                parts.Add($"R{Args.LowRegisterIdx}");
-            }
-
-            if (Metadata.OperandType == OperandType.Address)
-            {
-                parts.Add($"[{Args.AddressValue:X2}]");
-            }
-            else if (Metadata.OperandType == OperandType.Immediate)
-            {
-                parts.Add($"#0x{Args.ImmediateValue:X2}");
-            }
-            else if (Metadata.OperandType == OperandType.RegAndImmediate)
-            {
-                parts.Add($"[R{Args.IndirectRegisterIdx}+#0x{Args.ImmediateValue:X2}]");
-            }
-
-            return [.. parts];
-        }
-    }
 }

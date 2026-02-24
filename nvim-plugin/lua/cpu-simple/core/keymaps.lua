@@ -26,6 +26,7 @@ function M.setup(ctx)
 
       vim.keymap.set("n", "<leader>cr", "<cmd>CpuRun<cr>", vim.tbl_extend("force", opts, { desc = "CPU: Run" }))
       vim.keymap.set("n", "<leader>cn", "<cmd>CpuStep<cr>", vim.tbl_extend("force", opts, { desc = "CPU: Step" }))
+      vim.keymap.set("n", "<leader>ct", "<cmd>CpuTick<cr>", vim.tbl_extend("force", opts, { desc = "CPU: Tick" }))
       vim.keymap.set("n", "<leader>cN", "<cmd>CpuStepOver<cr>", vim.tbl_extend("force", opts, { desc = "CPU: Step over" }))
       vim.keymap.set("n", "<leader>cO", "<cmd>CpuStepOut<cr>", vim.tbl_extend("force", opts, { desc = "CPU: Step out" }))
       vim.keymap.set("n", "<leader>cR", "<cmd>CpuReset<cr>", vim.tbl_extend("force", opts, { desc = "CPU: Reset" }))

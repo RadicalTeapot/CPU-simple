@@ -1,15 +1,27 @@
-﻿using CPU.components;
+using CPU.components;
+using CPU.microcode;
 
 namespace CPU.opcodes
 {
-    [Opcode(OpcodeBaseCode.LSH, OpcodeGroupBaseCode.BitsManipulation, RegisterArgsCount.One, OperandType.None)]
-    internal class LSH(State cpuState, Memory memory, Stack stack, OpcodeArgs args) : IOpcode
+    [Opcode(OpcodeBaseCode.LSH, OpcodeGroupBaseCode.BitsManipulation)]
+    internal class LSH : BaseOpcode
     {
-        public void Execute(ExecutionContext executionContext)
+        public LSH(byte instructionByte, State state, Memory memory, Stack stack)
         {
-            var value = cpuState.GetRegister(args.LowRegisterIdx);
-            cpuState.SetRegister(args.LowRegisterIdx, (byte)(value << 1));
-            cpuState.SetCarryFlag((value & 0x80) == 0x80); // Set carry flag to the bit that was shifted out (bit 7 of the original value)
+            _state = state;
+            _registerIdx = OpcodeHelpers.GetDestinationRegisterIdx(instructionByte);
+            SetPhases(MicroPhase.AluOp, AluOp);
         }
+
+        public MicroPhase AluOp()
+        {
+            var value = _state.GetRegister(_registerIdx);
+            _state.SetRegister(_registerIdx, (byte)(value << 1));
+            _state.SetCarryFlag((value & 0x80) == 0x80); // Set carry flag to the bit that was shifted out (bit 7 of the original value)
+            return MicroPhase.Done;
+        }
+
+        private readonly State _state;
+        private readonly byte _registerIdx;
     }
 }

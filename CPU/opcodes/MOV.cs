@@ -1,14 +1,29 @@
 ﻿using CPU.components;
+using CPU.microcode;
 
 namespace CPU.opcodes
 {
-    [Opcode(OpcodeBaseCode.MOV, OpcodeGroupBaseCode.Move, RegisterArgsCount.Two, OperandType.None)]
-    internal class MOV(State cpuState, Memory memory, Stack stack, OpcodeArgs args) : IOpcode
+    [Opcode(OpcodeBaseCode.MOV, OpcodeGroupBaseCode.Move)]
+    internal class MOV : IOpcode
     {
-        public void Execute(ExecutionContext executionContext)
+        public MOV(byte instructionByte, State state, Memory memory, Stack stack)
         {
-            var value = cpuState.GetRegister(args.HighRegisterIdx);
-            cpuState.SetRegister(args.LowRegisterIdx, value);
+            _state = state;
+            _sourceRegisterIdx = OpcodeHelpers.GetSourceRegisterIdx(instructionByte);
+            _destinationRegisterIdx = OpcodeHelpers.GetDestinationRegisterIdx(instructionByte);
         }
+
+        public MicroPhase GetStartPhaseType() => MicroPhase.Done;
+
+        public MicroPhase Tick(uint phaseCount)
+        {
+            var value = _state.GetRegister(_sourceRegisterIdx);
+            _state.SetRegister(_destinationRegisterIdx, value);
+            return MicroPhase.Done;
+        }
+
+        private readonly byte _sourceRegisterIdx;
+        private readonly byte _destinationRegisterIdx;
+        private readonly State _state;
     }
 }

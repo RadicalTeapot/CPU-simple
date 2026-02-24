@@ -1,12 +1,13 @@
-﻿using Backend.IO;
+using Backend.IO;
 
 namespace Backend.CpuStates
 {
     internal abstract class ExecutingCpuState(
-        CpuStateContext context, 
-        BreakpointContainer breakpointContainer, 
-        IOutput output, 
-        string stateName) 
+        CpuStateContext context,
+        BreakpointContainer breakpointContainer,
+        WatchpointContainer watchpointContainer,
+        IOutput output,
+        string stateName)
         : BaseCpuState(context, stateName)
     {
         protected abstract bool IsExecutionComplete { get; }
@@ -24,6 +25,14 @@ namespace Backend.CpuStates
             {
                 output.WriteBreakpointHit(inspector.PC);
                 Context.Logger.Log($"Breakpoint hit at address 0x{inspector.PC:X4}. Transitioning to Idle state.");
+                return Context.StateFactory.CreateIdleState();
+            }
+
+            var match = watchpointContainer.Check(inspector.Traces);
+            if (match != null)
+            {
+                output.WriteWatchpointHit(match);
+                Context.Logger.Log($"Watchpoint hit: {match.Description}. Transitioning to Idle state.");
                 return Context.StateFactory.CreateIdleState();
             }
 

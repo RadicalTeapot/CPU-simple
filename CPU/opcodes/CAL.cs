@@ -1,18 +1,84 @@
-﻿using CPU.components;
+using CPU.components;
+using CPU.microcode;
 
 namespace CPU.opcodes
 {
-    [Opcode(OpcodeBaseCode.CAL, OpcodeGroupBaseCode.SystemAndJump, RegisterArgsCount.Zero, OperandType.Address)]
-    internal class CAL(State cpuState, Memory memory, Stack stack, OpcodeArgs args) : IOpcode
+    [Opcode(OpcodeBaseCode.CAL, OpcodeGroupBaseCode.SystemAndJump)]
+    internal class CAL : BaseOpcode
     {
-        public void Execute(ExecutionContext executionContext)
+        public CAL(byte instructionByte, State state, Memory memory, Stack stack)
         {
-            // Push return address (current PC, which is already past the instruction and operand)
-            var returnAddress = cpuState.GetPC();
-            stack.PushAddress(returnAddress, executionContext);
-
-            // Jump to target
-            cpuState.SetPC(args.AddressValue);
+            _state = state;
+            _memory = memory;
+            _stack = stack;
+#if x16
+            SetPhases(MicroPhase.FetchOperand16Low, Read1, Read2, ComposeAddress, Push1, Push2);
+#else
+            SetPhases(MicroPhase.FetchOperand, Read1, Push1);
+#endif
         }
+
+        private MicroPhase Read1()
+        {
+#if x16
+            _addressLow = _memory.ReadByte(_state.GetPC());
+            _state.IncrementPC();
+            return MicroPhase.FetchOperand16High;
+#else
+            _address = _memory.ReadByte(_state.GetPC());
+            _state.IncrementPC();
+            return MicroPhase.MemoryWrite;
+#endif
+        }
+
+#if x16
+        private MicroPhase Read2()
+        {
+            _addressHigh = _memory.ReadByte(_state.GetPC());
+            _state.IncrementPC();
+            return MicroPhase.ValueComposition;
+        }
+
+        private MicroPhase ComposeAddress()
+        {
+            _address = ByteConversionHelper.ToUShort(_addressHigh, _addressLow);
+            return MicroPhase.MemoryWrite;
+        }
+#endif
+
+
+        private MicroPhase Push1()
+        {
+#if x16
+            var returnAddress = _state.GetPC();
+            _stack.PushByte((byte)(returnAddress >> 8)); // high byte pushed first
+            return MicroPhase.MemoryWrite;
+#else
+            _stack.PushByte(_state.GetPC());
+            _state.SetPC(_address);
+            return MicroPhase.Done;
+#endif
+        }
+
+#if x16
+        private MicroPhase Push2()
+        {
+            var returnAddress = _state.GetPC();
+            _stack.PushByte((byte)(returnAddress & 0xFF)); // low byte pushed last, popped first by RET
+            _state.SetPC(_address);
+            return MicroPhase.Done;
+        }
+#endif
+
+#if x16
+        private byte _addressLow;
+        private byte _addressHigh;
+        private ushort _address;
+#else
+        private byte _address;
+#endif
+        private readonly State _state;
+        private readonly Memory _memory;
+        private readonly Stack _stack;
     }
 }

@@ -12,6 +12,7 @@ local autocmds_core = require("cpu-simple.core.autocmds")
 local backend_factory = require("cpu-simple.features.backend")
 local program_factory = require("cpu-simple.features.program")
 local breakpoints_factory = require("cpu-simple.features.breakpoints")
+local watchpoints_factory = require("cpu-simple.features.watchpoints")
 local navigation_factory = require("cpu-simple.features.navigation")
 local annotations_factory = require("cpu-simple.features.annotations")
 local lsp_factory = require("cpu-simple.features.lsp")
@@ -32,6 +33,7 @@ local ctx = {
 local backend_feature = nil
 local program_feature = nil
 local breakpoints_feature = nil
+local watchpoints_feature = nil
 local navigation_feature = nil
 local annotations_feature = nil
 local lsp_feature = nil
@@ -44,6 +46,7 @@ local function ensure_features()
   backend_feature = backend_factory.new(ctx)
   annotations_feature = annotations_factory.new(ctx)
   breakpoints_feature = breakpoints_factory.new(ctx, backend_feature)
+  watchpoints_feature = watchpoints_factory.new(ctx, backend_feature)
   navigation_feature = navigation_factory.new(ctx, backend_feature)
   program_feature = program_factory.new(ctx, backend_feature)
   lsp_feature = lsp_factory.new(ctx)
@@ -117,6 +120,11 @@ function M.step()
   program_feature.step()
 end
 
+function M.tick()
+  ensure_features()
+  program_feature.tick()
+end
+
 function M.step_over()
   ensure_features()
   program_feature.step_over()
@@ -155,6 +163,36 @@ end
 function M.highlight_breakpoints()
   ensure_features()
   breakpoints_feature.highlight_breakpoints()
+end
+
+function M.add_write_watchpoint(address)
+  ensure_features()
+  watchpoints_feature.add_write_watchpoint(address)
+end
+
+function M.add_read_watchpoint(address)
+  ensure_features()
+  watchpoints_feature.add_read_watchpoint(address)
+end
+
+function M.add_phase_watchpoint(phase)
+  ensure_features()
+  watchpoints_feature.add_phase_watchpoint(phase)
+end
+
+function M.remove_watchpoint(id)
+  ensure_features()
+  watchpoints_feature.remove_watchpoint(id)
+end
+
+function M.clear_all_watchpoints()
+  ensure_features()
+  watchpoints_feature.clear_all_watchpoints()
+end
+
+function M.list_watchpoints()
+  ensure_features()
+  watchpoints_feature.list_watchpoints()
 end
 
 function M.goto_next_breakpoint()

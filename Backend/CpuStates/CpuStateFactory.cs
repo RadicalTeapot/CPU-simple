@@ -1,4 +1,4 @@
-﻿using Backend.Commands.StateCommands;
+using Backend.Commands.StateCommands;
 using Backend.IO;
 using CPU;
 
@@ -9,6 +9,7 @@ namespace Backend.CpuStates
         ILogger logger,
         IOutput output,
         BreakpointContainer breakpoints,
+        WatchpointContainer watchpoints,
         StateCommandRegistry commandRegistry)
     {
         public IdleState CreateIdleState()
@@ -18,22 +19,27 @@ namespace Backend.CpuStates
 
         public LoadingState CreateLoadingState(byte[] program)
         {
-            return new LoadingState(GetContextForState(typeof(LoadingState)), breakpoints, output, program);
+            return new LoadingState(GetContextForState(typeof(LoadingState)), breakpoints, watchpoints, output, program);
         }
 
         public ResetState CreateResetState()
         {
-            return new ResetState(GetContextForState(typeof(ResetState)), breakpoints, output);
+            return new ResetState(GetContextForState(typeof(ResetState)), breakpoints, watchpoints, output);
         }
 
         public RunningState CreateRunningState(Run.Config runConfig)
         {
-            return new RunningState(GetContextForState(typeof(RunningState)), breakpoints, output, runConfig);
+            return new RunningState(GetContextForState(typeof(RunningState)), breakpoints, watchpoints, output, runConfig);
         }
 
         public SteppingState CreateSteppingState(int numberOfInstructions)
         {
-            return new SteppingState(GetContextForState(typeof(SteppingState)), breakpoints, output, numberOfInstructions);
+            return new SteppingState(GetContextForState(typeof(SteppingState)), breakpoints, watchpoints, output, numberOfInstructions);
+        }
+
+        public TickingState CreateTickingState(int numberOfTicks)
+        {
+            return new TickingState(GetContextForState(typeof(TickingState)), breakpoints, watchpoints, output, numberOfTicks);
         }
 
         public ErrorState CreateErrorState(string reason)

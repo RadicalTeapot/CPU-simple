@@ -1,13 +1,13 @@
 ﻿using CPU.components;
+using CPU.microcode;
 
 namespace CPU.opcodes
 {
-    [Opcode(OpcodeBaseCode.NOP, OpcodeGroupBaseCode.SystemAndJump, RegisterArgsCount.Zero, OperandType.None)]
-    internal class NOP(State cpuState, Memory memory, Stack stack, OpcodeArgs args) : IOpcode
+    [Opcode(OpcodeBaseCode.NOP, OpcodeGroupBaseCode.SystemAndJump)]
+    internal class NOP(byte instructionByte, State state, Memory memory, Stack stack) : IOpcode
     {
-        public void Execute(ExecutionContext executionContext)
-        {
-            // No operation
-        }
+        public MicroPhase GetStartPhaseType() => MicroPhase.Done;
+
+        public MicroPhase Tick(uint phaseCount) => MicroPhase.Done;
     }
 }

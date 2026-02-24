@@ -101,6 +101,17 @@ function M.new(ctx, backend_feature)
     backend.send(commands.STEP)
   end)
 
+  feature.tick = backend_feature.with_running_backend(function()
+    local state = ctx.deps.get("state")
+    if not ensure_program_loaded(state) then
+      return
+    end
+
+    local backend = ctx.deps.get("backend")
+    local commands = ctx.deps.get("commands")
+    backend.send(commands.TICK)
+  end)
+
   feature.step_over = backend_feature.with_running_backend(function()
     local state = ctx.deps.get("state")
     if not ensure_program_loaded(state) then

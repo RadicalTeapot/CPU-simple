@@ -1,18 +1,32 @@
 ﻿using CPU.components;
+using CPU.microcode;
 
 namespace CPU.opcodes
 {
-    [Opcode(OpcodeBaseCode.SUB, OpcodeGroupBaseCode.Subtract, RegisterArgsCount.Two, OperandType.None)]
-    internal class SUB(State cpuState, Memory memory, Stack stack, OpcodeArgs args) : IOpcode
+    [Opcode(OpcodeBaseCode.SUB, OpcodeGroupBaseCode.Subtract)]
+    internal class SUB : BaseOpcode
     {
-        public void Execute(ExecutionContext executionContext)
+        public SUB(byte instructionByte, State state, Memory memory, Stack stack)
         {
-            var firstValue = cpuState.GetRegister(args.HighRegisterIdx);
-            var secondValue = cpuState.GetRegister(args.LowRegisterIdx);
-            var result = secondValue - firstValue - (1 - cpuState.GetCarryFlagAsInt());
-            cpuState.SetRegister(args.LowRegisterIdx, (byte)result); // Wrap around on underflow
-            cpuState.SetCarryFlag(result >= 0); // No borrow carry
-            cpuState.SetZeroFlag(result == 0);
+            _state = state;
+            _sourceRegisterIdx = OpcodeHelpers.GetSourceRegisterIdx(instructionByte);
+            _destinationRegisterIdx = OpcodeHelpers.GetDestinationRegisterIdx(instructionByte);
+            SetPhases(MicroPhase.AluOp, AluOp);
         }
+
+        public MicroPhase AluOp()
+        {
+            var firstValue = _state.GetRegister(_sourceRegisterIdx);
+            var secondValue = _state.GetRegister(_destinationRegisterIdx);
+            var result = secondValue - firstValue - (1 - _state.GetCarryFlagAsInt());
+            _state.SetRegister(_destinationRegisterIdx, (byte)result); // Wrap around on underflow
+            _state.SetCarryFlag(result >= 0); // No borrow carry
+            _state.SetZeroFlag(result == 0);
+            return MicroPhase.Done;
+        }
+
+        private readonly byte _sourceRegisterIdx;
+        private readonly byte _destinationRegisterIdx;
+        private readonly State _state;
     }
 }

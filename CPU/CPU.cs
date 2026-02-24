@@ -1,4 +1,5 @@
-﻿using CPU.components;
+using CPU.components;
+using CPU.microcode;
 using CPU.opcodes;
 using System.Diagnostics;
 
@@ -19,20 +20,21 @@ namespace CPU
             _memory = memory;
             _cycle = 0;
             _opcodeFactory = new OpcodeFactory();
-            _executionContext = new();
+            _tickHandler = new TickHandler(new TickHandlerConfig(_state, _memory, _stack, _opcodeFactory));
+            _tracer = new TickTracer(_state, _stack, _memory);
             _programLoaded = false;
         }
 
         public CpuInspector GetInspector()
-            => CpuInspector.Create(_cycle, _state, _stack, _memory, _programLoaded, _executionContext);
+            => new CpuInspector(_cycle, _state, _stack, _memory, _programLoaded, _tracer);
 
         public void Reset()
         {
             _state.Reset();
             _stack.Reset();
             _cycle = 0;
+            _tracer.Clear();
             // Note: Memory is not cleared on reset
-            _executionContext = new();
         }
 
         public void LoadProgram(byte[] program)
@@ -52,7 +54,7 @@ namespace CPU
             {
                 try
                 {
-                    Step();
+                    _tickHandler.Tick();
                 }
                 catch (OpcodeException.HaltException)
                 {
@@ -70,32 +72,31 @@ namespace CPU
         }
 
         /// <summary>
-        /// Executes a single instruction cycle: Fetch → Decode → Execute.
+        /// Executes a single instruction cycle, which may involve multiple micro-operations depending on the instruction's complexity.
         /// </summary>
+        /// <throws>OpcodeException.HaltException when a HALT instruction is executed.</throws>
         public void Step()
         {
-            _executionContext = new();
-            var instructionBytes = Fetch();
-            var opcodeInstance = Decode(instructionBytes);
-            opcodeInstance.Execute(_executionContext);
-
-            _cycle++;
+            _tracer.Clear();
+            MicrocodeTickResult result;
+            do
+            {
+                _tracer.Prepare();
+                result = _tickHandler.Tick();
+                _tracer.Record(result);
+            } while (!result.IsInstructionComplete);
         }
 
-        private byte[] Fetch()
+        /// <summary>
+        /// Advances the timer or scheduler by one tick, triggering any actions scheduled for this interval.
+        /// </summary>
+        public MicrocodeTickResult Tick()
         {
-            var instruction = _memory.ReadByte(_state.GetPC());
-            var instructionSize = _opcodeFactory.GetInstructionSize(instruction);
-            var instructionBytes = _memory.ReadBytes(_state.GetPC(), instructionSize);
-            _state.IncrementPC(instructionSize); // Move to next instruction byte
-            return instructionBytes;
-        }
-
-        private IOpcode Decode(byte[] instructionBytes)
-        {
-            var decodedInstruction = _opcodeFactory.Decode(instructionBytes);
-            _executionContext.SetLastInstruction(decodedInstruction.AsStringArray());
-            return decodedInstruction.CreateOpcode(_state, _memory, _stack);
+            _tracer.Clear();
+            _tracer.Prepare();
+            var result = _tickHandler.Tick();
+            _tracer.Record(result);
+            return result;
         }
 
         private void Dump()
@@ -107,13 +108,14 @@ namespace CPU
             Console.WriteLine("======================");
         }
 
+        private int _cycle;
+        private bool _programLoaded;
+        private readonly TickTracer _tracer;
         private readonly State _state;
         private readonly Stack _stack;
         private readonly Memory _memory;
         private readonly OpcodeFactory _opcodeFactory;
-        private int _cycle = 0;
-        private ExecutionContext _executionContext;
-        private bool _programLoaded;
+        private readonly TickHandler _tickHandler;
 #if x16
         public const int AddressSize = 2;
 #else

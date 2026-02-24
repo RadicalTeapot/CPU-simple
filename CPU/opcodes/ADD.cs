@@ -1,18 +1,33 @@
 ﻿using CPU.components;
+using CPU.microcode;
+using System;
 
 namespace CPU.opcodes
 {
-    [Opcode(OpcodeBaseCode.ADD, OpcodeGroupBaseCode.Add, RegisterArgsCount.Two, OperandType.None)]
-    internal class ADD(State cpuState, Memory memory, Stack stack, OpcodeArgs args) : IOpcode
+    [Opcode(OpcodeBaseCode.ADD, OpcodeGroupBaseCode.Add)]
+    internal class ADD : BaseOpcode
     {
-        public void Execute(ExecutionContext executionContext)
+        public ADD(byte instructionByte, State state, Memory memory, Stack stack)
         {
-            var firstValue = cpuState.GetRegister(args.HighRegisterIdx);
-            var secondValue = cpuState.GetRegister(args.LowRegisterIdx);
-            var result = firstValue + secondValue + cpuState.GetCarryFlagAsInt();
-            cpuState.SetRegister(args.LowRegisterIdx, (byte)result); // Wrap around on overflow
-            cpuState.SetCarryFlag(result > 0xFF);
-            cpuState.SetZeroFlag(result == 0);
+            _state = state;
+            _sourceRegisterIdx = OpcodeHelpers.GetSourceRegisterIdx(instructionByte);
+            _destinationRegisterIdx = OpcodeHelpers.GetDestinationRegisterIdx(instructionByte);
+            SetPhases(MicroPhase.AluOp, AluOp);
         }
+
+        public MicroPhase AluOp()
+        {
+            var firstValue = _state.GetRegister(_sourceRegisterIdx);
+            var secondValue = _state.GetRegister(_destinationRegisterIdx);
+            var result = firstValue + secondValue + _state.GetCarryFlagAsInt();
+            _state.SetRegister(_destinationRegisterIdx, (byte)result); // Wrap around on overflow
+            _state.SetCarryFlag(result > 0xFF);
+            _state.SetZeroFlag(result == 0);
+            return MicroPhase.Done;
+        }
+
+        private readonly byte _sourceRegisterIdx;
+        private readonly byte _destinationRegisterIdx;
+        private readonly State _state;
     }
 }

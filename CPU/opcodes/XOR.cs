@@ -1,17 +1,31 @@
 ﻿using CPU.components;
+using CPU.microcode;
 
 namespace CPU.opcodes
 {
-    [Opcode(OpcodeBaseCode.XOR, OpcodeGroupBaseCode.And, RegisterArgsCount.Two, OperandType.None)]
-    internal class XOR(State cpuState, Memory memory, Stack stack, OpcodeArgs args) : IOpcode
+    [Opcode(OpcodeBaseCode.XOR, OpcodeGroupBaseCode.And)]
+    internal class XOR : BaseOpcode
     {
-        public void Execute(ExecutionContext executionContext)
+        public XOR(byte instructionByte, State state, Memory memory, Stack stack)
         {
-            var firstValue = cpuState.GetRegister(args.HighRegisterIdx);
-            var secondValue = cpuState.GetRegister(args.LowRegisterIdx);
-            var value = (byte)(firstValue ^ secondValue);
-            cpuState.SetRegister(args.LowRegisterIdx, value);
-            cpuState.SetZeroFlag(value == 0);
+            _state = state;
+            _sourceRegisterIdx = OpcodeHelpers.GetSourceRegisterIdx(instructionByte);
+            _destinationRegisterIdx = OpcodeHelpers.GetDestinationRegisterIdx(instructionByte);
+            SetPhases(MicroPhase.AluOp, AluOp);
         }
+
+        public MicroPhase AluOp()
+        {
+            var firstValue = _state.GetRegister(_sourceRegisterIdx);
+            var secondValue = _state.GetRegister(_destinationRegisterIdx);
+            var value = (byte)(firstValue ^ secondValue);
+            _state.SetRegister(_destinationRegisterIdx, value);
+            _state.SetZeroFlag(value == 0);
+            return MicroPhase.Done;
+        }
+
+        private readonly byte _sourceRegisterIdx;
+        private readonly byte _destinationRegisterIdx;
+        private readonly State _state;
     }
 }

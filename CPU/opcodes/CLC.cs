@@ -1,13 +1,17 @@
 ﻿using CPU.components;
+using CPU.microcode;
 
 namespace CPU.opcodes
 {
-    [Opcode(OpcodeBaseCode.CLC, OpcodeGroupBaseCode.SystemAndJump, RegisterArgsCount.Zero, OperandType.None)]
-    internal class CLC(State cpuState, Memory memory, Stack stack, OpcodeArgs args) : IOpcode
+    [Opcode(OpcodeBaseCode.CLC, OpcodeGroupBaseCode.SystemAndJump)]
+    internal class CLC(byte instructionByte, State state, Memory memory, Stack stack) : IOpcode
     {
-        public void Execute(ExecutionContext executionContext)
+        public MicroPhase GetStartPhaseType() => MicroPhase.Done;
+
+        public MicroPhase Tick(uint phaseCount)
         {
-            cpuState.SetCarryFlag(false);
+            state.SetCarryFlag(false);
+            return MicroPhase.Done;
         }
     }
 }

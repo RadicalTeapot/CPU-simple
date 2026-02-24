@@ -1,11 +1,14 @@
 ﻿using CPU.components;
+using CPU.microcode;
 
 namespace CPU.opcodes
 {
-    [Opcode(OpcodeBaseCode.HLT, OpcodeGroupBaseCode.SystemAndJump, RegisterArgsCount.Zero, OperandType.None)]
-    internal class HLT(State cpuState, Memory memory, Stack stack, OpcodeArgs args) : IOpcode
+    [Opcode(OpcodeBaseCode.HLT, OpcodeGroupBaseCode.SystemAndJump)]
+    internal class HLT(byte instructionByte, State state, Memory memory, Stack stack) : IOpcode
     {
-        public void Execute(ExecutionContext executionContext)
+        public MicroPhase GetStartPhaseType() => MicroPhase.Done;
+
+        public MicroPhase Tick(uint phaseCount)
         {
             throw new OpcodeException.HaltException();
         }

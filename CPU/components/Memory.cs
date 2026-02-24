@@ -1,8 +1,12 @@
-﻿namespace CPU.components
+﻿using CPU.microcode;
+
+namespace CPU.components
 {
     public class Memory(int size)
     {
         public int Size { get; } = size;
+
+        internal BusRecorder? Recorder { get; set; }
 
 #if x16
         public byte ReadByte(ushort address)
@@ -10,7 +14,9 @@
             if (address >= Size)
                 throw new ArgumentOutOfRangeException(nameof(address), $"Memory read address out of bounds: {address}.");
 
-            return _memory[address];
+            var value = _memory[address];
+            Recorder?.RecordRead(address, value, BusType.Memory);
+            return value;
         }
 
         public byte[] ReadBytes(ushort address, int length)
@@ -22,21 +28,22 @@
             return result;
         }
 
-        public void WriteByte(ushort address, byte value) => WriteByte(address, value, null);
-        public void WriteByte(ushort address, byte value, Action<int, byte>? reporter)
+        public void WriteByte(ushort address, byte value)
         {
             if (address >= Size)
                 throw new ArgumentOutOfRangeException(nameof(address), $"Memory write address out of bounds: {address}.");
 
             _memory[address] = value;
-            reporter?.Invoke(address, value);
+            Recorder?.RecordWrite(address, value, BusType.Memory);
         }
 #else
         public byte ReadByte(byte address)
         {
             if (address >= Size)
                 throw new ArgumentOutOfRangeException(nameof(address), $"Memory read address out of bounds: {address}.");
-            return _memory[address];
+            var value = _memory[address];
+            Recorder?.RecordRead(address, value, BusType.Memory);
+            return value;
         }
 
         public byte[] ReadBytes(byte address, int length)
@@ -48,13 +55,12 @@
             return result;
         }
 
-        public void WriteByte(byte address, byte value) => WriteByte(address, value, null);
-        public void WriteByte(byte address, byte value, Action<int, byte>? reporter)
+        public void WriteByte(byte address, byte value)
         {
             if (address >= Size)
                 throw new ArgumentOutOfRangeException(nameof(address), $"Memory write address out of bounds: {address}.");
             _memory[address] = value;
-            reporter?.Invoke(address, value);
+            Recorder?.RecordWrite(address, value, BusType.Memory);
         }
 #endif
 
@@ -76,13 +82,6 @@
         public void Clear()
         {
             Array.Clear(_memory);
-        }
-
-        internal void UpdateCpuInspectorBuilder(CpuInspector.Builder inspectorBuilder)
-        {
-            var memory = new byte[_memory.Length];
-            Array.Copy(_memory, memory, _memory.Length); // Create a copy to avoid external modifications
-            inspectorBuilder.SetMemory(memory);
         }
 
         private readonly byte[] _memory = new byte[size];
