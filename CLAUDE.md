@@ -72,9 +72,9 @@ The system is a classic assembler-to-CPU pipeline:
 ```
 Assembly source (.csasm) → Lexer → Parser → Analyser → Emitter → Machine code (bytes)
                                                                         ↓
-                                                                  CPU (execute)
+                                                           CPU (execute) ←→ MMIO bus decoder ←→ PPU (render, VRAM)
                                                                         ↓
-                                                                  Backend (debugger, JSON over stdin/stdout)
+                                                                  Backend (hosts CPU + PPU, debugger, JSON over stdin/stdout)
                                                                         ↓
                                                                   Neovim plugin (IDE)
 ```
@@ -85,6 +85,7 @@ Assembly source (.csasm) → Lexer → Parser → Analyser → Emitter → Machi
 - **Assembler/** - CLI tool with four pipeline stages: `Lexer` (tokenizes) → `Parser` (builds AST) → `Analyser` (two-pass: builds symbol table, resolves labels) → `Emitter` (produces bytes). Supports `.text` and `.data` sections.
 - **Backend/** - Console debugger hosting the CPU. Reads JSON commands from stdin, writes JSON responses to stdout. Commands are discovered via `[Command]` attribute, split into `GlobalCommands/` (dump, breakpoint, watchpoint, status) and `StateCommands/` (load, run, step, tick, stepover, stepout, reset).
 - **LanguageServer/** - LSP server for `.csasm` files (diagnostics, hover, completion). Uses the OmniSharp LSP SDK (`OmniSharp.Extensions.LanguageServer`) over stdio. Reuses the Assembler pipeline directly — runs Lexer→Parser→Analyser on each document change and translates exceptions into LSP diagnostics.
+- **PPU/** (planned) - Picture Processing Unit with dedicated VRAM. Communicates with the CPU exclusively through MMIO-mapped registers; the CPU never addresses VRAM directly. Ticked alongside the CPU by the Backend in a single-threaded co-simulation loop. Fires VBlank via an event that the Backend translates into `cpu.RequestInterrupt()`. See `docs/projects/cpu-simple/PPU.md` for the authoritative design reference.
 - **CPU.Tests/**, **Assembler.Tests/**, **Backend.Tests/**, and **LanguageServer.Tests/** - NUnit 4 test suites. Backend.Tests uses `InternalsVisibleTo` to access internal Backend types.
 
 ### Non-C# Components
@@ -98,7 +99,7 @@ Assembly source (.csasm) → Lexer → Parser → Analyser → Emitter → Machi
 
 - **8-bit vs 16-bit builds**: Controlled by `#if x16` conditional compilation. The `DebugX16`/`ReleaseX16` configurations define the `x16` symbol, which changes address sizes from 1 byte to 2 bytes throughout CPU and Assembler.
 - **Attribute-based discovery**: Both opcodes (`[Opcode]` attribute + `IOpcode` interface) and backend commands (`[Command]` attribute + `ICommand` interface) use reflection-based registries to auto-discover implementations.
-- **Opcode constructor signature**: All opcodes must have constructor `(State, Memory, Stack, OpcodeArgs)`.
+- **Opcode constructor signature**: All opcodes must have constructor `(State, Memory, Stack, OpcodeArgs)`. When the MMIO bus decoder is introduced, `Memory` will be replaced by the bus decoder type (same interface, drop-in) — all opcode constructors will need updating at that point.
 - **Assembler debug output**: The assembler can emit a JSON debug file containing symbol table and span-to-address mappings for IDE integration.
 - **Assembler exception patterns**: `Lexer` throws `LexerException` directly. `Parser.ParseProgram()` and `Analyser.Run()` collect errors and throw `AggregateException` wrapping `ParserException`/`AnalyserException` respectively. However, `Analyser.Run()` can also throw a bare `ParserException` from its `ResolveLabels()` phase (for unresolved label references). All assembler exceptions bake ` at line N, column M` into the message string and expose `Line`/`Column` properties (0-based).
 - **Assembly syntax**: Memory address operands require square brackets (e.g., `jmp [label]`, `lda r0, [label]`, `ldx r1, [r0 + #0x01]`). Immediate values use `#` prefix (e.g., `ldi r0, #0x05`). The lexer lowercases all input and trims leading whitespace from each line before tokenizing but the original line number and column are preserved.
@@ -107,6 +108,8 @@ Assembly source (.csasm) → Lexer → Parser → Analyser → Emitter → Machi
 - **Tick vs Step**: `CPU.Step()` runs micro-ticks in a loop until `IsInstructionComplete`, accumulating one `TickTrace` per micro-tick. `CPU.Tick()` advances exactly one micro-tick and records one trace. `SteppingState` uses `Step()`, `TickingState` uses `Tick()`. Both states produce identical `status` JSON — only the number of `traces` entries differs.
 - **Watchpoints**: `WatchpointContainer` (in `Backend/WatchpointContainer.cs`) holds `IWatchpoint` instances. Two concrete types: `AddressWatchpoint` (matches `Bus.Type==Memory` + direction + address on a `TickTrace`) and `PhaseWatchpoint` (matches `NextPhase` on a `TickTrace`). `ExecutingCpuState.Tick()` calls `watchpointContainer.Check(inspector.Traces)` after the breakpoint check — a match transitions to `IdleState` and emits `watchpoint_hit` JSON. `WatchpointContainer` and `IWatchpoint` are threaded through `CpuStateFactory` and `GlobalCommandExecutionContext`. The `watchpoint` global command (alias `wp`) manages watchpoints; `WatchpointContainer.NextId()` vends auto-incrementing IDs that never reset.
 - **Plugin source buffer targeting**: The plugin's `highlight_pc()` and `highlight_breakpoints()` functions use `assembler.assembler.last_source_bufnr` to target the correct source buffer instead of relying on `nvim_get_current_buf()`, which can return a sidebar panel buffer.
+- **PPU design**: `docs/projects/cpu-simple/PPU.md` is the **authoritative reference** for all PPU architecture decisions (MMIO layout, VRAM sizing, PPUADDR write-latch, tile/sprite model, scanline pipeline, co-simulation, debugger integration). Key constraints: PPU is never on the same OS thread as the CPU — use single-threaded co-simulation only; PPU watchpoints and PPU tick traces are separate subsystems from CPU watchpoints and `TickTrace`; MMIO register count is severely constrained in 8-bit mode (256-byte address space shared with code and RAM).
+- **MMIO bus decoder** (planned): A bus decoder will sit between the CPU and `Memory`, routing writes/reads to PPU registers by address range and forwarding all other addresses to `Memory`. It exposes the same read/write interface as `Memory`. The stack is unaffected — stack operations bypass the address bus entirely.
 
 ## Test Framework
 

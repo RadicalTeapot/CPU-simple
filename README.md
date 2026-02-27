@@ -154,6 +154,7 @@ I did review and tested the code but exercise caution when using it.
   - [ ] Test if assembler errors are handled
 - [ ] Implement PPU and map some memory for it (for 16-bit version)
    - [ ] Use vector lookup table for IRQ address
+   - [ ] Implement the memory mapper for IO
 - [ ] Implement sound chip and map some memory for it too (for 16-bit version)
   - [ ] Write a small MIDI player application
 - [ ] Cleanup opcode constructors to take only necessary parameters (or use an interface to mask un-necessary parameters)
