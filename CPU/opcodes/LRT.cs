@@ -6,7 +6,7 @@ namespace CPU.opcodes
     [Opcode(OpcodeBaseCode.LRT, OpcodeGroupBaseCode.BitsManipulation)]
     internal class LRT : BaseOpcode
     {
-        public LRT(byte instructionByte, State state, Memory memory, Stack stack)
+        public LRT(byte instructionByte, State state, IBus bus, Stack stack)
         {
             _state = state;
             _registerIdx = OpcodeHelpers.GetDestinationRegisterIdx(instructionByte);

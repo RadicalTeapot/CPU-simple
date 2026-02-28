@@ -13,7 +13,16 @@ namespace Backend
         {
             _logger = logger;
             _output = output;
-            _cpu = new CPU.CPU(config);
+            if (config.VramSize > 0)
+            {
+                _ppu = new PPU.Ppu(config.VramSize);
+                _cpu = new CPU.CPU(config, _ppu.Registers);
+                _ppu.VBlankStarted += _cpu.RequestInterrupt;
+            }
+            else
+            {
+                _cpu = new CPU.CPU(config);
+            }
             _breakpointContainer = new BreakpointContainer();
             _watchpointContainer = new WatchpointContainer();
             _cpuStateFactory = new CpuStateFactory(_cpu, _logger, _output, _breakpointContainer, _watchpointContainer, cpuCommandRegistry);
@@ -41,12 +50,13 @@ namespace Backend
             _currentState = _currentState.GetStateForCommand(cpuCommand, args);
         }
 
-        public void Tick() 
+        public void Tick()
         {
             ICpuState nextState;
             try
             {
                 nextState = _currentState.Tick();
+                _ppu?.Tick();
             }
             catch (OpcodeException.HaltException)
             {
@@ -63,6 +73,7 @@ namespace Backend
 
         private ICpuState _currentState;
         private readonly CPU.CPU _cpu;
+        private readonly PPU.Ppu? _ppu;
         private readonly CpuStateFactory _cpuStateFactory;
         private readonly ILogger _logger;
         private readonly IOutput _output;

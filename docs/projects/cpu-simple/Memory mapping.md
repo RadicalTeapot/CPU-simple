@@ -48,7 +48,7 @@ Your proposal is a hybrid that doesn't fully commit to either, and likely ends u
 Option A is architecturally cleaner and more authentic, but it means:
 - Changing the `Stack` class to be backed by an address region
 - Changing all stack opcodes (`PSH`, `POP`, `CAL`, `RET`, `RTI`...)
-- Changing the opcode constructor signature `(State, Memory, Stack, OpcodeArgs)` ΓåÆ `(State, MemoryMapper, OpcodeArgs)` across 60+ files
+- Changing the opcode constructor signature `(State, Memory, Stack, OpcodeArgs)` -> `(State, MemoryMapper, OpcodeArgs)` across 60+ files
 - Re-verifying all stack-related tests
 
 Per the project's own principles: **don't refactor adjacent code during a PPU feature**. This is valid to address, but as a separate, deliberate architectural PR - not bundled into PPU work.

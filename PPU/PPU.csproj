@@ -1,12 +1,11 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <OutputType>Exe</OutputType>
+    <OutputType>Library</OutputType>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <Configurations>Debug;Release;DebugX16;ReleaseX16</Configurations>
-    <StartupObject>Backend.Backend</StartupObject>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DebugX16|AnyCPU'">
@@ -18,13 +17,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <InternalsVisibleTo Include="Backend.Tests" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\Assembler\Assembler.csproj" />
     <ProjectReference Include="..\CPU\CPU.csproj" />
-    <ProjectReference Include="..\PPU\PPU.csproj" />
   </ItemGroup>
 
 </Project>

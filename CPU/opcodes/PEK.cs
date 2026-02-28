@@ -6,7 +6,7 @@ namespace CPU.opcodes
     [Opcode(OpcodeBaseCode.PEK, OpcodeGroupBaseCode.Load)]
     internal class PEK : BaseOpcode
     {
-        public PEK(byte instructionByte, State state, Memory memory, Stack stack)
+        public PEK(byte instructionByte, State state, IBus bus, Stack stack)
         {
             _state = state;
             _stack = stack;

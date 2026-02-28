@@ -11,18 +11,32 @@ namespace CPU
             this(new State(config.RegisterCount),
                  new Stack(config.StackSize),
                  new Memory(config.MemorySize - config.StackSize),
-                 config.IrqVectorAddress)
+                 config.IrqVectorAddress,
+                 new NullMmioDevice())
         { }
 
-        public CPU(State state, Stack stack, Memory memory, int irqVectorAddress = 0)
+        public CPU(Config config, IMmioDevice mmioDevice) :
+            this(new State(config.RegisterCount),
+                 new Stack(config.StackSize),
+                 new Memory(config.MemorySize - config.StackSize),
+                 config.IrqVectorAddress,
+                 mmioDevice)
+        { }
+
+        public CPU(State state, Stack stack, Memory memory, int irqVectorAddress = 0) :
+            this(state, stack, memory, irqVectorAddress, new NullMmioDevice())
+        { }
+
+        public CPU(State state, Stack stack, Memory memory, int irqVectorAddress, IMmioDevice mmioDevice)
         {
             _state = state;
             _stack = stack;
             _memory = memory;
+            _bus = new BusDecoder(memory, mmioDevice);
             _cycle = 0;
             _opcodeFactory = new OpcodeFactory();
-            _tickHandler = new TickHandler(new TickHandlerConfig(_state, _memory, _stack, _opcodeFactory, irqVectorAddress));
-            _tracer = new TickTracer(_state, _stack, _memory);
+            _tickHandler = new TickHandler(new TickHandlerConfig(_state, _bus, _stack, _opcodeFactory, irqVectorAddress));
+            _tracer = new TickTracer(_state, _stack, _bus);
             _programLoaded = false;
         }
 
@@ -117,6 +131,7 @@ namespace CPU
         private readonly State _state;
         private readonly Stack _stack;
         private readonly Memory _memory;
+        private readonly BusDecoder _bus;
         private readonly OpcodeFactory _opcodeFactory;
         private readonly TickHandler _tickHandler;
 #if x16

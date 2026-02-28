@@ -6,7 +6,7 @@ namespace CPU.opcodes
     [Opcode(OpcodeBaseCode.AND, OpcodeGroupBaseCode.And)]
     internal class AND : BaseOpcode
     {
-        public AND(byte instructionByte, State state, Memory memory, Stack stack)
+        public AND(byte instructionByte, State state, IBus bus, Stack stack)
         {
             _state = state;
             _sourceRegisterIdx = OpcodeHelpers.GetSourceRegisterIdx(instructionByte);

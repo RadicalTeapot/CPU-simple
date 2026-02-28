@@ -7,14 +7,13 @@ namespace CPU
     {
         public TickTrace[] LastTraces => [.. _traces];
 
-        public TickTracer(State state, Stack stack, Memory memory)
+        public TickTracer(State state, Stack stack, BusDecoder bus)
         {
             _state = state;
             _stack = stack;
-            _memory = memory;
             _registersBefore = new byte[_state.RegisterCount];
             _busRecorder = new BusRecorder();
-            _memory.Recorder = _busRecorder;
+            bus.Recorder = _busRecorder;
             _stack.Recorder = _busRecorder;
         }
 
@@ -104,6 +103,5 @@ namespace CPU
         private readonly BusRecorder _busRecorder;
         private readonly State _state;
         private readonly Stack _stack;
-        private readonly Memory _memory;
     }
 }

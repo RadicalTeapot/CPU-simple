@@ -27,8 +27,9 @@ namespace Backend
             int memorySize = DefaultMemorySize;
             int stackSize = DefaultStackSize;
             int registerCount = DefaultRegisterCount;
+            int vramSize = DefaultVramSize;
 
-            // backend [-m/--memory SIZE] [-s/--stack SIZE] [--registers COUNT] [-h/--help]
+            // backend [-m/--memory SIZE] [-s/--stack SIZE] [--registers COUNT] [--vram SIZE] [-h/--help]
             for (int i = 0; i < args.Length; i++)
             {
                 switch (args[i])
@@ -74,6 +75,19 @@ namespace Backend
                             return InvalidArgExitCode;
                         }
                         break;
+                    case "--vram":
+                        if (i + 1 < args.Length && int.TryParse(args[i + 1], out vramSize))
+                        {
+                            logger.Log($"VRAM size set to {vramSize}");
+                            i++;
+                        }
+                        else
+                        {
+                            logger.Error("Invalid VRAM size specified.");
+                            config = default;
+                            return InvalidArgExitCode;
+                        }
+                        break;
                     case "-h":
                     case "--help":
                         config = default;
@@ -84,13 +98,14 @@ namespace Backend
                         return InvalidArgExitCode;
                 }
             }
-            config = new CPU.Config(memorySize, stackSize, registerCount);
+            config = new CPU.Config(memorySize, stackSize, registerCount, vramSize);
             return 0;
         }
 
         private const int DefaultMemorySize = 256;
         private const int DefaultStackSize = 16;
         private const int DefaultRegisterCount = 4;
+        private const int DefaultVramSize = 0;
         private const int HelpExitCode = 1;
         private const int InvalidArgExitCode = 2;
     }

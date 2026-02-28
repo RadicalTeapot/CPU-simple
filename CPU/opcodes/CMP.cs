@@ -6,7 +6,7 @@ namespace CPU.opcodes
     [Opcode(OpcodeBaseCode.CMP, OpcodeGroupBaseCode.TwoRegistersCompare)]
     internal class CMP : BaseOpcode
     {
-        public CMP(byte instructionByte, State state, Memory memory, Stack stack)
+        public CMP(byte instructionByte, State state, IBus bus, Stack stack)
         {
             _state = state;
             _sourceRegisterIdx = OpcodeHelpers.GetSourceRegisterIdx(instructionByte);

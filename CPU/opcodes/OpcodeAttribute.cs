@@ -1,6 +1,6 @@
 using CPU.components;
 
-using OpcodeConstrutor = System.Func<byte, CPU.components.State, CPU.components.Memory, CPU.components.Stack, CPU.opcodes.IOpcode>;
+using OpcodeConstrutor = System.Func<byte, CPU.components.State, CPU.components.IBus, CPU.components.Stack, CPU.opcodes.IOpcode>;
 
 namespace CPU.opcodes
 {

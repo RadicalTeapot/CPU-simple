@@ -6,7 +6,7 @@ namespace CPU.opcodes
     [Opcode(OpcodeBaseCode.RTI, OpcodeGroupBaseCode.SystemAndJump)]
     internal class RTI : BaseOpcode
     {
-        public RTI(byte instructionByte, State state, Memory memory, Stack stack)
+        public RTI(byte instructionByte, State state, IBus bus, Stack stack)
         {
             _state = state;
             _stack = stack;

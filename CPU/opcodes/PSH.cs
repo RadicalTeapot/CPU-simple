@@ -6,7 +6,7 @@ namespace CPU.opcodes
     [Opcode(OpcodeBaseCode.PSH, OpcodeGroupBaseCode.StoreAndIndirect)]
     internal class PSH : BaseOpcode
     {
-        public PSH(byte instructionByte, State state, Memory memory, Stack stack)
+        public PSH(byte instructionByte, State state, IBus bus, Stack stack)
         {
             _state = state;
             _stack = stack;

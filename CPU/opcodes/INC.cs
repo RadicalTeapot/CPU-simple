@@ -6,7 +6,7 @@ namespace CPU.opcodes
     [Opcode(OpcodeBaseCode.INC, OpcodeGroupBaseCode.SingleRegisterLogicOne)]
     internal class INC : BaseOpcode
     {
-        public INC(byte instructionByte, State state, Memory memory, Stack stack)
+        public INC(byte instructionByte, State state, IBus bus, Stack stack)
         {
             _registerIdx = OpcodeHelpers.GetDestinationRegisterIdx(instructionByte);
             _state = state;

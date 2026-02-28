@@ -6,17 +6,17 @@ namespace CPU.opcodes
     [Opcode(OpcodeBaseCode.STX, OpcodeGroupBaseCode.StoreAndIndirect)]
     internal class STX : BaseOpcode
     {
-        public STX(byte instructionByte, State state, Memory memory, Stack stack)
+        public STX(byte instructionByte, State state, IBus bus, Stack stack)
         {
             _state = state;
-            _memory = memory;
+            _bus = bus;
             _registerIdx = OpcodeHelpers.GetDestinationRegisterIdx(instructionByte);
             SetPhases(MicroPhase.FetchOperand, ReadRegisterAndImmediate, EffectiveAddrComputation, Write);
         }
 
         private MicroPhase ReadRegisterAndImmediate()
         {
-            var value = _memory.ReadByte(_state.GetPC());
+            var value = _bus.ReadByte(_state.GetPC());
             _state.IncrementPC();
             _indirectRegisterIdx = (byte)(value & 0b11);
             _immediateValue = (byte)(value >> 2);
@@ -32,7 +32,7 @@ namespace CPU.opcodes
         private MicroPhase Write()
         {
             var value = _state.GetRegister(_registerIdx);
-            _memory.WriteByte(_effectiveAddress, value);
+            _bus.WriteByte(_effectiveAddress, value);
             return MicroPhase.Done;
         }
 
@@ -41,6 +41,6 @@ namespace CPU.opcodes
         private byte _indirectRegisterIdx;
         private readonly byte _registerIdx;
         private readonly State _state;
-        private readonly Memory _memory;
+        private readonly IBus _bus;
     }
 }

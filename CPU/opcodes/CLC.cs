@@ -4,7 +4,7 @@ using CPU.microcode;
 namespace CPU.opcodes
 {
     [Opcode(OpcodeBaseCode.CLC, OpcodeGroupBaseCode.SystemAndJump)]
-    internal class CLC(byte instructionByte, State state, Memory memory, Stack stack) : IOpcode
+    internal class CLC(byte instructionByte, State state, IBus bus, Stack stack) : IOpcode
     {
         public MicroPhase GetStartPhaseType() => MicroPhase.Done;
 

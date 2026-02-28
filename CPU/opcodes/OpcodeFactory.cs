@@ -22,13 +22,13 @@ namespace CPU.opcodes
             return (OpcodeBaseCode)(instruction & mask);
         }
 
-        public IOpcode CreateOpcode(byte instructionByte, State state, Memory memory, Stack stack)
+        public IOpcode CreateOpcode(byte instructionByte, State state, IBus bus, Stack stack)
         {
             var baseCode = GetOpcodeBaseCodeFromInstruction(instructionByte);
             if (!_opcodeMetadataCache.TryGetValue(baseCode, out var metadata))
                 throw new InvalidOperationException($"No opcode registered for base code {baseCode} (instruction was {instructionByte:X2})");
 
-            return metadata.Constructor(instructionByte, state, memory, stack);
+            return metadata.Constructor(instructionByte, state, bus, stack);
         }
 
         /// <summary>
@@ -60,9 +60,9 @@ namespace CPU.opcodes
                 var attribute = type.GetCustomAttribute<OpcodeAttribute>();
                 Debug.Assert(attribute != null, $"Opcode class {type.Name} must have an OpcodeAttribute.");
 
-                // Standard constructor signature: (byte, State, Memory, Stack)
-                var constructor = type.GetConstructor([typeof(byte), typeof(State), typeof(Memory), typeof(Stack)]) 
-                    ?? throw new InvalidOperationException($"Opcode {type.Name} must have a constructor with signature (byte, State, Memory, Stack)");
+                // Standard constructor signature: (byte, State, IBus, Stack)
+                var constructor = type.GetConstructor([typeof(byte), typeof(State), typeof(IBus), typeof(Stack)])
+                    ?? throw new InvalidOperationException($"Opcode {type.Name} must have a constructor with signature (byte, State, IBus, Stack)");
                 Debug.Assert(typeof(IOpcode).IsAssignableFrom(constructor.DeclaringType),
                     "Decoded opcode constructor must belong to a type implementing IOpcode.");
 
