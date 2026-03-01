@@ -1,0 +1,618 @@
+# PPU Implementation Architecture
+
+This document describes the class-level design of the PPU project and the Backend changes required to integrate it. It is scoped to the **minimal 8-bit configuration** (256-byte VRAM, 1bpp, 16×13 tilemap, CHR in ROM) as the first implementation target.
+
+Refer to `ppu.md` for the authoritative design reference (MMIO layout, VRAM layout, rendering rules, co-simulation model). This document assumes familiarity with that reference.
+
+---
+
+## Layers
+
+The architecture is organised into four layers:
+
+| Layer | Project | Responsibility |
+|---|---|---|
+| Configuration | PPU | Parameter structs that drive all sizing and timing decisions |
+| Storage | PPU | VRAM, MMIO registers, CHR ROM |
+| Rendering | PPU | Scanline pipeline, sprite evaluation, pixel output |
+| Debugger integration | PPU + Backend | Tick traces, watchpoints, co-simulation coordinator |
+
+---
+
+## Layer 1 — Configuration
+
+### `PpuConfig` (struct) — _new_
+
+Central parameter object. No logic — pure data. Drives every other class.
+
+| Property | Notes |
+|---|---|
+| `ScreenWidth`, `ScreenHeight` | 128, 104 for minimal |
+| `TilemapWidth`, `TilemapHeight` | Derived: `ScreenWidth / 8`, `ScreenHeight / 8` → 16, 13 |
+| `BitsPerPixel` | 1 for minimal |
+| `BytesPerTile` | Derived: `8 × 8 × bpp / 8` → 8 for minimal |
+| `TileCount` | 256 for minimal |
+| `ChrInRom` | `true` for minimal — excludes CHR from VRAM layout |
+| `ColormapCount` | 0 for minimal (monochrome, no palette) |
+| `SpriteCount` | 16 for minimal |
+| `BytesPerSprite` | 3 for minimal |
+| `MaxSpritesPerScanline` | 8 |
+| `CyclesPerScanline`, `VBlankStartScanline`, `TotalScanlines` | Scanline timing constants |
+| `PpuCyclesPerCpuCycle` | Clock ratio; set by Backend before simulation starts |
+| `Layout` | Computed property returning `new PpuVramLayout(this)` |
+
+Static factory methods:
+- `Minimal8Bit` — the 256-byte configuration described in `ppu.md`
+- `Default` — the richer `#if x16` standard configuration for the later implementation phase
+
+**Connects to**: passed by value to `PpuVramLayout`, `Renderer`, `SpriteEvaluator`, `Ppu`.
+
+---
+
+### `PpuVramLayout` (struct) — _new_
+
+Derives all VRAM region byte offsets from a `PpuConfig`. When `ChrInRom == true`, `ChrSize = 0` and the tilemap starts at `0x00` rather than after CHR data.
+
+| Property | Minimal value | Notes |
+|---|---|---|
+| `TilemapBase` | `0x00` | Start of tilemap |
+| `TilemapSize` | 208 | 16 × 13 |
+| `OamBase` | `0xD0` | Immediately after tilemap |
+| `OamSize` | 48 | 16 sprites × 3 bytes |
+| `TotalSize` | 256 | Exact VRAM budget |
+
+Helper methods: `TilemapOffset(int col, int row)`, `OamEntryOffset(int index)`.
+
+**Connects to**: `PpuRegisters` (offset calculations), `SpriteEvaluator`, `ScanlineRenderer`.
+
+---
+
+## Layer 2 — Storage
+
+### `PpuRegisters` (class) — _existing, modify_
+
+Currently owns the VRAM array and implements `IMmioDevice`. Both responsibilities stay. Changes required:
+
+- Replace the `int vramSize` constructor parameter with `PpuConfig config`. The config determines VRAM size and latch behaviour (`ChrInRom` → single-write latch).
+- Remove the hardcoded `_useLatch = vramSize > 256` expression. Derive from `config.ChrInRom` or `config.Layout.TotalSize <= 256`.
+- Add `bool SpriteOverflow` property (written by `SpriteEvaluator`; read via `PPUSTATUS` bit 6).
+- Add `byte ReadVram(int address)` — used by the renderer during scanline generation.
+
+**Connects to**: `Ppu` (owned by), `ScanlineRenderer` (read-only VRAM via `ReadVram`), CPU address bus (via `IMmioDevice` through `BusDecoder`).
+
+---
+
+### `ChrRom` (class) — _new_
+
+Read-only tile pattern library. For the minimal config: 256 tiles × 8 bytes = 2,048 bytes. Baked into the PPU at construction; never stored in VRAM and not modifiable at runtime.
+
+- Constructor: `ChrRom(byte[] data)` — validates `data.Length == tileCount × bytesPerTile`.
+- `byte ReadRow(int tileIndex, int row)` — returns the 1-byte row (8 pixels, 1bpp, MSB = leftmost pixel). Bounds-checked; returns `0` for out-of-range access.
+- Static `Default` property — a hardcoded byte array (e.g., simple placeholder patterns) so the PPU is functional before a real ROM is provided.
+
+**Connects to**: `Ppu` (owned by, passed to `Renderer` at construction), `ScanlineRenderer` (tile lookup during rendering).
+
+---
+
+## Layer 3 — Rendering
+
+### `OamEntry` (struct) — _new_
+
+Decoded, typed view of one 3-byte sprite OAM entry. Removes raw byte manipulation from the renderer.
+
+Static factory: `Decode(byte positionByte, byte tileIndex, byte attrByte)`.
+
+| Property | Source |
+|---|---|
+| `XTile` | `positionByte & 0x0F` |
+| `YTile` | `(positionByte >> 4) & 0x0F` |
+| `TileIndex` | byte 1 |
+| `Priority` | `attr bit 3` — `false` = in front of BG, `true` = behind BG |
+| `HFlip` | `attr bit 2` |
+| `VFlip` | `attr bit 1` |
+| `IsHidden` | `YTile >= TilemapHeight` — sprite is off the bottom of the screen |
+
+**Connects to**: `SpriteEvaluator` (produces), `ScanlineRenderer` (consumes).
+
+---
+
+### `SpriteEvaluator` (class) — _new_
+
+Given the OAM region of VRAM and the current tile-row being rendered, produces the list of active sprites (up to `MaxSpritesPerScanline`).
+
+```csharp
+ActiveSprites Evaluate(PpuRegisters vram, PpuVramLayout layout, int tileRow)
+```
+
+Returns an `ActiveSprites` value containing the matched `OamEntry[]` (capped at `MaxSpritesPerScanline`) and a `bool SpriteOverflow` flag. Lower OAM index = higher priority; array preserves OAM order.
+
+For the minimal config, positioning is **tile-aligned** — one evaluation call covers 8 pixel scanlines. Evaluation happens during the HBlank of the *previous* tile-row, so the active sprite list is ready when pixel output begins (see `ppu.md` — Per-scanline sequence).
+
+Sets `PpuRegisters.SpriteOverflow = true` when the cap is exceeded.
+
+**Connects to**: `ScanlineRenderer` (evaluated list passed in), `PpuRegisters` (reads OAM via `ReadVram`), `PpuVramLayout` (OAM base offset), `OamEntry` (produces decoded entries).
+
+---
+
+### `TileRow` (static class) — _new_
+
+Stateless bit-manipulation helpers. No instance needed.
+
+- `bool GetPixel(byte rowByte, int pixelX, bool hFlip)` — extracts bit `pixelX` from a 1bpp tile row byte, respecting horizontal flip. `true` = opaque, `false` = transparent.
+
+Keeping this as a static helper makes unit testing trivial and avoids duplicating the bit logic in both BG and sprite rendering paths.
+
+**Connects to**: `ScanlineRenderer`.
+
+---
+
+### `ScanlineRenderer` (class) — _new_
+
+The core rendering engine. Renders a single pixel scanline (128 pixels for minimal config) given the current VRAM state and pre-evaluated sprites.
+
+```csharp
+void RenderScanline(int scanline, PpuRegisters vram, ChrRom chr,
+                    ActiveSprites sprites, PpuVramLayout layout, FrameBuffer frameBuffer)
+```
+
+Per-pixel loop (128 iterations):
+1. Determine tile column and pixel-within-tile from `pixelX`.
+2. Read the tilemap byte for `(col, row)` → BG tile index.
+3. Look up the tile row in `ChrRom` (accounting for `VFlip`) → BG pixel bit via `TileRow.GetPixel`.
+4. For each sprite in `sprites`, check if it covers `pixelX` → sprite pixel bit via `TileRow.GetPixel`.
+5. Priority resolution (1bpp, monochrome):
+   - Sprite-in-front opaque → sprite pixel (write `1`)
+   - Sprite-behind opaque AND BG opaque → BG pixel (write `1`)
+   - BG opaque → BG pixel (write `1`)
+   - All transparent → backdrop (write `0`)
+6. Write resolved byte to `FrameBuffer`.
+
+No colormap is needed — 1bpp output is `0` (backdrop/black) or `1` (opaque/white).
+
+**Connects to**: `PpuRegisters` (tilemap read via `ReadVram`), `ChrRom` (tile lookup), `TileRow` (pixel extraction), `SpriteEvaluator` (receives pre-evaluated `ActiveSprites`), `PpuVramLayout` (tilemap offset calculation), `FrameBuffer` (output).
+
+---
+
+### `FrameBuffer` (class) — _new_
+
+Flat `byte[]` of `ScreenWidth × ScreenHeight` pixels. One byte per pixel: `0` = backdrop, `1` = opaque.
+
+- `void SetPixel(int x, int y, byte value)`
+- `byte GetPixel(int x, int y)`
+- `void Clear()` — reset all pixels to `0`
+- `ReadOnlySpan<byte> AsReadOnly()` — for the `dump-ppu` debugger command
+
+**Connects to**: `Renderer` (owned by), `ScanlineRenderer` (written per scanline), `Ppu` (exposed read-only to Backend for `DumpPpu`).
+
+---
+
+### `Renderer` (class) — _new_
+
+Orchestrates frame-level rendering. Owned by `Ppu`. Manages the sequence of sprite evaluation and scanline rendering across all active scanlines.
+
+State: current pre-evaluated `ActiveSprites` (built during the previous tile-row's implicit HBlank period).
+
+Key methods:
+- `void BeginFrame()` — clears `FrameBuffer`, resets internal scanline state.
+- `void RenderActiveScanline(int scanline, PpuRegisters vram, ChrRom chr)` — called by `Ppu` once per active scanline tick. When starting a new tile-row block (every 8th scanline), calls `SpriteEvaluator` to prepare sprites for the next tile-row. Calls `ScanlineRenderer` for the current scanline.
+
+**Connects to**: `Ppu` (owned by, driven by the tick loop), `SpriteEvaluator`, `ScanlineRenderer`, `FrameBuffer`.
+
+---
+
+### `Ppu` (class) — _existing, significant rewrite_
+
+Top-level PPU class. Currently has hardcoded timing constants and no rendering. After the rewrite:
+
+Constructor: `Ppu(PpuConfig config, ChrRom chr)` — builds `PpuRegisters(config)` and `Renderer(config)` internally.
+
+Key changes from the current skeleton:
+- Replace the three `const int` timing constants with properties from `_config`.
+- `Tick()` becomes `PpuTickResult Tick()` — returns whether a PPU watchpoint requested a halt.
+- During each active scanline (when `_scanlineCycle == 0`), call `_renderer.RenderActiveScanline(...)`.
+- When `_scanline == VBlankStartScanline`: set `_registers.VBlankActive = true`, fire `VBlankStarted`.
+- When `_scanline` wraps back to `0`: call `_renderer.BeginFrame()`.
+- Build a `PpuTickTrace` each tick and store it in `LastTrace` for the Backend to collect.
+
+Properties exposed to Backend:
+- `IMmioDevice Registers` — existing; wired into `BusDecoder`
+- `event Action? VBlankStarted` — existing; Backend wires to `cpu.RequestInterrupt()`
+- `FrameBuffer FrameBuffer` — new; read by `DumpPpu` command
+- `PpuTickTrace LastTrace` — new; read by `SimulationTicker` for watchpoint evaluation
+
+**Connects to**: `CpuHandler` in Backend (created by), `PpuRegisters`, `Renderer`, `ChrRom`.
+
+---
+
+## Layer 4 — Debugger Integration
+
+### `PpuTickTrace` (struct) — _new, in `PPU` project_
+
+Analogous to the CPU's `TickTrace`. Captures PPU state at one tick.
+
+| Property | Type | Notes |
+|---|---|---|
+| `Scanline` | `int` | Current scanline index |
+| `ScanlineCycle` | `int` | Cycle within the current scanline |
+| `Event` | `PpuEvent` enum | `None`, `VBlankStart`, `VBlankEnd`, `FrameComplete` |
+
+**Connects to**: `Ppu` (produced each tick), `PpuWatchpointContainer` in Backend (evaluated for matches).
+
+---
+
+### `PpuTickResult` (struct) — _new, in `PPU` project_
+
+Return value of `Ppu.Tick()`. A single field: `bool HaltRequested`. The `SimulationTicker` in Backend checks this after each PPU tick and stops the co-simulation loop early if set.
+
+---
+
+### `IPpuWatchpoint` (interface) — _new, in `Backend` project_
+
+Mirrors `IWatchpoint` but operates on `PpuTickTrace`.
+
+```csharp
+int Id { get; }
+bool Matches(PpuTickTrace trace);
+string Description { get; }
+```
+
+Concrete implementations:
+- `VBlankWatchpoint` — matches `trace.Event == PpuEvent.VBlankStart`
+- `ScanlineWatchpoint(int targetScanline)` — matches `trace.Scanline == targetScanline && trace.ScanlineCycle == 0`
+
+---
+
+### `PpuWatchpointContainer` (class) — _new, in `Backend` project_
+
+Structurally identical to `WatchpointContainer` but typed for `IPpuWatchpoint` / `PpuTickTrace`. Shares `NextId()` counter with the CPU `WatchpointContainer` so IDs are globally unique across both containers.
+
+`Check(PpuTickTrace trace) → IPpuWatchpoint?` — evaluated by `SimulationTicker` after each PPU tick.
+
+**Connects to**: `SimulationTicker` (evaluated after each PPU tick), `Watchpoint` command (new sub-commands: `wp ppu vblank`, `wp ppu scanline N`).
+
+---
+
+### `SimulationTicker` (class) — _new, in `Backend` project_
+
+The central co-simulation coordinator. This class exists because executing states (`SteppingState`, `TickingState`, `RunningState`) call `cpu.Step()` or `cpu.Tick()` internally — and each of those CPU ticks must be followed by N PPU ticks. Without this class, the PPU would only get one tick per `CpuHandler.Tick()` call regardless of how many CPU micro-ticks occurred inside the state machine.
+
+```csharp
+internal class SimulationTicker(CPU.CPU cpu, Ppu? ppu, PpuWatchpointContainer ppuWatchpoints)
+```
+
+- `SimTickResult TickInstruction()` — mirrors `cpu.Step()`: runs CPU micro-ticks in a loop until `IsInstructionComplete`, calling `TickPpu()` after each individual micro-tick.
+- `SimTickResult TickOnce()` — one `cpu.Tick()` followed by `TickPpu()`.
+- `SimTickResult TickPpu()` — fires `PpuCyclesPerCpuCycle` PPU ticks, checking `PpuTickResult.HaltRequested` and `PpuWatchpointContainer` after each. Stops early and sets the halt flag if triggered.
+
+`SimTickResult` (struct): wraps the CPU `TickTrace[]`, plus `IPpuWatchpoint? PpuWatchpointHit` and `PpuTickTrace? PpuHaltTrace`.
+
+**Connects to**: `CpuStateContext` (threaded in as `SimTicker`), all executing states (replace direct `Context.Cpu.Step()` / `Context.Cpu.Tick()` calls).
+
+---
+
+## Backend Changes
+
+### `CpuStateContext` — _modify_
+
+Add `SimulationTicker SimTicker` to the record. Executing states access `Context.SimTicker.TickInstruction()` or `Context.SimTicker.TickOnce()`. `Context.Cpu` is retained for inspector access.
+
+### `ExecutingCpuState` — _modify_
+
+`ExecuteStep()` returns `SimTickResult` instead of `void`. The base `Tick()` uses the result to check PPU watchpoint hits alongside the existing CPU breakpoint and watchpoint checks.
+
+### `CpuStateFactory` — _modify_
+
+Accept `SimulationTicker` in the constructor; thread it into `CpuStateContext` via `GetContextForState()`.
+
+### `CpuHandler` — _modify_
+
+- Create `ChrRom` (using `ChrRom.Default`, or from a future `--chr PATH` argument).
+- Create `Ppu(PpuConfig.Minimal8Bit, chrRom)` instead of `Ppu(config.VramSize)`.
+- Create `PpuWatchpointContainer`.
+- Create `SimulationTicker(_cpu, _ppu, ppuWatchpoints)`.
+- Remove the `_ppu?.Tick()` call from `CpuHandler.Tick()` — PPU ticking is now fully inside `SimulationTicker`, which is called from within the state machine.
+
+### `DumpPpu` (class) — _new global command_
+
+New `Backend/Commands/GlobalCommands/DumpPpu.cs`, attribute `[Command("dump-ppu", "dppu")]`.
+
+Outputs current PPU state as JSON:
+```json
+{
+  "scanline": 42,
+  "scanline_cycle": 17,
+  "vblank": false,
+  "sprite_overflow": false,
+  "framebuffer": "<hex or base64 encoded 128×104 bytes>"
+}
+```
+
+Requires `GlobalCommandExecutionContext` to expose a `Ppu?` field (alongside the existing `CpuInspector`).
+
+---
+
+## File Layout
+
+```
+PPU/
+  PpuConfig.cs              ← new (PpuConfig struct + PpuVramLayout struct)
+  ChrRom.cs                 ← new
+  PpuRegisters.cs           ← existing, rewrite constructor + add SpriteOverflow + ReadVram
+  rendering/
+    OamEntry.cs             ← new (struct + ActiveSprites wrapper)
+    TileRow.cs              ← new (static helpers)
+    SpriteEvaluator.cs      ← new
+    ScanlineRenderer.cs     ← new
+    FrameBuffer.cs          ← new
+    Renderer.cs             ← new
+  traces/
+    PpuTickTrace.cs         ← new (struct + PpuEvent enum)
+    PpuTickResult.cs        ← new (struct)
+  Ppu.cs                    ← existing, significant rewrite
+
+Backend/
+  SimulationTicker.cs                          ← new
+  PpuWatchpointContainer.cs                   ← new (+ IPpuWatchpoint, VBlankWatchpoint, ScanlineWatchpoint)
+  Commands/GlobalCommands/DumpPpu.cs          ← new
+  CpuStates/CpuStateFactory.cs               ← modify (add SimulationTicker)
+  CpuStates/ExecutingCpuState.cs             ← modify (use SimTickResult)
+  CpuHandler.cs                               ← modify (create Ppu + SimulationTicker)
+```
+
+---
+
+## Connection Diagram
+
+```
+PpuConfig ──────────────────────────────────────────┐
+     └──► PpuVramLayout                             │
+                                                    ▼
+ChrRom ────────────────────────────────────► ScanlineRenderer
+                                                    ▲     ▲
+PpuRegisters (VRAM + MMIO) ──► Renderer             │     │
+      ▲                           │                 │     │
+      │                      SpriteEvaluator ───────┘     │
+      │                           │                       │
+      │                      ActiveSprites ───────────────┘
+      │                           │
+  CPU IBus (BusDecoder)      FrameBuffer ──► DumpPpu command
+      │                           │
+      │                      Ppu (tick loop, VBlank event)
+      │                           │
+      │         ┌─────────────────┼──────────────────────┐
+      │         ▼                 ▼                      ▼
+      │   VBlankStarted     PpuTickTrace            PpuTickResult
+      │         │                 │                      │
+      │   cpu.RequestInterrupt()  ▼                      │
+      │                  PpuWatchpointContainer          │
+      │                           │                      │
+      └───────────────────────────▼──────────────────────┘
+                          SimulationTicker
+                   ┌──────────────┼──────────────┐
+                   ▼              ▼              ▼
+            SteppingState   TickingState    RunningState
+```
+
+---
+
+## Class Diagram
+
+Visibility prefixes follow Mermaid convention and reflect C# access modifiers:
+
+| Prefix | C# modifier | Accessible from |
+|--------|-------------|-----------------|
+| `+` | `public` | Any project |
+| `~` | `internal` | Same project only |
+| `-` | `private` | Same class only |
+
+Classes annotated `<<internal>>` are not part of the public API of the PPU project. Their members still carry `public` or `internal` modifiers as they appear in C# source.
+
+```mermaid
+classDiagram
+
+    %% ── PPU project: configuration ───────────────────────────────────
+
+    class PpuConfig {
+        <<struct>>
+        +bool ChrInRom
+        +int BitsPerPixel
+        +int TileCount
+        +int SpriteCount
+        +int BytesPerSprite
+        +int CyclesPerScanline
+        +int VBlankStartScanline
+        +int TotalScanlines
+        +int PpuCyclesPerCpuCycle
+        +PpuVramLayout Layout
+        +PpuConfig Minimal8Bit()$
+        +PpuConfig Default()$
+    }
+
+    class PpuVramLayout {
+        <<struct>>
+        +int TilemapBase
+        +int OamBase
+        +int TotalSize
+        +int TilemapOffset(int col, int row)
+        +int OamEntryOffset(int index)
+    }
+
+    %% ── PPU project: storage ─────────────────────────────────────────
+
+    class IMmioDevice {
+        <<interface>>
+        +byte ReadRegister(byte offset)
+        +void WriteRegister(byte offset, byte value)
+    }
+
+    class PpuRegisters {
+        <<internal>>
+        +bool VBlankActive
+        +bool SpriteOverflow
+        +byte ReadRegister(byte offset)
+        +void WriteRegister(byte offset, byte value)
+        ~byte ReadVram(int address)
+    }
+
+    class ChrRom {
+        +ChrRom Default$
+        +ChrRom(byte[] data)
+        +byte ReadRow(int tileIndex, int row)
+    }
+
+    %% ── PPU project: rendering ───────────────────────────────────────
+
+    class OamEntry {
+        <<struct, internal>>
+        ~byte XTile
+        ~byte YTile
+        ~byte TileIndex
+        ~bool Priority
+        ~bool HFlip
+        ~bool VFlip
+        ~bool IsHidden
+        ~OamEntry Decode(byte pos, byte tile, byte attr)$
+    }
+
+    class ActiveSprites {
+        <<struct, internal>>
+        ~OamEntry[] Sprites
+        ~bool SpriteOverflow
+    }
+
+    class TileRow {
+        <<static, internal>>
+        ~bool GetPixel(byte rowByte, int pixelX, bool hFlip)$
+    }
+
+    class SpriteEvaluator {
+        <<internal>>
+        ~ActiveSprites Evaluate(PpuRegisters vram, PpuVramLayout layout, int tileRow)
+    }
+
+    class ScanlineRenderer {
+        <<internal>>
+        ~void RenderScanline(int scanline, PpuRegisters vram, ChrRom chr, ActiveSprites sprites, PpuVramLayout layout, FrameBuffer fb)
+    }
+
+    class FrameBuffer {
+        +void SetPixel(int x, int y, byte value)
+        +byte GetPixel(int x, int y)
+        +void Clear()
+        +byte[] AsReadOnly()
+    }
+
+    class Renderer {
+        <<internal>>
+        ~void BeginFrame()
+        ~void RenderActiveScanline(int scanline, PpuRegisters vram, ChrRom chr)
+    }
+
+    %% ── PPU project: tracing ─────────────────────────────────────────
+
+    class PpuEvent {
+        <<enum>>
+        None
+        VBlankStart
+        VBlankEnd
+        FrameComplete
+    }
+
+    class PpuTickTrace {
+        <<struct>>
+        +int Scanline
+        +int ScanlineCycle
+        +PpuEvent Event
+    }
+
+    class PpuTickResult {
+        <<struct>>
+        +bool HaltRequested
+    }
+
+    %% ── PPU project: top-level ───────────────────────────────────────
+
+    class Ppu {
+        +IMmioDevice Registers
+        +FrameBuffer FrameBuffer
+        +PpuTickTrace LastTrace
+        +Action VBlankStarted
+        +PpuTickResult Tick()
+    }
+
+    %% ── Backend project ──────────────────────────────────────────────
+
+    class IPpuWatchpoint {
+        <<interface, internal>>
+        ~int Id
+        ~string Description
+        ~bool Matches(PpuTickTrace trace)
+    }
+
+    class VBlankWatchpoint {
+        <<internal>>
+        ~int Id
+        ~string Description
+        ~bool Matches(PpuTickTrace trace)
+    }
+
+    class ScanlineWatchpoint {
+        <<internal>>
+        ~int Id
+        ~string Description
+        ~bool Matches(PpuTickTrace trace)
+    }
+
+    class PpuWatchpointContainer {
+        <<internal>>
+        ~int Add(IPpuWatchpoint watchpoint)
+        ~void Remove(int id)
+        ~IPpuWatchpoint? Check(PpuTickTrace trace)
+        ~int NextId()
+    }
+
+    class SimTickResult {
+        <<struct, internal>>
+        ~TickTrace[] CpuTraces
+        ~IPpuWatchpoint? PpuWatchpointHit
+        ~PpuTickTrace? PpuHaltTrace
+    }
+
+    class SimulationTicker {
+        <<internal>>
+        ~SimTickResult TickInstruction()
+        ~SimTickResult TickOnce()
+        -SimTickResult TickPpu()
+    }
+
+    class DumpPpu {
+        <<internal>>
+        ~CommandResult Execute(GlobalCommandExecutionContext ctx, string[] args)
+    }
+
+    %% ── Relationships ────────────────────────────────────────────────
+
+    PpuConfig --> PpuVramLayout : creates
+    PpuRegisters ..|> IMmioDevice
+    Ppu *-- PpuRegisters : owns
+    Ppu *-- Renderer : owns
+    Ppu *-- ChrRom : owns
+    Renderer *-- FrameBuffer : owns
+    Renderer --> SpriteEvaluator : uses
+    Renderer --> ScanlineRenderer : uses
+    SpriteEvaluator ..> OamEntry : decodes
+    SpriteEvaluator ..> ActiveSprites : returns
+    ScanlineRenderer --> TileRow : uses
+    ScanlineRenderer --> ActiveSprites : reads
+    ScanlineRenderer --> FrameBuffer : writes
+    PpuTickTrace --> PpuEvent : has
+    Ppu ..> PpuTickResult : returns from Tick
+    Ppu ..> PpuTickTrace : emits
+    VBlankWatchpoint ..|> IPpuWatchpoint
+    ScanlineWatchpoint ..|> IPpuWatchpoint
+    PpuWatchpointContainer o-- IPpuWatchpoint : holds
+    SimulationTicker --> Ppu : ticks
+    SimulationTicker --> PpuWatchpointContainer : checks
+    SimulationTicker ..> SimTickResult : returns
+    DumpPpu --> Ppu : reads
+```

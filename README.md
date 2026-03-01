@@ -26,6 +26,7 @@ This is achieved by setting the `x16` compile flag for 16-bit build.
 - .NET SDK 10.0 or newer installed
 - Node and npm (to build tree sitter grammar)
 - C compiler (to run tree sitter grammar tests)
+- [raylib-cs](https://github.com/ChrisDill/Raylib-cs) (C# bindings for [raylib](https://www.raylib.com/)) — used for PPU rendering output
 
 ### Build and Test
 
