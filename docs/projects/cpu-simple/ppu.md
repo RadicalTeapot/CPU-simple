@@ -321,6 +321,53 @@ Writes to PPU control registers (backdrop color, colormap entries) take effect a
 
 ---
 
+## Minimal 8-bit Configuration (First Implementation Target)
+
+This configuration defines a stripped-down PPU that fits within exactly **256 bytes of VRAM**. It is the first PPU configuration to be implemented: simpler tile format, ROM-backed CHR, and no colormap — enough to exercise the full rendering pipeline before tackling the richer standard configurations.
+
+### Parameters
+
+| Property | Value |
+|---|---|
+| Resolution | 128 × 104 px |
+| Tile grid | 16 × 13 |
+| Tile format | 8×8, 1bpp |
+| Bytes per tile | 8 (1 byte per row, MSB = leftmost pixel) |
+| Tile library | 256 tiles in CHR ROM (not in VRAM, not modifiable) |
+| Color depth | Monochrome (opaque / transparent) — no colormap |
+| OAM entries | 16 |
+| Bytes per OAM entry | 3 |
+| VRAM size | **256 bytes** |
+
+### CHR ROM
+
+All 256 tile patterns live in a **read-only C# byte array** baked into the PPU at construction time. They are never stored in VRAM and cannot be modified at runtime. Removing CHR from VRAM frees the full 256 bytes for the tilemap and OAM.
+
+Each tile row is one byte; bit 1 (MSB = leftmost pixel) is opaque, bit 0 is transparent. Total ROM size: 256 × 8 = 2,048 bytes.
+
+### OAM entry format
+
+| Byte | Field | Encoding |
+|------|-------|----------|
+| 0 | Position | bits [7:4] = Y tile (0–12), bits [3:0] = X tile (0–15) |
+| 1 | Tile index | 0–255 (into CHR ROM) |
+| 2 | Attributes | bit 3: priority (0 = in front of BG, 1 = behind BG); bit 2: horizontal flip; bit 1: vertical flip; remaining bits unused |
+
+To hide a sprite, set the position byte to `0xFF` (Y tile = 15, one row below the 13-row screen).
+
+### VRAM layout (256 bytes)
+
+| Region | Start | End | Size | Description |
+|--------|-------|-----|------|-------------|
+| Tilemap | `0x00` | `0xCF` | 208 B | 16×13 tile indices (one byte per cell, indexes into CHR ROM) |
+| OAM | `0xD0` | `0xFF` | 48 B | 16 sprites × 3 bytes |
+
+### PPUADDR: single-write latch
+
+VRAM is exactly 256 bytes, so a single byte suffices to address it. In this configuration `PPUADDR` uses a **single-write latch** — one write sets the full address. The two-write latch used by the standard 8-bit and 16-bit builds is not needed here.
+
+---
+
 ## 8-bit vs 16-bit Summary
 
 | Property | 8-bit | 16-bit |

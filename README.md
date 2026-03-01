@@ -152,7 +152,8 @@ I did review and tested the code but exercise caution when using it.
 - [ ] Implement CPU IDE ([inspiration for some UI](https://github.com/AfaanBilal/NanoCore/blob/master/assets/NanoCoreTUI.gif)) in Neovim
   - [ ] When assembled, if sidebar was never opened, open the configured panels, otherwise just re-open sidebar
   - [ ] Test if assembler errors are handled
-- [ ] Implement PPU and map some memory for it (for 16-bit version)
+- [ ] Implement PPU and map some memory for it
+   - [ ] Implement minimal 8-bit PPU first: 256-byte VRAM, 1bpp CHR ROM, 16×13 tilemap, 16 sprites (see `docs/projects/cpu-simple/ppu.md` — Minimal 8-bit Configuration)
    - [ ] Use vector lookup table for IRQ address
    - [ ] Implement the memory mapper for IO
 - [ ] Implement sound chip and map some memory for it too (for 16-bit version)
