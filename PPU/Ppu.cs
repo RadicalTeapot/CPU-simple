@@ -1,4 +1,5 @@
 using CPU.components;
+using PPU.Storage;
 
 namespace PPU
 {

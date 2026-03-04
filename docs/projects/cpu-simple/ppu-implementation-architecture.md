@@ -71,14 +71,28 @@ Helper methods: `TilemapOffset(int col, int row)`, `OamEntryOffset(int index)`.
 
 ### `PpuRegisters` (class) — _existing, modify_
 
-Currently owns the VRAM array and implements `IMmioDevice`. Both responsibilities stay. Changes required:
+Currently owns the VRAM array and implements `IMmioDevice`. After the change: VRAM ownership moves to `VRam`; `PpuRegisters` retains only the MMIO register interface. Changes required:
 
-- Replace the `int vramSize` constructor parameter with `PpuConfig config`. The config determines VRAM size and latch behaviour (`ChrInRom` → single-write latch).
+- Accept `PpuConfig config, VRam vram` in constructor. `PpuConfig` drives latch behaviour (`ChrInRom` → single-write latch); `VRam` is the backing store for PPUDATA writes.
 - Remove the hardcoded `_useLatch = vramSize > 256` expression. Derive from `config.ChrInRom` or `config.Layout.TotalSize <= 256`.
 - Add `bool SpriteOverflow` property (written by `SpriteEvaluator`; read via `PPUSTATUS` bit 6).
-- Add `byte ReadVram(int address)` — used by the renderer during scanline generation.
+- No longer owns the VRAM byte array. `WriteData` routes through the injected `VRam` instance.
 
-**Connects to**: `Ppu` (owned by), `ScanlineRenderer` (read-only VRAM via `ReadVram`), CPU address bus (via `IMmioDevice` through `BusDecoder`).
+**Connects to**: `Ppu` (owned by), `VRam` (injected; PPUDATA writes route through it), CPU address bus (via `IMmioDevice` through `BusDecoder`).
+
+---
+
+### `VRam` (class) — _new_
+
+Owns the raw VRAM byte array. Single source of truth for all VRAM reads and writes within the PPU.
+
+- Constructor: `VRam(int size)` — allocates the buffer.
+- `byte Read(int address)` — bounds-checked; throws on out-of-range access.
+- `void Write(int address, byte value)` — bounds-checked; throws on out-of-range writes.
+
+`PpuRegisters` holds a reference and calls `Write` on each PPUDATA store. `ScanlineRenderer` and `SpriteEvaluator` receive the same `VRam` instance directly and call `Read` — no register indirection needed.
+
+**Connects to**: `Ppu` (created by, passed to `PpuRegisters` and `Renderer`), `PpuRegisters` (writes via PPUDATA), `ScanlineRenderer` (tile and tilemap reads), `SpriteEvaluator` (OAM reads).
 
 ---
 
@@ -104,13 +118,12 @@ Static factory: `Decode(byte positionByte, byte tileIndex, byte attrByte)`.
 
 | Property | Source |
 |---|---|
-| `XTile` | `positionByte & 0x0F` |
-| `YTile` | `(positionByte >> 4) & 0x0F` |
+| `X` | `positionByte & 0x0F` |
+| `Y` | `(positionByte >> 4) & 0x0F` |
 | `TileIndex` | byte 1 |
-| `Priority` | `attr bit 3` — `false` = in front of BG, `true` = behind BG |
+| `Priority` | `attr bit 3` — `true` = in front of BG, `false` = behind BG |
 | `HFlip` | `attr bit 2` |
 | `VFlip` | `attr bit 1` |
-| `IsHidden` | `YTile >= TilemapHeight` — sprite is off the bottom of the screen |
 
 **Connects to**: `SpriteEvaluator` (produces), `ScanlineRenderer` (consumes).
 
@@ -121,7 +134,7 @@ Static factory: `Decode(byte positionByte, byte tileIndex, byte attrByte)`.
 Given the OAM region of VRAM and the current tile-row being rendered, produces the list of active sprites (up to `MaxSpritesPerScanline`).
 
 ```csharp
-ActiveSprites Evaluate(PpuRegisters vram, PpuVramLayout layout, int tileRow)
+ActiveSprites Evaluate(VRam vram, PpuVramLayout layout, int tileRow)
 ```
 
 Returns an `ActiveSprites` value containing the matched `OamEntry[]` (capped at `MaxSpritesPerScanline`) and a `bool SpriteOverflow` flag. Lower OAM index = higher priority; array preserves OAM order.
@@ -130,7 +143,7 @@ For the minimal config, positioning is **tile-aligned** — one evaluation call 
 
 Sets `PpuRegisters.SpriteOverflow = true` when the cap is exceeded.
 
-**Connects to**: `ScanlineRenderer` (evaluated list passed in), `PpuRegisters` (reads OAM via `ReadVram`), `PpuVramLayout` (OAM base offset), `OamEntry` (produces decoded entries).
+**Connects to**: `ScanlineRenderer` (evaluated list passed in), `VRam` (reads OAM directly), `PpuVramLayout` (OAM base offset), `OamEntry` (produces decoded entries).
 
 ---
 
@@ -151,7 +164,7 @@ Keeping this as a static helper makes unit testing trivial and avoids duplicatin
 The core rendering engine. Renders a single pixel scanline (128 pixels for minimal config) given the current VRAM state and pre-evaluated sprites.
 
 ```csharp
-void RenderScanline(int scanline, PpuRegisters vram, ChrRom chr,
+void RenderScanline(int scanline, VRam vram, ChrRom chr,
                     ActiveSprites sprites, PpuVramLayout layout, FrameBuffer frameBuffer)
 ```
 
@@ -169,7 +182,7 @@ Per-pixel loop (128 iterations):
 
 No colormap is needed — 1bpp output is `0` (backdrop/black) or `1` (opaque/white).
 
-**Connects to**: `PpuRegisters` (tilemap read via `ReadVram`), `ChrRom` (tile lookup), `TileRow` (pixel extraction), `SpriteEvaluator` (receives pre-evaluated `ActiveSprites`), `PpuVramLayout` (tilemap offset calculation), `FrameBuffer` (output).
+**Connects to**: `VRam` (tilemap read), `ChrRom` (tile lookup), `TileRow` (pixel extraction), `SpriteEvaluator` (receives pre-evaluated `ActiveSprites`), `PpuVramLayout` (tilemap offset calculation), `FrameBuffer` (output).
 
 ---
 
@@ -204,7 +217,7 @@ Key methods:
 
 Top-level PPU class. Currently has hardcoded timing constants and no rendering. After the rewrite:
 
-Constructor: `Ppu(PpuConfig config, ChrRom chr)` — builds `PpuRegisters(config)` and `Renderer(config)` internally.
+Constructor: `Ppu(PpuConfig config, ChrRom chr)` — creates `VRam(config.Layout.TotalSize)`, then builds `PpuRegisters(config, vram)` and `Renderer(config, vram)` internally.
 
 Key changes from the current skeleton:
 - Replace the three `const int` timing constants with properties from `_config`.
@@ -220,7 +233,7 @@ Properties exposed to Backend:
 - `FrameBuffer FrameBuffer` — new; read by `DumpPpu` command
 - `PpuTickTrace LastTrace` — new; read by `SimulationTicker` for watchpoint evaluation
 
-**Connects to**: `CpuHandler` in Backend (created by), `PpuRegisters`, `Renderer`, `ChrRom`.
+**Connects to**: `CpuHandler` in Backend (created by), `VRam`, `PpuRegisters`, `Renderer`, `ChrRom`.
 
 ---
 
@@ -337,7 +350,8 @@ Requires `GlobalCommandExecutionContext` to expose a `Ppu?` field (alongside the
 PPU/
   PpuConfig.cs              ← new (PpuConfig struct + PpuVramLayout struct)
   ChrRom.cs                 ← new
-  PpuRegisters.cs           ← existing, rewrite constructor + add SpriteOverflow + ReadVram
+  PpuRegisters.cs           ← existing, rewrite constructor + add SpriteOverflow
+  VRam.cs                   ← new
   rendering/
     OamEntry.cs             ← new (struct + ActiveSprites wrapper)
     TileRow.cs              ← new (static helpers)
@@ -369,28 +383,29 @@ PpuConfig ───────────────────────�
                                                     ▼
 ChrRom ────────────────────────────────────► ScanlineRenderer
                                                     ▲     ▲
-PpuRegisters (VRAM + MMIO) ──► Renderer             │     │
-      ▲                           │                 │     │
-      │                      SpriteEvaluator ───────┘     │
-      │                           │                       │
-      │                      ActiveSprites ───────────────┘
-      │                           │
-  CPU IBus (BusDecoder)      FrameBuffer ──► DumpPpu command
-      │                           │
-      │                      Ppu (tick loop, VBlank event)
-      │                           │
-      │         ┌─────────────────┼──────────────────────┐
-      │         ▼                 ▼                      ▼
-      │   VBlankStarted     PpuTickTrace            PpuTickResult
-      │         │                 │                      │
-      │   cpu.RequestInterrupt()  ▼                      │
-      │                  PpuWatchpointContainer          │
-      │                           │                      │
-      └───────────────────────────▼──────────────────────┘
-                          SimulationTicker
-                   ┌──────────────┼──────────────┐
-                   ▼              ▼              ▼
-            SteppingState   TickingState    RunningState
+                            VRam ───────────────────┘     │
+                              ▲   └──► SpriteEvaluator ───┘
+                              │              │
+PpuRegisters (MMIO) ──────────┘         ActiveSprites
+      ▲                                      │
+  CPU IBus (BusDecoder)               FrameBuffer ──► DumpPpu command
+                                             │
+                                        Renderer
+                                             │
+                                   Ppu (tick loop, VBlank event)
+                                             │
+          ┌──────────────────────────────────┼──────────────────────┐
+          ▼                                  ▼                      ▼
+    VBlankStarted                      PpuTickTrace            PpuTickResult
+          │                                  │                      │
+    cpu.RequestInterrupt()                   ▼                      │
+                                   PpuWatchpointContainer           │
+                                             │                      │
+          └──────────────────────────────────▼──────────────────────┘
+                                    SimulationTicker
+                             ┌──────────────┼──────────────┐
+                             ▼              ▼              ▼
+                      SteppingState   TickingState    RunningState
 ```
 
 ---
@@ -451,7 +466,11 @@ classDiagram
         +bool SpriteOverflow
         +byte ReadRegister(byte offset)
         +void WriteRegister(byte offset, byte value)
-        ~byte ReadVram(int address)
+    }
+
+    class VRam {
+        +byte Read(int address)
+        +void Write(int address, byte value)
     }
 
     class ChrRom {
@@ -487,12 +506,12 @@ classDiagram
 
     class SpriteEvaluator {
         <<internal>>
-        ~ActiveSprites Evaluate(PpuRegisters vram, PpuVramLayout layout, int tileRow)
+        ~ActiveSprites Evaluate(VRam vram, PpuVramLayout layout, int tileRow)
     }
 
     class ScanlineRenderer {
         <<internal>>
-        ~void RenderScanline(int scanline, PpuRegisters vram, ChrRom chr, ActiveSprites sprites, PpuVramLayout layout, FrameBuffer fb)
+        ~void RenderScanline(int scanline, VRam vram, ChrRom chr, ActiveSprites sprites, PpuVramLayout layout, FrameBuffer fb)
     }
 
     class FrameBuffer {
@@ -594,17 +613,21 @@ classDiagram
 
     PpuConfig --> PpuVramLayout : creates
     PpuRegisters ..|> IMmioDevice
+    Ppu *-- VRam : owns
     Ppu *-- PpuRegisters : owns
     Ppu *-- Renderer : owns
     Ppu *-- ChrRom : owns
+    PpuRegisters --> VRam : writes
     Renderer *-- FrameBuffer : owns
     Renderer --> SpriteEvaluator : uses
     Renderer --> ScanlineRenderer : uses
     SpriteEvaluator ..> OamEntry : decodes
     SpriteEvaluator ..> ActiveSprites : returns
+    ScanlineRenderer --> VRam : reads
     ScanlineRenderer --> TileRow : uses
     ScanlineRenderer --> ActiveSprites : reads
     ScanlineRenderer --> FrameBuffer : writes
+    SpriteEvaluator --> VRam : reads
     PpuTickTrace --> PpuEvent : has
     Ppu ..> PpuTickResult : returns from Tick
     Ppu ..> PpuTickTrace : emits

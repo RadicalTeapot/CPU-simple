@@ -1,10 +1,11 @@
 using CPU.components;
 
-namespace PPU
+namespace PPU.Storage
 {
-    public class PpuRegisters(int vramSize) : IMmioDevice
+    public class PpuRegisters(Vram vram) : IMmioDevice
     {
         public bool VBlankActive { get; set; }
+        public bool SpriteOverflow { get; set; }
 
         public byte ReadRegister(byte offset)
         {
@@ -33,6 +34,8 @@ namespace PPU
             byte status = 0;
             if (VBlankActive)
                 status |= VBlankBit;
+            if (SpriteOverflow)
+                status |= SpriteOverflowBit;
             VBlankActive = false;
             return status;
         }
@@ -60,8 +63,11 @@ namespace PPU
 
         private void WriteData(byte value)
         {
-            if (_vramAddress < _vram.Length)
-                _vram[_vramAddress] = value;
+            try
+            {
+                vram.Write(_vramAddress, value);
+            }
+            catch { } // Ignore out-of-bounds writes as real hardware would
             _vramAddress++;
         }
 
@@ -69,10 +75,10 @@ namespace PPU
         private const byte DataOffset = 1;
         private const byte StatusOffset = 2;
         private const byte VBlankBit = 0x80;
+        private const byte SpriteOverflowBit = 0x40;
 
         private bool _addrLatchHigh = true;
         private ushort _vramAddress;
-        private readonly byte[] _vram = new byte[vramSize];
-        private readonly bool _useLatch = vramSize > 256;
+        private readonly bool _useLatch = vram.Size > 256;
     }
 }

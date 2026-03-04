@@ -155,6 +155,7 @@ I did review and tested the code but exercise caution when using it.
   - [ ] Test if assembler errors are handled
 - [ ] Implement PPU and map some memory for it
    - [ ] Implement minimal 8-bit PPU first: 256-byte VRAM, 1bpp CHR ROM, 16×13 tilemap, 16 sprites (see `docs/projects/cpu-simple/ppu.md` — Minimal 8-bit Configuration)
+   - [ ] Use `#if x16` to change assumption that sprites are tiled aligned where needed for 16bit build
    - [ ] Use vector lookup table for IRQ address
    - [ ] Implement the memory mapper for IO
 - [ ] Implement sound chip and map some memory for it too (for 16-bit version)

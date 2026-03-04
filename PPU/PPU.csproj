@@ -20,4 +20,10 @@
     <ProjectReference Include="..\CPU\CPU.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="DebuggerInteraction\" />
+    <Folder Include="Rendering\" />
+    <Folder Include="Storage\" />
+  </ItemGroup>
+
 </Project>
