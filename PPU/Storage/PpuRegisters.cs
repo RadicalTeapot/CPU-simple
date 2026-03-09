@@ -37,6 +37,7 @@ namespace PPU.Storage
             if (SpriteOverflow)
                 status |= SpriteOverflowBit;
             VBlankActive = false;
+            _addrLatchHigh = true;
             return status;
         }
 
@@ -67,7 +68,7 @@ namespace PPU.Storage
             {
                 vram.Write(_vramAddress, value);
             }
-            catch { } // Ignore out-of-bounds writes as real hardware would
+            catch (ArgumentOutOfRangeException) { } // Ignore out-of-bounds writes as real hardware would
             _vramAddress++;
         }
 

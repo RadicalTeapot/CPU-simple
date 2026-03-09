@@ -12,9 +12,14 @@
         public int BytesPerTile => (TileSize * TileSize * BitsPerPixel) / 8;
         public int ScreenWidth => TilemapWidth * TileSize;
         public int ScreenHeight => TilemapHeight * TileSize;
-        
+        public int TotalScanlines => ScreenHeight + VBlankScanlineCount;
+
         internal PpuVramLayout VramLayout => 
-            _vramLayout ??= new(TileSize, ChrInRom ? 0 : ChrCount, TilemapWidth, TilemapHeight, SpriteCount, BytesPerSprite);
+            _vramLayout ??= new(
+                ChrInRom ? 0 : ChrCount, BytesPerTile, 
+                ColorMapCount, BitsPerPixel, 
+                TilemapWidth, TilemapHeight, 
+                SpriteCount, BytesPerSprite);
 
         public static PpuConfig Minimal8Bit => new(
             TilemapWidth: 16, TilemapHeight: 13,

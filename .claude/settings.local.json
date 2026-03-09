@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(cd *)",
-      "Bash(tail:*)"
+      "Bash(tail:*)",
+      "Bash(xargs grep:*)",
+      "Bash(grep:*)"
     ]
   }
 }

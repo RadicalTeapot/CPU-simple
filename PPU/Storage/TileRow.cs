@@ -2,10 +2,10 @@
 {
     internal static class TileRow
     {
-        public static bool GetPixel(byte row, int pixelX, bool hFlip)
+        public static bool GetPixel(byte rowData, int tileCol, bool hFlip)
         {
-            int bitIndex = hFlip ? pixelX : (7 - pixelX);
-            int bit = (row >> bitIndex) & 1;
+            int bitIndex = hFlip ? tileCol : (7 - tileCol); // MSB is leftmost pixel, LSB is rightmost pixel
+            int bit = (rowData >> bitIndex) & 1;
             return bit != 0;
         }
     }

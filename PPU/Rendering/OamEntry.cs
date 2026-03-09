@@ -8,7 +8,7 @@ namespace PPU.Rendering
     {
         public readonly int X;
         public readonly int Y;
-        public readonly int TileIndex;
+        public readonly byte TileIndex;
         public readonly bool Prioritize;
         public readonly bool FlipHorizontal;
         public readonly bool FlipVertical;
@@ -25,7 +25,7 @@ namespace PPU.Rendering
             );
         }
 
-        private OamEntry(int x, int y, int tileIndex, bool prioritize, bool flipHorizontal, bool flipVertical)
+        private OamEntry(int x, int y, byte tileIndex, bool prioritize, bool flipHorizontal, bool flipVertical)
         {
             X = x;
             Y = y;

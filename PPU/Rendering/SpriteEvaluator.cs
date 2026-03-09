@@ -28,7 +28,9 @@ namespace PPU.Rendering
                     position: vram.Read(address), 
                     tileIndex: vram.Read(address + 1), 
                     attributes: vram.Read(address + 2));
-                if (scanlineIndex >= oamEntry.Y && scanlineIndex < oamEntry.Y + config.TileSize)
+                var oamScanlineStart = oamEntry.Y * config.TileSize;
+                var oamScanlineEnd = oamScanlineStart + config.TileSize;
+                if (scanlineIndex >= oamScanlineStart && scanlineIndex < oamScanlineEnd)
                 {
                     if (sprites.Count >= config.MaxSpritesPerScanline)
                     {

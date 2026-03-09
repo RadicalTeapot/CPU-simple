@@ -4,6 +4,7 @@ using Backend.CpuStates;
 using Backend.IO;
 using CPU;
 using CPU.opcodes;
+using PPU.Configuration;
 
 namespace Backend
 {
@@ -15,7 +16,8 @@ namespace Backend
             _output = output;
             if (config.VramSize > 0)
             {
-                _ppu = new PPU.Ppu(config.VramSize);
+                var ppuConfig = PpuConfig.Minimal8Bit;
+                _ppu = new PPU.Ppu(ppuConfig, new PPU.Storage.ChrRom(ppuConfig, [])); // TODO fill in the CHR ROM
                 _cpu = new CPU.CPU(config, _ppu.Registers);
                 _ppu.VBlankStarted += _cpu.RequestInterrupt;
             }

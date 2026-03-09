@@ -351,7 +351,7 @@ Each tile row is one byte; bit 1 (MSB = leftmost pixel) is opaque, bit 0 is tran
 |------|-------|----------|
 | 0 | Position | bits [7:4] = Y tile (0–12), bits [3:0] = X tile (0–15) |
 | 1 | Tile index | 0–255 (into CHR ROM) |
-| 2 | Attributes | bit 3: priority (0 = in front of BG, 1 = behind BG); bit 2: horizontal flip; bit 1: vertical flip; remaining bits unused |
+| 2 | Attributes | bit 2: priority (0 = in front of BG, 1 = behind BG); bit 1: horizontal flip; bit 0: vertical flip; remaining bits unused |
 
 To hide a sprite, set the position byte to `0xFF` (Y tile = 15, one row below the 13-row screen).
 
@@ -395,146 +395,144 @@ VRAM is exactly 256 bytes, so a single byte suffices to address it. In this conf
 
 ## VRAM Layout
 
-VRAM is divided into five consecutive regions. Regions are tightly packed with no padding.
+VRAM is divided into four consecutive regions. Regions are tightly packed with no padding.
 
-### 8-bit build (2,560 bytes = 0x0A00)
+### 8-bit build
 
 | Region | Start | End | Size | Description |
 |--------|-------|-----|------|-------------|
 | CHR data | `0x0000` | `0x087F` | 2,176 B | 136 tiles × 16 bytes |
-| Tilemap | `0x0880` | `0x096F` | 240 B | 16×15 tile indices |
-| Attribute map | `0x0970` | `0x09AB` | 60 B | 240 tiles × 2 bits, packed |
-| Colormaps | `0x09AC` | `0x09CF` | 36 B | 4 colormaps × 3 colors × 3 bytes RGB |
-| OAM | `0x09D0` | `0x09FF` | 48 B | 16 sprites × 3 bytes |
+| Colormaps | `0x0880` | `0x08A3` | 36 B | 4 colormaps × 3 colors × 3 bytes RGB |
+| Tilemap | `0x08A4` | `0x0993` | 240 B | 16×15 tile indices |
+| OAM | `0x0994` | `0x09C3` | 48 B | 16 sprites × 3 bytes |
 
-### 16-bit build (10,608 bytes = 0x2970)
+### 16-bit build
 
 | Region | Start | End | Size | Description |
 |--------|-------|-----|------|-------------|
 | CHR data | `0x0000` | `0x1FFF` | 8,192 B | 256 tiles × 32 bytes |
-| Tilemap | `0x2000` | `0x23BF` | 960 B | 32×30 tile indices |
-| Attribute map | `0x23C0` | `0x259F` | 480 B | 960 tiles × 4 bits, packed |
-| Colormaps | `0x25A0` | `0x286F` | 720 B | 16 colormaps × 15 colors × 3 bytes RGB |
-| OAM | `0x2870` | `0x296F` | 256 B | 64 sprites × 4 bytes |
+| Colormaps | `0x2000` | `0x22CF` | 720 B | 16 colormaps × 15 colors × 3 bytes RGB |
+| Tilemap | `0x22D0` | `0x268F` | 960 B | 32×30 tile indices |
+| OAM | `0x2690` | `0x278F` | 256 B | 64 sprites × 4 bytes |
 
 ### Useful derived addresses
 
-To address tile `N` in CHR: `N × BytesPerTile` (offset from VRAM base).
-To address tilemap cell `(col, row)`: `TilemapBase + row × TilemapWidth + col`.
-To address OAM entry `N`: `OamBase + N × BytesPerSprite`.
-Colormap `M`, color `C` (1-based): `ColormapBase + M × (ColorsPerColormap × 3) + (C − 1) × 3`.
+| Address | Formula |
+|---------|---------|
+| CHR tile `N` | `N × BytesPerTile` |
+| Tilemap cell `(col, row)` | `TilemapBase + row × TilemapWidth + col` |
+| OAM entry `N` | `OamBase + N × BytesPerSprite` |
+| Colormap `M`, color `C` (1-based) | `ColormapBase + M × (ColorsPerColormap × 3) + (C − 1) × 3` |
 
 ---
 
 ## Configuration
 
-### `PpuConfig` struct
+### `PpuConfig` record
 
-`PpuConfig` lives in the `PPU` project and drives all size and timing decisions. The `#if x16` factory methods provide build-correct defaults; the clock ratio (`PpuCyclesPerCpuCycle`) must be set at runtime once the target frequency ratio is decided.
+`PpuConfig` lives in the `PPU` project and drives all size and timing decisions. Primary parameters describe the tilemap grid, tile format, sprite limits, and timing. Screen dimensions, bytes per tile, and total scanlines are derived. The `VramLayout` property is memoized. The clock ratio (`PpuCyclesPerCpuCycle`) must be set at runtime once the target frequency ratio is decided.
 
-```csharp
-public readonly struct PpuConfig(
-    int screenWidth, int screenHeight,
-    int bitsPerPixel,
-    int tileCount,
-    int colormapCount, int colorsPerColormap,
-    int spriteCount, int bytesPerSprite,
-    int maxSpritesPerScanline,
-    int cyclesPerScanline, int vblankStartScanline, int totalScanlines,
-    int ppuCyclesPerCpuCycle)
-{
-    public const int TilePixelSize = 8;
+**Constructor parameters:**
 
-    // Display
-    public int ScreenWidth { get; } = screenWidth;
-    public int ScreenHeight { get; } = screenHeight;
-    public int TilemapWidth { get; } = screenWidth / TilePixelSize;
-    public int TilemapHeight { get; } = screenHeight / TilePixelSize;
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `TilemapWidth` | `int` | Number of tile columns in the background grid |
+| `TilemapHeight` | `int` | Number of tile rows in the background grid |
+| `ColorMapCount` | `int` | Number of colormaps (0 = monochrome, no colormap region in VRAM) |
+| `BitsPerPixel` | `int` | Color depth per pixel (1 = monochrome, 2 = 4 colors, 4 = 16 colors) |
+| `TileSize` | `int` | Tile side length in pixels (always 8) |
+| `ChrCount` | `int` | Number of tile patterns in the CHR library |
+| `ChrInRom` | `bool` | If true, CHR tiles live in a read-only C# array and occupy no VRAM |
+| `SpriteCount` | `int` | Maximum number of OAM entries |
+| `BytesPerSprite` | `int` | Bytes per OAM entry |
+| `MaxSpritesPerScanline` | `int` | Sprite-per-scanline cap before overflow flag is set |
+| `CyclesPerScanline` | `int` | PPU cycles per scanline |
+| `VBlankScanlineCount` | `int` | Number of VBlank scanlines |
+| `PpuCyclesPerCpuCycle` | `int` | PPU-to-CPU clock ratio |
 
-    // Tile format
-    public int BitsPerPixel { get; } = bitsPerPixel;
-    public int BytesPerTile { get; } = TilePixelSize * TilePixelSize * bitsPerPixel / 8;
-    public int TileCount { get; } = tileCount;
+**Derived properties:**
 
-    // Color / palette
-    public int ColormapCount { get; } = colormapCount;
-    public int ColorsPerColormap { get; } = colorsPerColormap; // excludes transparent index 0
-    public int ColormapBits { get; } = colormapCount <= 4 ? 2 : 4; // bits used in attribute map
+| Property | Formula | Description |
+|----------|---------|-------------|
+| `BytesPerTile` | `TileSize × TileSize × BitsPerPixel / 8` | Bytes of CHR data per tile |
+| `ScreenWidth` | `TilemapWidth × TileSize` | Display width in pixels |
+| `ScreenHeight` | `TilemapHeight × TileSize` | Display height in pixels |
+| `TotalScanlines` | `ScreenHeight + VBlankScanlineCount` | Total scanlines per frame (visible + VBlank) |
+| `VramLayout` | (memoized `PpuVramLayout`) | Computed VRAM region offsets (see below) |
 
-    // Sprites
-    public int SpriteCount { get; } = spriteCount;
-    public int BytesPerSprite { get; } = bytesPerSprite;
-    public int MaxSpritesPerScanline { get; } = maxSpritesPerScanline;
+When constructing the `VramLayout`, `PpuConfig` passes `ChrInRom ? 0 : ChrCount` as the CHR count so that ROM-backed CHR occupies no VRAM space.
 
-    // Scanline timing
-    public int CyclesPerScanline { get; } = cyclesPerScanline;
-    public int VBlankStartScanline { get; } = vblankStartScanline;
-    public int TotalScanlines { get; } = totalScanlines;
+**`Minimal8Bit` preset:**
 
-    // Co-simulation
-    public int PpuCyclesPerCpuCycle { get; } = ppuCyclesPerCpuCycle; // 0 = not yet set
+| Parameter | Value | Notes |
+|-----------|-------|-------|
+| `TilemapWidth` | 16 | |
+| `TilemapHeight` | 13 | |
+| `ColorMapCount` | 0 | Monochrome — no colormap region |
+| `BitsPerPixel` | 1 | 1bpp: opaque or transparent |
+| `TileSize` | 8 | |
+| `ChrCount` | 256 | In ROM, not VRAM |
+| `ChrInRom` | true | CHR occupies 0 bytes of VRAM |
+| `SpriteCount` | 16 | |
+| `BytesPerSprite` | 3 | |
+| `MaxSpritesPerScanline` | 8 | |
+| `CyclesPerScanline` | 90 | Tunable |
+| `VBlankScanlineCount` | 24 | Tunable |
+| `PpuCyclesPerCpuCycle` | 3 | Tunable |
 
-    // Derived layout
-    public PpuVramLayout Layout => new(this);
+Key differences from the standard 8-bit / 16-bit `Default` configs (not yet implemented):
+- `ChrInRom: true` — CHR tiles live in a read-only ROM array, not in VRAM.
+- `ColorMapCount: 0` — monochrome rendering, no colormap region in VRAM.
+- Timing values (`CyclesPerScanline`, `VBlankScanlineCount`, `PpuCyclesPerCpuCycle`) are tunable.
 
-#if x16
-    public static PpuConfig Default => new(
-        screenWidth: 256, screenHeight: 240,
-        bitsPerPixel: 4, tileCount: 256,
-        colormapCount: 16, colorsPerColormap: 15,
-        spriteCount: 64, bytesPerSprite: 4,
-        maxSpritesPerScanline: 8,
-        cyclesPerScanline: 341, vblankStartScanline: 241, totalScanlines: 262,
-        ppuCyclesPerCpuCycle: 0);
-#else
-    public static PpuConfig Default => new(
-        screenWidth: 128, screenHeight: 120,
-        bitsPerPixel: 2, tileCount: 136,
-        colormapCount: 4, colorsPerColormap: 3,
-        spriteCount: 16, bytesPerSprite: 3,
-        maxSpritesPerScanline: 8,
-        cyclesPerScanline: 171, vblankStartScanline: 121, totalScanlines: 137,
-        ppuCyclesPerCpuCycle: 0);
-#endif
-}
-```
+### `PpuVramLayout` class
 
-### `PpuVramLayout` struct
+`PpuVramLayout` derives VRAM region offsets from configuration parameters. All addresses are byte offsets from the start of VRAM.
 
-`PpuVramLayout` derives all VRAM region offsets from a `PpuConfig`. All addresses are byte offsets from the start of VRAM.
+**Constructor parameters:**
 
-```csharp
-public readonly struct PpuVramLayout(PpuConfig config)
-{
-    public int ChrBase { get; } = 0;
-    public int ChrSize { get; } = config.TileCount * config.BytesPerTile;
+| Parameter | Description |
+|-----------|-------------|
+| `chrCount` | Number of CHR tiles stored in VRAM (0 when CHR is in ROM) |
+| `bytesPerTile` | Bytes per tile pattern |
+| `colormapCount` | Number of colormaps |
+| `bitsPerPixel` | Color depth (used to compute colormap size) |
+| `tilemapWidth` | Tile columns |
+| `tilemapHeight` | Tile rows |
+| `spriteCount` | Number of OAM entries |
+| `bytesPerSprite` | Bytes per OAM entry |
 
-    public int TilemapBase { get; } = config.TileCount * config.BytesPerTile;
-    public int TilemapSize { get; } = config.TilemapWidth * config.TilemapHeight;
+**Region layout (consecutive, no padding):**
 
-    public int AttrmapBase { get; } = config.TileCount * config.BytesPerTile
-                                    + config.TilemapWidth * config.TilemapHeight;
-    public int AttrmapSize { get; } = config.TilemapWidth * config.TilemapHeight
-                                    * config.ColormapBits / 8;
+| Order | Region | Base | Size formula |
+|-------|--------|------|-------------|
+| 1 | CHR table | `0` | `chrCount × bytesPerTile` (0 when CHR is in ROM) |
+| 2 | Colormap | end of CHR | `colormapCount × bitsPerPixel / 8` |
+| 3 | Tilemap | end of Colormap | `tilemapWidth × tilemapHeight` |
+| 4 | OAM | end of Tilemap | `spriteCount × bytesPerSprite` |
 
-    public int ColormapBase { get; } = config.TileCount * config.BytesPerTile
-                                     + config.TilemapWidth * config.TilemapHeight
-                                     + config.TilemapWidth * config.TilemapHeight * config.ColormapBits / 8;
-    public int ColormapSize { get; } = config.ColormapCount * config.ColorsPerColormap * 3;
+`TotalSize` = CHR size + Tilemap size + OAM size.
 
-    public int OamBase { get; } = config.TileCount * config.BytesPerTile
-                                + config.TilemapWidth * config.TilemapHeight
-                                + config.TilemapWidth * config.TilemapHeight * config.ColormapBits / 8
-                                + config.ColormapCount * config.ColorsPerColormap * 3;
-    public int OamSize { get; } = config.SpriteCount * config.BytesPerSprite;
+**Public properties:**
 
-    public int TotalSize { get; } = config.TileCount * config.BytesPerTile
-                                  + config.TilemapWidth * config.TilemapHeight
-                                  + config.TilemapWidth * config.TilemapHeight * config.ColormapBits / 8
-                                  + config.ColormapCount * config.ColorsPerColormap * 3
-                                  + config.SpriteCount * config.BytesPerSprite;
-}
-```
+| Property | Description |
+|----------|-------------|
+| `TotalSize` | Total VRAM size in bytes |
+| `ColormapBase` | Byte offset of the colormap region |
+| `ColormapSize` | Size of the colormap region in bytes |
+| `TilemapBase` | Byte offset of the tilemap region |
+| `TilemapSize` | Size of the tilemap region in bytes |
+| `OamBase` | Byte offset of the OAM region |
+| `OamSize` | Size of the OAM region in bytes |
+
+**Helper methods:**
+
+| Method | Returns |
+|--------|---------|
+| `GetTileAddress(col, row)` | `TilemapBase + row × tilemapWidth + col` |
+| `GetOamAddress(spriteIndex)` | `OamBase + spriteIndex × bytesPerSprite` |
+
+The minimal 8-bit layout has no colormap region (colormapCount = 0, so ColormapSize = 0). The standard 8-bit and 16-bit builds will populate the colormap region when implemented.
 
 ---
 

@@ -6,7 +6,7 @@ using System.Text;
 
 namespace PPU.Storage
 {
-    internal class ChrRom
+    public class ChrRom
     {
         public ChrRom(PpuConfig config, IReadOnlyList<byte> data) 
         {
@@ -16,9 +16,10 @@ namespace PPU.Storage
             _data = data;
         }
 
-        public byte ReadRow(int tileIndex, int row)
+        public byte ReadTileRow(int tileIndex, int tileRow, bool vFlip)
         {
-            int offset = tileIndex * _bytesPerTile + row * _bytesPerRow;
+            var rowOffset = vFlip ? (7 - tileRow) : tileRow;
+            int offset = tileIndex * _bytesPerTile + rowOffset * _bytesPerRow;
             return _data[offset];
         }
 

@@ -121,9 +121,9 @@ Static factory: `Decode(byte positionByte, byte tileIndex, byte attrByte)`.
 | `X` | `positionByte & 0x0F` |
 | `Y` | `(positionByte >> 4) & 0x0F` |
 | `TileIndex` | byte 1 |
-| `Priority` | `attr bit 3` — `true` = in front of BG, `false` = behind BG |
-| `HFlip` | `attr bit 2` |
-| `VFlip` | `attr bit 1` |
+| `Priority` | `attr bit 2` — `true` = in front of BG, `false` = behind BG |
+| `HFlip` | `attr bit 1` |
+| `VFlip` | `attr bit 0` |
 
 **Connects to**: `SpriteEvaluator` (produces), `ScanlineRenderer` (consumes).
 
