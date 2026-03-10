@@ -16,7 +16,7 @@ This design preserves the CPU's address space (256 bytes in 8-bit mode, 64KB in 
 
 ### How it works
 
-The CPU has a single address bus. When an opcode executes `sta r0, [0xF0]`, the bus emits a write to address `0xF0`. Something must decide: does this go to main RAM, or to a PPU register?
+The CPU has a single address bus. When an opcode executes `sta r0, [0xE8]`, the bus emits a write to address `0xE8`. Something must decide: does this go to main RAM, or to a PPU register?
 
 This decision is made by a **bus decoder** (also called a memory mapper or MMIO controller) that sits between the CPU and all addressable devices. It inspects the address of every read and write and routes it to the correct target:
 
@@ -24,11 +24,17 @@ This decision is made by a **bus decoder** (also called a memory mapper or MMIO 
 CPU
  │
  ▼
-Bus Decoder  ──── 0x00–0xEF ──▶ main RAM          (8-bit mode)
-                ── 0xF0–0xFF ──▶ PPU registers
+BusDecoder ──── 0x00–0xE7 ──▶ main RAM          (8-bit)
+              ── 0xE8–0xEF ──▶ MmioRouter ──▶ PPU registers
+                                           ──▶ Gamepad register
+                                           ──▶ Audio registers
+              ── 0xF0–0xFF ──▶ Reserved (unmapped stack space)
 
-Bus Decoder  ──── 0x0000–0xFEFF ──▶ main RAM      (16-bit mode)
-                ── 0xFF00–0xFFFF ──▶ PPU registers
+BusDecoder ──── 0x0000–0xEEFF ──▶ main RAM      (16-bit)
+              ── 0xEF00–0xEFFF ──▶ MmioRouter ──▶ PPU registers
+                                              ──▶ Gamepad register
+                                              ──▶ Audio registers
+              ── 0xFF00–0xFFFF ──▶ Reserved (unmapped stack space)
 ```
 
 The decoder intercepts **both reads and writes**. Some PPU registers are readable (e.g., PPUSTATUS reports whether VBlank is active or sprite overflow has occurred). The decoder handles both directions.
@@ -41,7 +47,7 @@ The stack is **not** part of this routing. Stack operations (`Push`/`Pop`) bypas
 
 ### MMIO register map
 
-`IMmioDevice` receives byte offsets from the base address (0xF0 in 8-bit mode, 0xFF00 in 16-bit mode). The register layout is identical in both builds; 16-bit mode adds three backdrop color registers that have no 8-bit counterpart.
+`IMmioDevice` receives byte offsets from the base address (0xE8 in 8-bit mode, 0xEF00 in 16-bit mode). The register layout is identical in both builds; 16-bit mode adds three backdrop color registers that have no 8-bit counterpart.
 
 | Offset | Name        | R/W | Description |
 |--------|-------------|-----|-------------|
@@ -52,7 +58,7 @@ The stack is **not** part of this routing. Stack operations (`Push`/`Pop`) bypas
 | 4      | `PPUBDG`    | W   | Backdrop green component (16-bit build only) |
 | 5      | `PPUBDB`    | W   | Backdrop blue component (16-bit build only) |
 
-In 8-bit mode (16 MMIO slots at 0xF0–0xFF), offsets 0–2 are used; 0xF3–0xFF are reserved.
+In 8-bit mode (16 MMIO slots at 0xE8–0xEF), offsets 0–2 are used by the PPU; 0xEB–0xEF are reserved for other IO components.
 
 ---
 
@@ -588,7 +594,7 @@ PPU internal activity uses its own **PPU trace stream**, parallel to but separat
 
 ### Watchpoints
 
-**CPU writes to PPU registers** are already covered by the existing `AddressWatchpoint`. Since MMIO register writes pass through the bus decoder as normal address-space writes, `wp write 0xF0` already triggers on a CPU store to PPUADDR. A convenience alias (`wp ppureg <name>`) expanding to the known register address would be a UX improvement.
+**CPU writes to PPU registers** are already covered by the existing `AddressWatchpoint`. Since MMIO register writes pass through the bus decoder as normal address-space writes, `wp write 0xE8` already triggers on a CPU store to PPUADDR. A convenience alias (`wp ppureg <name>`) expanding to the known register address would be a UX improvement.
 
 **PPU-internal watchpoints** (break on VBlank, HBlank, specific scanline) need a new watchpoint family mirroring `IWatchpoint` / `WatchpointContainer`:
 
