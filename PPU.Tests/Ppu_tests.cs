@@ -33,15 +33,17 @@ namespace PPU.Tests
             // Each Ppu.Tick increments _scanlineCycle to 1 >= CyclesPerScanline(1),
             // resets and calls state.Tick().
             // RenderState.Tick: checks scanline==ScreenHeight first, then renders+increments.
-            // Ticks 1-8: render scanlines 0-7. Tick 9: scanline=8==ScreenHeight → VBlank.
+            // Ticks 1-8: render scanlines 0-7.
+            // Tick 9: scanline=8==ScreenHeight → VBlank.Enter + VBlank.Tick
             var config = PpuTestHelpers.CreateTickConfig();
             var rom = PpuTestHelpers.CreateChrRom(config);
             var ppu = new Ppu(config, rom);
             var vblankFired = false;
             ppu.VBlankStarted += () => vblankFired = true;
+            int renderTicks = config.ScreenHeight; // 8
 
             // 8 ticks render scanlines 0-7, scanline counter reaches 8
-            for (int i = 0; i < config.ScreenHeight; i++)
+            for (int i = 0; i < renderTicks; i++)
                 ppu.Tick();
 
             Assert.That(vblankFired, Is.False);
@@ -58,7 +60,7 @@ namespace PPU.Tests
             var ppu = new Ppu(config, rom);
 
             // Tick through render + into VBlank
-            for (int i = 0; i <= config.ScreenHeight; i++)
+            for (int i = 0; i < config.ScreenHeight + 1; i++)
                 ppu.Tick();
 
             // VBlankActive should be set via the registers
@@ -71,11 +73,11 @@ namespace PPU.Tests
         {
             // ScreenHeight=8, VBlankScanlineCount=2, CyclesPerScanline=1
             // Ticks 1-8: render scanlines 0-7.
-            // Tick 9: scanline=8==ScreenHeight → VBlank.Enter (fires event, _scanline=0).
-            // Tick 10: VBlank.Tick, _scanline=0 < 2, _scanline→1.
-            // Tick 11: VBlank.Tick, _scanline=1 < 2, _scanline→2.
-            // Tick 12: VBlank.Tick, _scanline=2 >= 2, transition to Render.Enter.
-            // VBlank lasted ticks 10-12 (3 ticks total, with transition on the last).
+            // Tick 9: scanline=8==ScreenHeight → VBlank.Enter (fires event, _scanline=0) + VBlank.Tick
+            // Tick 10: VBlank.Tick, _scanline=1 < 2, _scanline→2.
+            // Tick 11: scanline=2==VBlankScanlineCount, → render.Enter (fires event, _scanline=0) + render.Tick
+            // ...
+
             var config = PpuTestHelpers.CreateTickConfig();
             var rom = PpuTestHelpers.CreateChrRom(config);
             var ppu = new Ppu(config, rom);
@@ -83,18 +85,18 @@ namespace PPU.Tests
             ppu.VBlankStarted += () => vblankCount++;
 
             // Complete first full frame cycle (render + vblank transition + vblank ticks including exit)
-            // 8 render + 1 vblank entry + 3 vblank ticks (2 stay + 1 exit) = 12
+            // 8 render + 2 vblank ticks (2 stay) = 10
             int renderTicks = config.ScreenHeight; // 8
-            int vblankEntryTick = 1;
-            int vblankTicks = config.VBlankScanlineCount + 1; // 3 (includes exit tick)
-            int totalFirstFrame = renderTicks + vblankEntryTick + vblankTicks;
+            int vblankTicks = config.VBlankScanlineCount; // 2
+            int totalFirstFrame = renderTicks + vblankTicks;
             for (int i = 0; i < totalFirstFrame; i++)
                 ppu.Tick();
 
+            // After 10 ticks, the PPU completed the first frame and should have fired VBlankStarted once
             Assert.That(vblankCount, Is.EqualTo(1));
 
-            // Second frame: render + vblank entry
-            for (int i = 0; i < renderTicks + vblankEntryTick; i++)
+            // Second frame: render + first vblank tick
+            for (int i = 0; i < renderTicks + 1; i++)
                 ppu.Tick();
 
             Assert.That(vblankCount, Is.EqualTo(2));

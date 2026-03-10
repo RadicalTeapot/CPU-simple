@@ -79,7 +79,7 @@ namespace PPU
                 if (_scanline >= config.VBlankScanlineCount)
                 {
                     _nextState?.Enter();
-                    return _nextState ?? throw new Exception();
+                    return _nextState?.Tick() ?? throw new Exception();
                 }
                 _scanline++;
                 return this;
@@ -102,10 +102,10 @@ namespace PPU
 
             public IScanlineTickState Tick()
             {
-                if (_scanline == config.ScreenHeight)
+                if (_scanline >= config.ScreenHeight)
                 {
                     _nextState?.Enter();
-                    return _nextState ?? throw new Exception();
+                    return _nextState?.Tick() ?? throw new Exception();
                 }
                 renderer.RenderScanline(_scanline);
                 _scanline++;
