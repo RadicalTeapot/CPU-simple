@@ -16,4 +16,8 @@
     <DefineConstants>$(DefineConstants);x16</DefineConstants>
   </PropertyGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="CPU.Tests" />
+  </ItemGroup>
+
 </Project>

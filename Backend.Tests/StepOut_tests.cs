@@ -19,7 +19,11 @@ namespace Backend.Tests
 
         private static CpuStateFactory CreateFactory(byte[] program, int stackSize = 16)
         {
+#if x16
+            var config = new Config(65536, stackSize, 4);
+#else
             var config = new Config(256, stackSize, 4);
+#endif
             var cpu = new CPU.CPU(config);
             cpu.LoadProgram(program);
             var logger = new TestLogger();

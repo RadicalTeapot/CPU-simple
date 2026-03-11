@@ -37,8 +37,13 @@ namespace Backend.Tests
 
     internal static class BackendTestHelpers
     {
+#if x16
+        public static GlobalCommandExecutionContext CreateGlobalContext(
+            int memorySize = 65536, int stackSize = 16, int registerCount = 4)
+#else
         public static GlobalCommandExecutionContext CreateGlobalContext(
             int memorySize = 256, int stackSize = 16, int registerCount = 4)
+#endif
         {
             var config = new Config(memorySize, stackSize, registerCount);
             var cpu = new CPU.CPU(config);
@@ -49,8 +54,13 @@ namespace Backend.Tests
             return new GlobalCommandExecutionContext(inspector, new FakeIdleState(), breakpoints, watchpoints, output);
         }
 
+#if x16
+        public static GlobalCommandExecutionContext CreateGlobalContextWithProgram(
+            byte[] program, int memorySize = 65536, int stackSize = 16, int registerCount = 4)
+#else
         public static GlobalCommandExecutionContext CreateGlobalContextWithProgram(
             byte[] program, int memorySize = 256, int stackSize = 16, int registerCount = 4)
+#endif
         {
             var config = new Config(memorySize, stackSize, registerCount);
             var cpu = new CPU.CPU(config);

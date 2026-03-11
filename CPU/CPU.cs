@@ -10,7 +10,7 @@ namespace CPU
         public CPU(Config config) :
             this(new State(config.RegisterCount),
                  new Stack(config.StackSize),
-                 new Memory(config.MemorySize - config.StackSize),
+                 new Memory(config.MemorySize - config.StackSize - BusDecoder.MmioRegionSize),
                  config.IrqVectorAddress,
                  new NullMmioDevice())
         { }
@@ -18,7 +18,7 @@ namespace CPU
         public CPU(Config config, IMmioDevice mmioDevice) :
             this(new State(config.RegisterCount),
                  new Stack(config.StackSize),
-                 new Memory(config.MemorySize - config.StackSize),
+                 new Memory(config.MemorySize - config.StackSize - BusDecoder.MmioRegionSize),
                  config.IrqVectorAddress,
                  mmioDevice)
         { }

@@ -2415,8 +2415,8 @@ namespace CPU.Tests
         {
             var state = new State(4);
             var stack = new components.Stack(16);
-            var memory = new Memory(240); // 256 - 16 (stack) = 240 main memory
-            var irqVectorAddress = 240 - Config.IrqSectionSize; // 224 = 0xE0
+            var memory = new Memory(232); // 256 - 16 (stack) - 8 (MMIO) = 232 main memory
+            var irqVectorAddress = 232 - Config.IrqSectionSize; // 224 = 0xE0
             var cpu = new CPU(state, stack, memory, irqVectorAddress);
 
             // Place NOP at 0x00 and HLT at 0x01
@@ -2438,8 +2438,8 @@ namespace CPU.Tests
         {
             var state = new State(4);
             var stack = new components.Stack(16);
-            var memory = new Memory(240);
-            var irqVectorAddress = 240 - Config.IrqSectionSize;
+            var memory = new Memory(232);
+            var irqVectorAddress = 232 - Config.IrqSectionSize;
             var cpu = new CPU(state, stack, memory, irqVectorAddress);
 
             memory.LoadBytes(0, [(byte)OpcodeBaseCode.NOP, (byte)OpcodeBaseCode.HLT]);
@@ -2457,8 +2457,8 @@ namespace CPU.Tests
         {
             var state = new State(4);
             var stack = new components.Stack(16);
-            var memory = new Memory(240);
-            var irqVectorAddress = 240 - Config.IrqSectionSize;
+            var memory = new Memory(232);
+            var irqVectorAddress = 232 - Config.IrqSectionSize;
             var cpu = new CPU(state, stack, memory, irqVectorAddress);
 
             // SEI, CLI, NOP — interrupt requested while I is set, should fire after CLI
@@ -2486,8 +2486,8 @@ namespace CPU.Tests
         {
             var state = new State(4);
             var stack = new components.Stack(16);
-            var memory = new Memory(240);
-            var irqVectorAddress = 240 - Config.IrqSectionSize;
+            var memory = new Memory(232);
+            var irqVectorAddress = 232 - Config.IrqSectionSize;
             var cpu = new CPU(state, stack, memory, irqVectorAddress);
 
             // Program: NOP, HLT at 0x00-0x01

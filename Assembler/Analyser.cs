@@ -30,10 +30,10 @@ namespace Assembler
             memorySize = memorySize == 0 || memorySize > 256 ? 255 : (memorySize - 1);
 #endif
             _memoryAddressValueProcessor = new MemoryAddressValueProcessor(memorySize);
-            // IRQ vector address: main memory ends at (memorySize - stackSize), IRQ section is placed
-            // IrqSectionSize bytes before that. Default: 256 - 16 (stack) - 16 (irq) = 224 = 0xE0.
+            // IRQ vector address: main memory ends at (memorySize - stackSize - mmioRegion), IRQ section is
+            // placed IrqSectionSize bytes before that. Default 8-bit: 256 - 16 - 8 - 16 = 216 = 0xD8.
             // NOTE: future upgrade to a vector table would replace this fixed address calculation.
-            _irqVectorAddress = memorySize + 1 - DefaultStackSize - CPU.Config.IrqSectionSize;
+            _irqVectorAddress = memorySize + 1 - DefaultStackSize - CPU.Config.MmioRegionSize - CPU.Config.IrqSectionSize;
         }
 
         public IList<IEmitNode> Run(Parser.ProgramNode program)

@@ -66,7 +66,7 @@ namespace Backend.Tests
 
         private static CpuStates.CpuStateFactory CreateFactory(byte[] program)
         {
-            var config = new CPU.Config(256, 16, 4);
+            var config = new CPU.Config();
             var cpu = new CPU.CPU(config);
             cpu.LoadProgram(program);
             var logger = new TestLogger();

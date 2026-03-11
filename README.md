@@ -160,6 +160,7 @@ I did review and tested the code but exercise caution when using it.
   - [ ] When assembled, if sidebar was never opened, open the configured panels, otherwise just re-open sidebar
   - [ ] Test if assembler errors are handled
 - [ ] Implement PPU and map some memory for it
+   - [ ] Remove the `NullMmioDevice` in CPU in favor of an empty `MmioRouter`
    - [ ] Use `#if x16` to change assumption that sprites are tiled aligned where needed for 16bit build
    - [ ] Use vector lookup table for IRQ address
 - [ ] Implement sound chip and map some memory for it too (for 16-bit version)

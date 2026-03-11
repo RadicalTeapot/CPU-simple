@@ -335,9 +335,9 @@ namespace Assembler.Tests
             ]);
 
             var bytes = AnalyserTestsHelper.AnalyseAndEmit(program);
-            // IRQ section at address 224 (0xE0), with fill gap from 0 to 0xDF
-            Assert.That(bytes.Length, Is.EqualTo(225)); // 224 bytes fill + 1 byte RTI
-            Assert.That(bytes[224], Is.EqualTo((byte)CPU.opcodes.OpcodeBaseCode.RTI));
+            var irqAddress = new CPU.Config().IrqVectorAddress;
+            Assert.That(bytes.Length, Is.EqualTo(irqAddress + 1)); // fill + 1 byte RTI
+            Assert.That(bytes[irqAddress], Is.EqualTo((byte)CPU.opcodes.OpcodeBaseCode.RTI));
         }
 
         [Test]
