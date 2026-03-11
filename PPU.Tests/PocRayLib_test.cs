@@ -8,7 +8,7 @@ using static Raylib_cs.Raylib;
 namespace PPU.Tests
 {
     [TestFixture]
-    public class poc_raylib
+    public class PocRaylib_test
     {
         [Test]
         [Ignore("POC window")]
@@ -37,9 +37,9 @@ namespace PPU.Tests
 
             // Build tile data: tile 0 = blank, tile 1 = checkerboard, tile 2 = solid
             var tileData = new byte[config.BytesPerTile * config.ChrCount];
-            int tile1 = 1 * config.BytesPerTile;
-            int tile2 = 2 * config.BytesPerTile;
-            for (int row = 0; row < config.TileSize; row++)
+            var tile1 = 1 * config.BytesPerTile;
+            var tile2 = 2 * config.BytesPerTile;
+            for (var row = 0; row < config.TileSize; row++)
             {
                 tileData[tile1 + row] = (byte)(row % 2 == 0 ? 0xAA : 0x55);
                 tileData[tile2 + row] = 0xFF;
@@ -48,11 +48,11 @@ namespace PPU.Tests
 
             // Fill VRAM tilemap: solid border (tile 2), checkerboard interior (tile 1)
             var vram = new Vram(config);
-            for (int row = 0; row < config.TilemapHeight; row++)
+            for (var row = 0; row < config.TilemapHeight; row++)
             {
-                for (int col = 0; col < config.TilemapWidth; col++)
+                for (var col = 0; col < config.TilemapWidth; col++)
                 {
-                    bool border = row == 0 || row == config.TilemapHeight - 1
+                    var border = row == 0 || row == config.TilemapHeight - 1
                                || col == 0 || col == config.TilemapWidth - 1;
                     vram.Write(config.VramLayout.GetTileAddress(col, row), (byte)(border ? 2 : 1));
                 }
@@ -61,13 +61,13 @@ namespace PPU.Tests
             // Render all scanlines into framebuffer
             var scanlineRenderer = new ScanlineRenderer(config, vram, chrRom);
             var framebuffer = new Framebuffer(config);
-            for (int scanline = 0; scanline < config.ScreenHeight; scanline++)
+            for (var scanline = 0; scanline < config.ScreenHeight; scanline++)
                 scanlineRenderer.RenderScanline(scanline, [], framebuffer);
 
             // Map 1bpp pixel bytes to Raylib colors
             var pixels = framebuffer.AsReadOnly();
             var colors = new Color[pixels.Count];
-            for (int i = 0; i < pixels.Count; i++)
+            for (var i = 0; i < pixels.Count; i++)
                 colors[i] = pixels[i] != 0 ? Color.Black : Color.RayWhite;
 
             const int scale = 8;
