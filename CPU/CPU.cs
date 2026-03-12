@@ -12,7 +12,7 @@ namespace CPU
                  new Stack(config.StackSize),
                  new Memory(config.MemorySize - config.StackSize - BusDecoder.MmioRegionSize),
                  config.IrqVectorAddress,
-                 new NullMmioDevice())
+                 new MmioRouter())
         { }
 
         public CPU(Config config, IMmioDevice mmioDevice) :
@@ -24,7 +24,7 @@ namespace CPU
         { }
 
         public CPU(State state, Stack stack, Memory memory, int irqVectorAddress = 0) :
-            this(state, stack, memory, irqVectorAddress, new NullMmioDevice())
+            this(state, stack, memory, irqVectorAddress, new MmioRouter())
         { }
 
         public CPU(State state, Stack stack, Memory memory, int irqVectorAddress, IMmioDevice mmioDevice)

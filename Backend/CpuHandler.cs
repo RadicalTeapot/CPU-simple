@@ -3,6 +3,7 @@ using Backend.Commands.StateCommands;
 using Backend.CpuStates;
 using Backend.IO;
 using CPU;
+using CPU.components;
 using CPU.opcodes;
 using PPU.Configuration;
 
@@ -18,7 +19,9 @@ namespace Backend
             {
                 var ppuConfig = PpuConfig.Minimal8Bit;
                 _ppu = new PPU.Ppu(ppuConfig, new PPU.Storage.ChrRom(ppuConfig, [])); // TODO fill in the CHR ROM
-                _cpu = new CPU.CPU(config, _ppu.Registers);
+                var mmioRouter = new MmioRouter();
+                mmioRouter.Register(0x00, 0x03, _ppu.Registers);
+                _cpu = new CPU.CPU(config, mmioRouter);
                 _ppu.VBlankStarted += _cpu.RequestInterrupt;
             }
             else

@@ -38,7 +38,7 @@ namespace CPU.components
             {
                 _memory.WriteByte(address, value);
             }
-            // Reserved zone: silently ignored
+            // Reserved zone (stack): silently ignored
             Recorder?.RecordWrite(address, value, BusType.Memory);
         }
 
@@ -77,7 +77,7 @@ namespace CPU.components
             {
                 _memory.WriteByte(address, value);
             }
-            // Reserved zone: silently ignored
+            // Reserved zone (stack): silently ignored
             Recorder?.RecordWrite(address, value, BusType.Memory);
         }
 
