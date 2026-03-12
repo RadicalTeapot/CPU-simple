@@ -11,7 +11,7 @@ namespace CPU
             this(new State(config.RegisterCount),
                  new Stack(config.StackSize),
                  new Memory(config.MemorySize - config.StackSize - BusDecoder.MmioRegionSize),
-                 config.IrqVectorAddress,
+                 config.IrqVectorTableAddress,
                  new MmioRouter())
         { }
 
@@ -19,15 +19,15 @@ namespace CPU
             this(new State(config.RegisterCount),
                  new Stack(config.StackSize),
                  new Memory(config.MemorySize - config.StackSize - BusDecoder.MmioRegionSize),
-                 config.IrqVectorAddress,
+                 config.IrqVectorTableAddress,
                  mmioDevice)
         { }
 
-        public CPU(State state, Stack stack, Memory memory, int irqVectorAddress = 0) :
-            this(state, stack, memory, irqVectorAddress, new MmioRouter())
+        public CPU(State state, Stack stack, Memory memory, int irqVectorTableAddress = 0) :
+            this(state, stack, memory, irqVectorTableAddress, new MmioRouter())
         { }
 
-        public CPU(State state, Stack stack, Memory memory, int irqVectorAddress, IMmioDevice mmioDevice)
+        public CPU(State state, Stack stack, Memory memory, int irqVectorTableAddress, IMmioDevice mmioDevice)
         {
             _state = state;
             _stack = stack;
@@ -35,7 +35,7 @@ namespace CPU
             _bus = new BusDecoder(memory, mmioDevice);
             _cycle = 0;
             _opcodeFactory = new OpcodeFactory();
-            _tickHandler = new TickHandler(new TickHandlerConfig(_state, _bus, _stack, _opcodeFactory, irqVectorAddress));
+            _tickHandler = new TickHandler(new TickHandlerConfig(_state, _bus, _stack, _opcodeFactory, irqVectorTableAddress));
             _tracer = new TickTracer(_state, _stack, _bus);
             _programLoaded = false;
         }

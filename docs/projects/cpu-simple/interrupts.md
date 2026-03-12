@@ -22,24 +22,27 @@ The CPU has a dedicated **Interrupt Disable flag** (`I`) stored in `State`. When
 | `CLI` | `0x07` | Clear I flag — **enable** interrupts |
 | `RTI` | `0x09` | Return from interrupt — restore PC and flags from stack |
 
-### The IRQ vector address
+### The IRQ vector table
 
-The CPU has a fixed **IRQ vector address** where the interrupt handler must be placed. In 8-bit mode with default config (`256` bytes total, `16`-byte stack):
+The CPU uses a **vector table** — a fixed-location region in memory that contains a *pointer* to the interrupt handler, not the handler itself. When an interrupt fires, the CPU reads the handler address from the table and jumps to it.
+
+In 8-bit mode with default config (`256` bytes total, `16`-byte stack):
 
 ```
-IRQ vector address = MemorySize - StackSize - IrqSectionSize
-                   = 256 - 16 - 16 = 224 = 0xE0
+IRQ vector table address = MemorySize - StackSize - MmioRegionSize - VectorTableSize
+                         = 256 - 16 - 8 - 1 = 231 = 0xE7
 ```
 
-The assembler's `.irq` section directive automatically places code at this address, padding the gap from the end of regular code with zero bytes.
+The table is 1 byte (8-bit) or 2 bytes (16-bit, little-endian). It contains the address of the handler, which the assembler's `.irq` directive can place anywhere in memory.
 
-> **NOTE**: The current design uses a single fixed vector address. A future upgrade could replace this with a vector table, allowing different handler addresses for different interrupt sources.
+See [vector-table.md](vector-table.md) for the full design rationale and implementation details.
 
 **Memory layout (8-bit default):**
 
 ```
-0x00 – 0xDF   Code + data (224 bytes)
-0xE0 – 0xEF   IRQ handler section (16 bytes, IrqSectionSize)
+0x00 – 0xE6   Code + data + IRQ handler (sequential)
+0xE7          IRQ vector table (1 byte: handler address)
+0xE8 – 0xEF   MMIO (8 bytes)
 0xF0 – 0xFF   Stack (16 bytes, StackSize)
 ```
 
@@ -96,7 +99,7 @@ The `InterruptServiceRoutine` is an internal class — it has no `[Opcode]` attr
 
 ### What the ISR does (8-bit mode)
 
-The ISR executes as two `MemoryWrite` ticks:
+The ISR executes as two `MemoryWrite` ticks followed by one `MemoryRead` tick that reads the handler address from the vector table:
 
 ```
 Tick 1 (FetchOpcode phase detects interrupt):
@@ -109,12 +112,16 @@ Tick 2 (MemoryWrite — PushStatus):
 
 Tick 3 (MemoryWrite — PushPC):
     stack.PushByte(state.GetPC())   // PC of the *next* instruction to run
+    → next: MemoryRead
+
+Tick 4 (MemoryRead — ReadVector):
+    handlerAddress = bus.ReadByte(irqVectorTableAddress)
     state.SetInterruptDisableFlag(true)
-    state.SetPC(irqVectorAddress)
+    state.SetPC(handlerAddress)
     → Done
 ```
 
-In 16-bit mode there are three `MemoryWrite` ticks: PushStatus, PushPCHigh, PushPCLow.
+In 16-bit mode there are five ticks: PushStatus, PushPCHigh, PushPCLow, ReadVectorLow, ReadVectorHigh.
 
 **Status byte encoding:**
 
@@ -173,7 +180,7 @@ handler:
     RTI            ; return and restore I, C, Z
 ```
 
-The `.irq` section is automatically placed at `0xE0` by the assembler. The CPU jumps there when an interrupt fires.
+The `.irq` section is placed sequentially after `.text` and `.data` by the assembler. The assembler then emits the vector table at `0xE7` containing the resolved handler address. The CPU reads the table at interrupt time and jumps to that address.
 
 ### Temporarily disabling interrupts
 
@@ -209,7 +216,7 @@ handler:
 | Pending interrupt held while I = 1 | `if (_pendingInterrupt && !_state.I)` check |
 | I set automatically on interrupt entry | `InterruptServiceRoutine.PushPC()` |
 | Flags fully restored by RTI (including I) | `RTI.PopStatus()` unpacks all three bits |
-| IRQ vector address consistent between CPU and assembler | Both derive from `Config.IrqSectionSize = 16` |
+| Vector table address consistent between CPU and assembler | Both derive from `Config.IrqVectorTableAddress` |
 
 ---
 
@@ -221,9 +228,10 @@ handler:
 | `TickHandler` | `CPU/microcode/TickHandler.cs` | Checks `_pendingInterrupt && !I` at fetch; calls `JumpToInterrupt()` |
 | `InterruptServiceRoutine` | `CPU/microcode/InterruptServiceRoutine.cs` | Internal opcode that pushes status+PC and jumps to vector |
 | `CPU.RequestInterrupt()` | `CPU/CPU.cs` | Public API for external hardware to signal an interrupt |
-| `Config.IrqSectionSize` | `CPU/Config.cs` | Shared constant (16) used by both CPU and assembler |
-| `Config.IrqVectorAddress` | `CPU/Config.cs` | Computed: `MemorySize - StackSize - IrqSectionSize` |
+| `Config.VectorTableSize` | `CPU/Config.cs` | Size of vector table: 1 byte (8-bit) or 2 bytes (16-bit) |
+| `Config.IrqVectorTableAddress` | `CPU/Config.cs` | Computed: `MemorySize - StackSize - MmioRegionSize - VectorTableSize` |
 | `SEI` / `CLIOpcode` | `CPU/opcodes/SEI.cs`, `CLIOpcode.cs` | Set/clear the I flag |
 | `RTI` | `CPU/opcodes/RTI.cs` | Pops PC then status byte, restores all three flags |
 | `Section.Type.Irq` | `Assembler/Analysis/Section.cs` | Assembler section type for IRQ code |
-| `Analyser` `.irq` handling | `Assembler/Analyser.cs` | Fixed-address placement with fill gap |
+| `Analyser` `.irq` handling | `Assembler/Analyser.cs` | Sequential placement; emits fill gap + `IrqVectorTableEmitNode` |
+| `IrqVectorTableEmitNode` | `Assembler/Analysis/EmitNode/IrqVectorTableEmitNode.cs` | Emits 1 or 2 bytes containing the resolved handler address |

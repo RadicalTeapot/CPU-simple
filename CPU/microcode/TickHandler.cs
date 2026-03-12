@@ -9,7 +9,7 @@ namespace CPU.microcode
         IBus Bus,
         Stack Stack,
         OpcodeFactory OpcodeFactory,
-        int IrqVectorAddress
+        int IrqVectorTableAddress
     ) { }
 
     internal class TickHandler
@@ -20,7 +20,7 @@ namespace CPU.microcode
             _bus = context.Bus;
             _stack = context.Stack;
             _opcodeFactory = context.OpcodeFactory;
-            _irqVectorAddress = context.IrqVectorAddress;
+            _irqVectorTableAddress = context.IrqVectorTableAddress;
         }
 
         public void RequestInterrupt()
@@ -94,7 +94,7 @@ namespace CPU.microcode
             _pendingInterrupt = false;
             _phaseCount = 0;
             _currentBaseCode = OpcodeBaseCode.NOP;
-            _currentOpcode = new InterruptServiceRoutine(_state, _stack, _irqVectorAddress);
+            _currentOpcode = new InterruptServiceRoutine(_state, _stack, _bus, _irqVectorTableAddress);
             _currentPhase = _currentOpcode.GetStartPhaseType();
         }
 
@@ -108,6 +108,6 @@ namespace CPU.microcode
         private readonly IBus _bus;
         private readonly Stack _stack;
         private readonly OpcodeFactory _opcodeFactory;
-        private readonly int _irqVectorAddress;
+        private readonly int _irqVectorTableAddress;
     }
 }

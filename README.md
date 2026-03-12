@@ -170,9 +170,10 @@ I did review and tested the code but exercise caution when using it.
    - [ ] What about PPU micro-code?
    - [ ] Check if it would make more sense to diminish the per-tick status rather than suppressing it entirely in windowed mode
    - [ ] Use `#if x16` to change assumption that sprites are tiled aligned where needed for 16bit build
-   - [ ] Use vector lookup table for IRQ address
 - [ ] Implement sound chip and map some memory for it too (for 16-bit version)
   - [ ] Write a small MIDI player application
 - [ ] Cleanup opcode constructors to take only necessary parameters (or use an interface to mask un-necessary parameters)
 - [ ] Write a bank of small programs for 8 and 16 bit version and document them
 - [/] Cleanup docs and document design choices
+  - [ ] Rewrite lexer, parser and analyser documentation
+  - [ ] Update and merge memory, memory-mapper and mmio

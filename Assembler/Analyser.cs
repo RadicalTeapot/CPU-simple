@@ -30,10 +30,9 @@ namespace Assembler
             memorySize = memorySize == 0 || memorySize > 256 ? 255 : (memorySize - 1);
 #endif
             _memoryAddressValueProcessor = new MemoryAddressValueProcessor(memorySize);
-            // IRQ vector address: main memory ends at (memorySize - stackSize - mmioRegion), IRQ section is
-            // placed IrqSectionSize bytes before that. Default 8-bit: 256 - 16 - 8 - 16 = 216 = 0xD8.
-            // NOTE: future upgrade to a vector table would replace this fixed address calculation.
-            _irqVectorAddress = memorySize + 1 - DefaultStackSize - CPU.Config.MmioRegionSize - CPU.Config.IrqSectionSize;
+            // IRQ vector table address: placed VectorTableSize bytes before the MMIO region.
+            // Default 8-bit: 256 - 16 - 8 - 1 = 231 = 0xE7.
+            _irqVectorTableAddress = memorySize + 1 - DefaultStackSize - CPU.Config.MmioRegionSize - CPU.Config.VectorTableSize;
         }
 
         public IList<IEmitNode> Run(Parser.ProgramNode program)
@@ -65,48 +64,35 @@ namespace Assembler
             }
 
             // Second pass: place sections and resolve labels
-            // Place sequential sections (Text, Data) first
+            // All sections (text, data, irq) are placed sequentially
             var sectionOffset = 0;
             foreach (var section in _sections)
             {
-                if (section.SectionType == Section.Type.Irq)
-                    continue;
                 section.StartAddress = sectionOffset;
                 sectionOffset += section.LocationCounter;
             }
-
-            // Place IRQ section at fixed address with fill gap
-            if (_irqSectionIndex >= 0)
-            {
-                var irqSection = _sections[_irqSectionIndex];
-                irqSection.StartAddress = _irqVectorAddress;
-            }
             _labelManager.ResolveLabels();
 
-            // Collect all nodes in order, inserting fill gap before IRQ section
+            // Collect all nodes in order
             var emitNodes = new List<IEmitNode>();
             foreach (var section in _sections)
             {
-                if (section.SectionType == Section.Type.Irq)
-                    continue;
                 foreach (var analysisNode in section.Nodes)
                 {
                     emitNodes.AddRange(analysisNode.EmitNodes);
                 }
             }
 
+            // Emit fill gap + vector table pointing to the IRQ handler
             if (_irqSectionIndex >= 0)
             {
                 var irqSection = _sections[_irqSectionIndex];
-                var gap = irqSection.StartAddress - sectionOffset;
+                var gap = _irqVectorTableAddress - sectionOffset;
                 if (gap > 0)
                 {
                     emitNodes.Add(new FillEmitNode(gap, 0x00, new AST.NodeSpan(0, 0, 0)));
                 }
-                foreach (var analysisNode in irqSection.Nodes)
-                {
-                    emitNodes.AddRange(analysisNode.EmitNodes);
-                }
+                emitNodes.Add(new IrqVectorTableEmitNode(irqSection.StartAddress, new AST.NodeSpan(0, 0, 0)));
             }
             _analysisRan = true;
             return emitNodes;
@@ -320,7 +306,7 @@ namespace Assembler
         private LabelReferenceManager _labelManager = new();
         private bool _analysisRan = false;
         private readonly MemoryAddressValueProcessor _memoryAddressValueProcessor;
-        private readonly int _irqVectorAddress;
+        private readonly int _irqVectorTableAddress;
         private const int TextSectionIndex = 0;
         private const int DefaultStackSize = 16;
     }

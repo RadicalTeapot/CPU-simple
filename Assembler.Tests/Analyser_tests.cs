@@ -335,9 +335,11 @@ namespace Assembler.Tests
             ]);
 
             var bytes = AnalyserTestsHelper.AnalyseAndEmit(program);
-            var irqAddress = new CPU.Config().IrqVectorAddress;
-            Assert.That(bytes.Length, Is.EqualTo(irqAddress + 1)); // fill + 1 byte RTI
-            Assert.That(bytes[irqAddress], Is.EqualTo((byte)CPU.opcodes.OpcodeBaseCode.RTI));
+            var irqVectorTableAddress = new CPU.Config().IrqVectorTableAddress;
+            // Layout: RTI at 0x00, fill gap, 1-byte vector table at irqVectorTableAddress pointing to 0x00
+            Assert.That(bytes.Length, Is.EqualTo(irqVectorTableAddress + 1));
+            Assert.That(bytes[0], Is.EqualTo((byte)CPU.opcodes.OpcodeBaseCode.RTI));
+            Assert.That(bytes[irqVectorTableAddress], Is.EqualTo(0x00)); // vector table points to handler at 0x00
         }
 
         [Test]
@@ -350,8 +352,8 @@ namespace Assembler.Tests
             ]);
 
             var emitNodes = AnalyserTestsHelper.AnalyseProgram(program);
-            // Fill node + SEI + RTI
-            Assert.That(emitNodes, Has.Count.EqualTo(3));
+            // SEI + RTI (handler, sequential) + fill node + vector table node
+            Assert.That(emitNodes, Has.Count.EqualTo(4));
         }
 
         [Test]
@@ -376,6 +378,57 @@ namespace Assembler.Tests
             ]);
 
             Assert.Throws<AggregateException>(() => AnalyserTestsHelper.AnalyseProgram(program));
+        }
+
+        [Test]
+        public void IrqSection_AfterTextCode_VectorTablePointsToHandlerAddress()
+        {
+            var program = string.Join("\n", [
+                ".text",
+                "  NOP",    // 0x00
+                "  HLT",    // 0x01
+                ".irq",
+                "  RTI"     // 0x02 — handler placed sequentially after text
+            ]);
+
+            var bytes = AnalyserTestsHelper.AnalyseAndEmit(program);
+            var irqVectorTableAddress = new CPU.Config().IrqVectorTableAddress;
+            Assert.That(bytes[2], Is.EqualTo((byte)CPU.opcodes.OpcodeBaseCode.RTI));
+            Assert.That(bytes[irqVectorTableAddress], Is.EqualTo(0x02)); // vector table points to handler at 0x02
+        }
+
+        [Test]
+        public void IrqSection_WithDataSection_AllSectionsSequential()
+        {
+            var program = string.Join("\n", [
+                ".text",
+                "  NOP",       // 0x00
+                ".data",
+                "  .byte #0xAB", // 0x01
+                ".irq",
+                "  RTI"          // 0x02 — irq placed after text + data
+            ]);
+
+            var bytes = AnalyserTestsHelper.AnalyseAndEmit(program);
+            var irqVectorTableAddress = new CPU.Config().IrqVectorTableAddress;
+            Assert.That(bytes[0], Is.EqualTo((byte)CPU.opcodes.OpcodeBaseCode.NOP));
+            Assert.That(bytes[1], Is.EqualTo(0xAB));
+            Assert.That(bytes[2], Is.EqualTo((byte)CPU.opcodes.OpcodeBaseCode.RTI));
+            Assert.That(bytes[irqVectorTableAddress], Is.EqualTo(0x02)); // vector table points to irq start at 0x02
+        }
+
+        [Test]
+        public void IrqSection_HandlerLargerThanOldLimit_AssemblesCorrectly()
+        {
+            // Old IrqSectionSize was 16 bytes; this handler is 18 bytes (17 NOPs + RTI)
+            var instructions = string.Join("\n", Enumerable.Repeat("  NOP", 17).Append("  RTI"));
+            var program = ".irq\n" + instructions;
+
+            var bytes = AnalyserTestsHelper.AnalyseAndEmit(program);
+            var irqVectorTableAddress = new CPU.Config().IrqVectorTableAddress;
+            Assert.That(bytes[0], Is.EqualTo((byte)CPU.opcodes.OpcodeBaseCode.NOP));
+            Assert.That(bytes[17], Is.EqualTo((byte)CPU.opcodes.OpcodeBaseCode.RTI));
+            Assert.That(bytes[irqVectorTableAddress], Is.EqualTo(0x00)); // vector table points to handler at 0x00
         }
 
         [TestCase("SEI", (byte)CPU.opcodes.OpcodeBaseCode.SEI)]

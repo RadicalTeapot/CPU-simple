@@ -2416,20 +2416,22 @@ namespace CPU.Tests
             var state = new State(4);
             var stack = new components.Stack(16);
             var memory = new Memory(232); // 256 - 16 (stack) - 8 (MMIO) = 232 main memory
-            var irqVectorAddress = 232 - Config.IrqSectionSize; // 224 = 0xE0
-            var cpu = new CPU(state, stack, memory, irqVectorAddress);
+            var irqVectorTableAddress = 232 - Config.VectorTableSize; // 231 = 0xE7
+            var handlerAddress = 0x10;
+            var cpu = new CPU(state, stack, memory, irqVectorTableAddress);
 
             // Place NOP at 0x00 and HLT at 0x01
             memory.LoadBytes(0, [(byte)OpcodeBaseCode.NOP, (byte)OpcodeBaseCode.HLT]);
-            // Place RTI at IRQ vector address
-            memory.LoadBytes(irqVectorAddress, [(byte)OpcodeBaseCode.RTI]);
+            // Place RTI at handler address and vector table entry pointing to it
+            memory.LoadBytes(handlerAddress, [(byte)OpcodeBaseCode.RTI]);
+            memory.LoadBytes(irqVectorTableAddress, [(byte)handlerAddress]);
 
             cpu.RequestInterrupt();
 
             // Execute the NOP (fetch phase will see the pending interrupt instead)
-            cpu.Step(); // ISR: pushes status + PC, jumps to IRQ vector
+            cpu.Step(); // ISR: pushes status + PC, reads vector table, jumps to handler
 
-            Assert.That(state.GetPC(), Is.EqualTo(irqVectorAddress), "PC should be at IRQ vector address");
+            Assert.That(state.GetPC(), Is.EqualTo(handlerAddress), "PC should be at handler address from vector table");
             Assert.That(state.I, Is.True, "Interrupt disable flag should be auto-set on interrupt entry");
         }
 
@@ -2439,8 +2441,8 @@ namespace CPU.Tests
             var state = new State(4);
             var stack = new components.Stack(16);
             var memory = new Memory(232);
-            var irqVectorAddress = 232 - Config.IrqSectionSize;
-            var cpu = new CPU(state, stack, memory, irqVectorAddress);
+            var irqVectorTableAddress = 232 - Config.VectorTableSize;
+            var cpu = new CPU(state, stack, memory, irqVectorTableAddress);
 
             memory.LoadBytes(0, [(byte)OpcodeBaseCode.NOP, (byte)OpcodeBaseCode.HLT]);
 
@@ -2458,8 +2460,9 @@ namespace CPU.Tests
             var state = new State(4);
             var stack = new components.Stack(16);
             var memory = new Memory(232);
-            var irqVectorAddress = 232 - Config.IrqSectionSize;
-            var cpu = new CPU(state, stack, memory, irqVectorAddress);
+            var irqVectorTableAddress = 232 - Config.VectorTableSize;
+            var handlerAddress = 0x10;
+            var cpu = new CPU(state, stack, memory, irqVectorTableAddress);
 
             // SEI, CLI, NOP — interrupt requested while I is set, should fire after CLI
             memory.LoadBytes(0, [
@@ -2467,7 +2470,8 @@ namespace CPU.Tests
                 (byte)OpcodeBaseCode.CLI,
                 (byte)OpcodeBaseCode.NOP
             ]);
-            memory.LoadBytes(irqVectorAddress, [(byte)OpcodeBaseCode.RTI]);
+            memory.LoadBytes(handlerAddress, [(byte)OpcodeBaseCode.RTI]);
+            memory.LoadBytes(irqVectorTableAddress, [(byte)handlerAddress]);
 
             cpu.Step(); // SEI
             Assert.That(state.I, Is.True);
@@ -2477,7 +2481,7 @@ namespace CPU.Tests
             Assert.That(state.I, Is.False);
 
             cpu.Step(); // ISR fires (interrupt was pending, I now clear)
-            Assert.That(state.GetPC(), Is.EqualTo(irqVectorAddress), "PC should jump to IRQ vector after CLI enables interrupts");
+            Assert.That(state.GetPC(), Is.EqualTo(handlerAddress), "PC should jump to handler address from vector table");
             Assert.That(state.I, Is.True, "I flag should be auto-set by ISR");
         }
 
@@ -2487,13 +2491,15 @@ namespace CPU.Tests
             var state = new State(4);
             var stack = new components.Stack(16);
             var memory = new Memory(232);
-            var irqVectorAddress = 232 - Config.IrqSectionSize;
-            var cpu = new CPU(state, stack, memory, irqVectorAddress);
+            var irqVectorTableAddress = 232 - Config.VectorTableSize;
+            var handlerAddress = 0x10;
+            var cpu = new CPU(state, stack, memory, irqVectorTableAddress);
 
             // Program: NOP, HLT at 0x00-0x01
-            // IRQ handler: RTI at irqVectorAddress
+            // IRQ handler: RTI at handlerAddress; vector table points to handlerAddress
             memory.LoadBytes(0, [(byte)OpcodeBaseCode.NOP, (byte)OpcodeBaseCode.HLT]);
-            memory.LoadBytes(irqVectorAddress, [(byte)OpcodeBaseCode.RTI]);
+            memory.LoadBytes(handlerAddress, [(byte)OpcodeBaseCode.RTI]);
+            memory.LoadBytes(irqVectorTableAddress, [(byte)handlerAddress]);
 
             // Set some flags before interrupt
             state.SetZeroFlag(true);
@@ -2501,15 +2507,46 @@ namespace CPU.Tests
 
             cpu.RequestInterrupt();
 
-            cpu.Step(); // ISR: pushes flags (Z=1,C=1,I=0 → 0x03) + PC (0x00), jumps to IRQ vector, sets I
+            cpu.Step(); // ISR: pushes flags (Z=1,C=1,I=0 → 0x03) + PC (0x00), reads vector table, jumps to handler
             Assert.That(state.I, Is.True);
-            Assert.That(state.GetPC(), Is.EqualTo(irqVectorAddress));
+            Assert.That(state.GetPC(), Is.EqualTo(handlerAddress));
 
             cpu.Step(); // RTI: pops PC (0x00), pops status (0x03), restores Z=1,C=1,I=0
             Assert.That(state.GetPC(), Is.EqualTo(0x00), "PC should be restored to original value after RTI");
             Assert.That(state.Z, Is.True, "Zero flag should be restored after RTI");
             Assert.That(state.C, Is.True, "Carry flag should be restored after RTI");
             Assert.That(state.I, Is.False, "Interrupt disable flag should be restored after RTI");
+        }
+
+        [Test]
+        public void Interrupt_VectorTable_IsReadIndirectly()
+        {
+            var state = new State(4);
+            var stack = new components.Stack(16);
+            var memory = new Memory(232);
+            var irqVectorTableAddress = 232 - Config.VectorTableSize;
+            var handlerA = 0x10;
+            var handlerB = 0x20;
+            var cpu = new CPU(state, stack, memory, irqVectorTableAddress);
+
+            memory.LoadBytes(handlerA, [(byte)OpcodeBaseCode.RTI]);
+            memory.LoadBytes(handlerB, [(byte)OpcodeBaseCode.RTI]);
+            memory.LoadBytes(0, [(byte)OpcodeBaseCode.NOP]);
+
+            // First interrupt: table points to handler A
+            memory.LoadBytes(irqVectorTableAddress, [(byte)handlerA]);
+            cpu.RequestInterrupt();
+            cpu.Step(); // ISR reads table → jumps to A
+            Assert.That(state.GetPC(), Is.EqualTo(handlerA));
+
+            cpu.Step(); // RTI: return to main program
+            state.SetInterruptDisableFlag(false);
+
+            // Second interrupt: table updated to point to handler B
+            memory.LoadBytes(irqVectorTableAddress, [(byte)handlerB]);
+            cpu.RequestInterrupt();
+            cpu.Step(); // ISR reads table → jumps to B
+            Assert.That(state.GetPC(), Is.EqualTo(handlerB));
         }
     }
 }
