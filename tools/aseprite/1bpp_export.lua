@@ -17,7 +17,7 @@ local function get1bppTileData(img, x, y, gridSize)
         for xoff = 0, gridSize - 1 do
             local pix = img:getPixel(x * gridSize + xoff, y * gridSize + yoff)
             local bit = (pix ~= 0) and 1 or 0
-            byte = byte | (bit << xoff)
+            byte = byte | (bit << (gridSize - 1 - xoff)) -- MSB first
         end
         values[yoff + 1] = byte
     end

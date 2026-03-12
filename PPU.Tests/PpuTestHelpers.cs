@@ -35,6 +35,15 @@ namespace PPU.Tests
             return new ChrRom(config, data);
         }
 
+        public static ChrRom CreateChrRom(PpuConfig config, string chrromPath)
+        {
+            var size = config.BytesPerTile * config.ChrCount;
+            var data = File.ReadAllBytes(chrromPath);
+            if (data.Length != size)
+                throw new ArgumentException($"CHR ROM file size does not match expected size: {size} bytes.");
+            return new ChrRom(config, data);
+        }
+
         public static ChrRom CreateChrRomWithTile(PpuConfig config, int tileIndex, byte[] rowBytes)
         {
             var size = config.BytesPerTile * config.ChrCount;

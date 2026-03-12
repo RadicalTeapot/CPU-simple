@@ -34,19 +34,9 @@ namespace PPU.Tests
         public void Raylib_Framebuffer()
         {
             var config = PpuTestHelpers.CreateMinimalConfig();
+            var path = "../../../../data/ppu_chrrom/default.rom";
+            var chrRom = PpuTestHelpers.CreateChrRom(config, path);
 
-            // Build tile data: tile 0 = blank, tile 1 = checkerboard, tile 2 = solid
-            var tileData = new byte[config.BytesPerTile * config.ChrCount];
-            var tile1 = 1 * config.BytesPerTile;
-            var tile2 = 2 * config.BytesPerTile;
-            for (var row = 0; row < config.TileSize; row++)
-            {
-                tileData[tile1 + row] = (byte)(row % 2 == 0 ? 0xAA : 0x55);
-                tileData[tile2 + row] = 0xFF;
-            }
-            var chrRom = PpuTestHelpers.CreateChrRom(config, tileData);
-
-            // Fill VRAM tilemap: solid border (tile 2), checkerboard interior (tile 1)
             var vram = new Vram(config);
             for (var row = 0; row < config.TilemapHeight; row++)
             {
@@ -54,7 +44,7 @@ namespace PPU.Tests
                 {
                     var border = row == 0 || row == config.TilemapHeight - 1
                                || col == 0 || col == config.TilemapWidth - 1;
-                    vram.Write(config.VramLayout.GetTileAddress(col, row), (byte)(border ? 2 : 1));
+                    vram.Write(config.VramLayout.GetTileAddress(col, row), (byte)(row * config.TilemapWidth + col));
                 }
             }
 
@@ -68,9 +58,9 @@ namespace PPU.Tests
             var pixels = framebuffer.AsReadOnly();
             var colors = new Color[pixels.Count];
             for (var i = 0; i < pixels.Count; i++)
-                colors[i] = pixels[i] != 0 ? Color.Black : Color.RayWhite;
+                colors[i] = pixels[i] != 0 ? Color.RayWhite : Color.Black;
 
-            const int scale = 8;
+            const int scale = 4;
             InitWindow(config.ScreenWidth * scale, config.ScreenHeight * scale, "PPU Framebuffer");
             SetTargetFPS(60);
 

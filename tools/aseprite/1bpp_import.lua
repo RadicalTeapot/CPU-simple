@@ -68,7 +68,7 @@ local function createIndexedSpriteFromRom(data, gridSize, gridRows)
       offset = offset + 1
 
       for xoff = 0, gridSize - 1 do
-        local bit = (byte >> xoff) & 1
+        local bit = (byte >> (gridSize - 1 - xoff)) & 1 -- MSB first
         local colorIndex = (bit ~= 0) and 1 or 0
 
         img:putPixel(
