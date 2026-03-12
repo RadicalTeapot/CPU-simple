@@ -18,6 +18,7 @@ namespace Backend.Tests
 
     internal class TestOutput : IOutput
     {
+        public bool StatusSuppressed { get; set; }
         public List<CpuInspector> StatusWrites { get; } = [];
         public List<byte[]> MemoryDumps { get; } = [];
         public List<byte[]> StackDumps { get; } = [];

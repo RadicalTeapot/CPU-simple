@@ -98,6 +98,8 @@ The Backend accesses traces only via `GetInspector()` — it never touches `Tick
 
 `ConsoleOutput.WriteStatus` in `Backend/IO/IOutput.cs` serialises each `TickTrace` into a JSON object within the `traces` array of the `status` message.
 
+**Windowed mode suppression**: In windowed mode (`--vram SIZE`), `BackendApplication` sets `IOutput.StatusSuppressed = true` around each `TickFrame()` call. `ConsoleOutput.WriteStatus()` early-returns when this flag is true, avoiding ~230 K JSON messages/second that would saturate stdout. Event outputs (`WriteBreakpointHit`, `WriteWatchpointHit`) are never suppressed — they still flow through even in windowed mode.
+
 Relevant JSON fields per trace:
 
 | JSON field | Source |

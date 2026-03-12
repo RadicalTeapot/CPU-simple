@@ -10,19 +10,21 @@ namespace PPU
     {
         public IMmioDevice Registers => _registers;
         public event Action? VBlankStarted;
+        public event Action<IReadOnlyList<byte>>? FrameReady;
 
         public Ppu(PpuConfig config, ChrRom rom)
         {
             _config = config;
+            _rgbBuffer = new byte[config.ScreenWidth * config.ScreenHeight * 3];
 
             var vram = new Vram(config);
             _registers = new PpuRegisters(vram);
-            var renderer = new Renderer(config, vram, rom, _registers);
+            _renderer = new Renderer(config, vram, rom, _registers);
 
             // Setup the state machine for scanline ticking
             _vBlankState = new VBlankState(config, _registers);
-            _renderState = new RenderState(config, renderer);
-            _vBlankState.VBlankStarted += () => VBlankStarted?.Invoke();
+            _renderState = new RenderState(config, _renderer);
+            _vBlankState.VBlankStarted += OnVBlankStarted;
             _vBlankState.SetNextState(_renderState);
             _renderState.SetNextState(_vBlankState);
             _currentState = _renderState;
@@ -44,11 +46,33 @@ namespace PPU
         }
 
 
+        private void OnVBlankStarted()
+        {
+            VBlankStarted?.Invoke();
+            ConvertFramebufferToRgb();
+            FrameReady?.Invoke(_rgbBuffer);
+        }
+
+        private void ConvertFramebufferToRgb()
+        {
+            var pixels = _renderer.ReadOnlyPixels;
+            for (int i = 0; i < pixels.Count; i++)
+            {
+                byte rgb = pixels[i] == 0 ? (byte)0 : (byte)255;
+                int offset = i * 3;
+                _rgbBuffer[offset] = rgb;
+                _rgbBuffer[offset + 1] = rgb;
+                _rgbBuffer[offset + 2] = rgb;
+            }
+        }
+
         private int _scanlineCycle;
         private IScanlineTickState _currentState;
 
         private readonly PpuConfig _config;
         private readonly PpuRegisters _registers;
+        private readonly Renderer _renderer;
+        private readonly byte[] _rgbBuffer;
 
         private readonly VBlankState _vBlankState;
         private readonly RenderState _renderState;

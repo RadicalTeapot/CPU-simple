@@ -1,4 +1,5 @@
 ﻿using Backend.IO;
+using PPU.Configuration;
 
 namespace Backend
 {
@@ -7,7 +8,7 @@ namespace Backend
         public static int Main(string[] args)
         {
             var logger = new ConsoleLogger();
-            var code = ParseArgs(args, logger, out var config);
+            var code = ParseArgs(args, logger, out var config, out int scale);
             switch (code)
             {
                 case HelpExitCode:
@@ -18,18 +19,20 @@ namespace Backend
                     return InvalidArgExitCode;
             }
 
-            var application = new BackendApplication(logger, new ConsoleInput(), new ConsoleOutput(), config);
+            PpuConfig? ppuConfig = config.VramSize > 0 ? PpuConfig.Minimal8Bit : null;
+            var application = new BackendApplication(logger, new ConsoleInput(), new ConsoleOutput(), config, ppuConfig, scale);
             return application.Run();
         }
 
-        internal static int ParseArgs(string[] args, ILogger logger, out CPU.Config config)
+        internal static int ParseArgs(string[] args, ILogger logger, out CPU.Config config, out int scale)
         {
             int memorySize = DefaultMemorySize;
             int stackSize = DefaultStackSize;
             int registerCount = DefaultRegisterCount;
             int vramSize = DefaultVramSize;
+            scale = DefaultScale;
 
-            // backend [-m/--memory SIZE] [-s/--stack SIZE] [--registers COUNT] [--vram SIZE] [-h/--help]
+            // backend [-m/--memory SIZE] [-s/--stack SIZE] [--registers COUNT] [--vram SIZE] [--scale N] [-h/--help]
             for (int i = 0; i < args.Length; i++)
             {
                 switch (args[i])
@@ -88,6 +91,19 @@ namespace Backend
                             return InvalidArgExitCode;
                         }
                         break;
+                    case "--scale":
+                        if (i + 1 < args.Length && int.TryParse(args[i + 1], out scale))
+                        {
+                            logger.Log($"Display scale set to {scale}");
+                            i++;
+                        }
+                        else
+                        {
+                            logger.Error("Invalid scale specified.");
+                            config = default;
+                            return InvalidArgExitCode;
+                        }
+                        break;
                     case "-h":
                     case "--help":
                         config = default;
@@ -106,6 +122,7 @@ namespace Backend
         private const int DefaultStackSize = 16;
         private const int DefaultRegisterCount = 4;
         private const int DefaultVramSize = 0;
+        private const int DefaultScale = 4;
         private const int HelpExitCode = 1;
         private const int InvalidArgExitCode = 2;
     }

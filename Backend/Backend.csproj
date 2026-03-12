@@ -5,6 +5,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Configurations>Debug;Release;DebugX16;ReleaseX16</Configurations>
     <StartupObject>Backend.Backend</StartupObject>
   </PropertyGroup>
@@ -19,6 +20,10 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Backend.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Raylib-cs" Version="7.0.2" />
   </ItemGroup>
 
   <ItemGroup>

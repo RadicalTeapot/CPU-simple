@@ -199,7 +199,7 @@ Flat `byte[]` of `ScreenWidth × ScreenHeight` pixels. One byte per pixel: `0` =
 
 ---
 
-### `Renderer` (class) — _new_
+### `Renderer` (class) — _implemented_
 
 Orchestrates frame-level rendering. Owned by `Ppu`. Manages the sequence of sprite evaluation and scanline rendering across all active scanlines.
 
@@ -207,7 +207,10 @@ State: current pre-evaluated `ActiveSprites` (built during the previous tile-row
 
 Key methods:
 - `void BeginFrame()` — clears `FrameBuffer`, resets internal scanline state.
-- `void RenderActiveScanline(int scanline, PpuRegisters vram, ChrRom chr)` — called by `Ppu` once per active scanline tick. When starting a new tile-row block (every 8th scanline), calls `SpriteEvaluator` to prepare sprites for the next tile-row. Calls `ScanlineRenderer` for the current scanline.
+- `void RenderScanline(int scanlineIndex, OamEntry[] nextScanlineSprites, Framebuffer buffer)` — called by `Ppu` once per active scanline tick. When starting a new tile-row block (every 8th scanline), calls `SpriteEvaluator` to prepare sprites for the next tile-row. Calls `ScanlineRenderer` for the current scanline.
+
+Exposed read access:
+- `IReadOnlyList<byte> ReadOnlyPixels` — **implemented**; provides read-only access to the completed framebuffer for RGB conversion in `Ppu.ConvertFramebufferToRgb()`.
 
 **Connects to**: `Ppu` (owned by, driven by the tick loop), `SpriteEvaluator`, `ScanlineRenderer`, `FrameBuffer`.
 
@@ -227,11 +230,12 @@ Key changes from the current skeleton:
 - When `_scanline` wraps back to `0`: call `_renderer.BeginFrame()`.
 - Build a `PpuTickTrace` each tick and store it in `LastTrace` for the Backend to collect.
 
-Properties exposed to Backend:
+Properties/events exposed to Backend:
 - `IMmioDevice Registers` — existing; wired into `BusDecoder`
 - `event Action? VBlankStarted` — existing; Backend wires to `cpu.RequestInterrupt()`
-- `FrameBuffer FrameBuffer` — new; read by `DumpPpu` command
-- `PpuTickTrace LastTrace` — new; read by `SimulationTicker` for watchpoint evaluation
+- `event Action<IReadOnlyList<byte>>? FrameReady` — **implemented**; fires after `VBlankStarted` with an RGB pixel buffer (`ScreenWidth × ScreenHeight × 3` bytes). The conversion (1bpp → monochrome RGB) lives in `ConvertFramebufferToRgb()`. Backend wires to `display.UpdateFrame(rgb)`.
+- `FrameBuffer FrameBuffer` — planned; read by `DumpPpu` command
+- `PpuTickTrace LastTrace` — planned; read by `SimulationTicker` for watchpoint evaluation
 
 **Connects to**: `CpuHandler` in Backend (created by), `VRam`, `PpuRegisters`, `Renderer`, `ChrRom`.
 
@@ -317,13 +321,37 @@ Add `SimulationTicker SimTicker` to the record. Executing states access `Context
 
 Accept `SimulationTicker` in the constructor; thread it into `CpuStateContext` via `GetContextForState()`.
 
-### `CpuHandler` — _modify_
+### `CpuHandler` — _modified_
 
-- Create `ChrRom` (using `ChrRom.Default`, or from a future `--chr PATH` argument).
-- Create `Ppu(PpuConfig.Minimal8Bit, chrRom)` instead of `Ppu(config.VramSize)`.
-- Create `PpuWatchpointContainer`.
-- Create `SimulationTicker(_cpu, _ppu, ppuWatchpoints)`.
-- Remove the `_ppu?.Tick()` call from `CpuHandler.Tick()` — PPU ticking is now fully inside `SimulationTicker`, which is called from within the state machine.
+**Implemented:**
+- Creates `ChrRom` with a correctly-sized zero-filled buffer at construction (placeholder until a `--chr PATH` argument is added).
+- Creates `Ppu(PpuConfig.Minimal8Bit, chrRom)` and stores `_ppuTickRatio = PpuCyclesPerCpuCycle`.
+- Subscribes `_ppu.FrameReady` and relays it as `public event Action<IReadOnlyList<byte>>? FrameReady` for `BackendApplication` to wire to the display.
+- `Tick()` ticks the PPU proportionally: `microTicks * _ppuTickRatio` times per state tick, where `microTicks` is the CPU trace count for executing states (approximating cycle count), or 1 for idle/halted/error states.
+- `TickFrame()` runs one full PPU frame's worth of state ticks (budget = `TotalScanlines × CyclesPerScanline / PpuCyclesPerCpuCycle`), stopping early if the CPU enters idle/halted/error state and completing remaining PPU ticks to ensure `FrameReady` fires.
+
+**Planned (not yet implemented):**
+- `PpuWatchpointContainer` and `SimulationTicker` — PPU watchpoints and true cycle-interleaved co-simulation remain future work.
+
+### `Display` — _new, implemented_
+
+`Backend/Display.cs` wraps the Raylib window lifecycle:
+- Constructor: `Display(int screenWidth, int screenHeight, int scale)` — calls `InitWindow`, allocates `Color[]` and `Texture2D`, sets 60fps target.
+- `void UpdateFrame(IReadOnlyList<byte> rgbPixels)` — converts RGB triplets to `Color[]` and calls `UpdateTexture`.
+- `void Render()` — `BeginDrawing` / `DrawTextureEx` (scaled) / `EndDrawing`.
+- `bool ShouldClose` — forwards `WindowShouldClose()`.
+- `IDisposable` — `UnloadTexture` + `CloseWindow`.
+- Default scale: 4 (128×104 → 512×416 for Minimal8Bit).
+
+### `BackendApplication` — _modified_
+
+`Run()` now dispatches to `RunHeadless()` or `RunWindowed()` based on whether a `Display` was created:
+- **Headless** (no `--vram`): original 10Hz `while(true)` loop, unchanged behaviour.
+- **Windowed** (`--vram SIZE`): Raylib-driven ~60fps loop. `DrainCommands()` processes all pending stdin commands each frame. `StatusSuppressed = true` is set around `TickFrame()` to suppress per-tick JSON status output (see Output section). `Display.Render()` updates the window. Quit (`q`/`quit`/`exit`) and Raylib window-close both exit cleanly.
+
+### `IOutput` / `ConsoleOutput` — _modified_
+
+`bool StatusSuppressed { get; set; }` added to `IOutput`. `ConsoleOutput.WriteStatus()` early-returns when `StatusSuppressed` is true. Only per-tick status is suppressed — event outputs (`WriteBreakpointHit`, `WriteWatchpointHit`) are never suppressed.
 
 ### `DumpPpu` (class) — _new global command_
 

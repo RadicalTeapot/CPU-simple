@@ -4,6 +4,7 @@ namespace Backend.IO
 {
     public interface IOutput
     {
+        bool StatusSuppressed { get; set; }
         void WriteStatus(CPU.CpuInspector inspector);
         void WriteMemoryDump(byte[] memoryDump);
         void WriteStackDump(byte[] stackDump);
@@ -16,8 +17,11 @@ namespace Backend.IO
     // Output is done on STDOUT
     internal class ConsoleOutput : IOutput
     {
+        public bool StatusSuppressed { get; set; }
+
         public void WriteStatus(CPU.CpuInspector inspector)
         {
+            if (StatusSuppressed) return;
             OutputData(new
             {
                 type = "status",

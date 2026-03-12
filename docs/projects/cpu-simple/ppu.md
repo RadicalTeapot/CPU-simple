@@ -318,8 +318,9 @@ After the last visible scanline (and the post-render idle line), the PPU enters 
 At the start of VBlank:
 1. The PPU sets the VBlank flag in PPUSTATUS.
 2. The PPU fires the `VBlankStarted` event; the Backend calls `cpu.RequestInterrupt()`.
-3. The CPU's ISR runs: uploads tile data, updates the tilemap, rewrites OAM.
-4. VBlank ends; the PPU clears the VBlank flag and resets to scanline 0.
+3. The PPU converts the completed framebuffer to RGB and fires `FrameReady` with the pixel data. The CPU gets the interrupt before the display reads the frame.
+4. The CPU's ISR runs: uploads tile data, updates the tilemap, rewrites OAM.
+5. VBlank ends; the PPU clears the VBlank flag and resets to scanline 0.
 
 ### Mid-frame register writes
 
@@ -558,15 +559,34 @@ The CPU and PPU run at independent clock rates. In real hardware these rates are
 Rather than two OS threads, the simulation uses a **single-threaded co-simulation loop**:
 
 ```csharp
-void TickBoth()
+// CpuHandler.Tick() — one CPU state tick + proportional PPU ticks
+void Tick()
 {
-    cpu.Tick();
-    for (int i = 0; i < config.PpuCyclesPerCpuCycle; i++)
+    var nextState = _currentState.Tick(); // may run 1 or more CPU micro-ticks
+    int microTicks = _currentState is ExecutingCpuState
+        ? Math.Max(1, _cpu.GetInspector().Traces.Length)
+        : 1;
+    for (int i = 0; i < microTicks * PpuCyclesPerCpuCycle; i++)
         ppu.Tick();
+    _currentState = nextState;
+}
+
+// CpuHandler.TickFrame() — runs a full PPU frame's worth of state ticks
+void TickFrame()
+{
+    int budget = (TotalScanlines * CyclesPerScanline) / PpuCyclesPerCpuCycle;
+    for (int i = 0; i < budget; i++)
+    {
+        Tick();
+        if (cpu is idle/halted/error) break;
+    }
+    // If CPU stopped early: tick remaining PPU cycles to fire FrameReady
 }
 ```
 
-There is no thread concurrency, so no data races and no synchronization primitives needed. VBlank is detected during `ppu.Tick()` and fires `VBlankStarted`, which the Backend wires to `cpu.RequestInterrupt()`.
+There is no thread concurrency, so no data races and no synchronization primitives needed. VBlank is detected during `ppu.Tick()` and fires `VBlankStarted`, which the Backend wires to `cpu.RequestInterrupt()`, and `FrameReady`, which the Backend wires to `display.UpdateFrame(rgb)`.
+
+**Note:** PPU ticks happen after the full CPU state tick rather than interleaved cycle-by-cycle. The total PPU tick count per state tick is proportional to the number of CPU micro-ticks that actually ran. This is an approximation — true cycle-interleaved co-simulation is a follow-up.
 
 ### VBlank interrupt: notification, not synchronization
 
@@ -574,13 +594,16 @@ The interrupt the PPU fires at the start of VBlank is a **notification** — it 
 
 ### VBlank notification: decoupling PPU from CPU
 
-The PPU does not hold a direct reference to the CPU. It exposes an event that the Backend subscribes to:
+The PPU does not hold a direct reference to the CPU or the display. It exposes events that the Backend subscribes to:
 
 ```csharp
 ppu.VBlankStarted += () => cpu.RequestInterrupt();
+ppu.FrameReady += rgb => display.UpdateFrame(rgb); // RGB pixel data: ScreenWidth × ScreenHeight × 3 bytes
 ```
 
 When `VBlankStarted` fires inside `ppu.Tick()`, `RequestInterrupt()` only sets a pending flag on the CPU. The flag is dispatched only at instruction boundaries — never mid-tick. Since `ppu.Tick()` is called between `cpu.Tick()` calls, there is no re-entrancy risk.
+
+`FrameReady` is fired immediately after `VBlankStarted`, delivering a `byte[]` of RGB triplets (one per pixel, 3 bytes per triplet). In the current 1bpp minimal configuration the RGB conversion is monochrome: pixel value `0` → `(0, 0, 0)`, any non-zero value → `(255, 255, 255)`. The conversion lives in `Ppu.ConvertFramebufferToRgb()` and is the extension point for colormaps in future configurations.
 
 ---
 

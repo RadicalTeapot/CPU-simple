@@ -5,6 +5,8 @@ namespace PPU.Rendering
 {
     internal class Renderer(PpuConfig config, Vram vram, ChrRom rom, PpuRegisters registers)
     {
+        public IReadOnlyList<byte> ReadOnlyPixels => _buffer.AsReadOnly();
+
         public void BeginFrame()
         {
             _buffer.Clear();

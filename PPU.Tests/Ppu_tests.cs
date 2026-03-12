@@ -144,5 +144,112 @@ namespace PPU.Tests
 
             Assert.That(vblankCount, Is.EqualTo(1));
         }
+
+        [Test]
+        public void FrameReady_FiredAtVBlankStart()
+        {
+            var config = PpuTestHelpers.CreateTickConfig();
+            var rom = PpuTestHelpers.CreateChrRom(config);
+            var ppu = new Ppu(config, rom);
+            bool frameReadyFired = false;
+            ppu.FrameReady += _ => frameReadyFired = true;
+
+            for (int i = 0; i < config.ScreenHeight; i++)
+                ppu.Tick();
+
+            Assert.That(frameReadyFired, Is.False);
+            ppu.Tick(); // VBlank entry tick
+            Assert.That(frameReadyFired, Is.True);
+        }
+
+        [Test]
+        public void FrameReady_FiredAfterVBlankStarted()
+        {
+            // VBlankStarted must fire before FrameReady so the CPU gets the interrupt first
+            var config = PpuTestHelpers.CreateTickConfig();
+            var rom = PpuTestHelpers.CreateChrRom(config);
+            var ppu = new Ppu(config, rom);
+            bool vblankFired = false;
+            bool vblankWasFirstToFire = false;
+            ppu.VBlankStarted += () => vblankFired = true;
+            ppu.FrameReady += _ => vblankWasFirstToFire = vblankFired;
+
+            for (int i = 0; i < config.ScreenHeight + 1; i++)
+                ppu.Tick();
+
+            Assert.That(vblankWasFirstToFire, Is.True);
+        }
+
+        [Test]
+        public void FrameReady_RgbDataLength_MatchesScreenDimensions()
+        {
+            var config = PpuTestHelpers.CreateTickConfig();
+            var rom = PpuTestHelpers.CreateChrRom(config);
+            var ppu = new Ppu(config, rom);
+            IReadOnlyList<byte>? rgbData = null;
+            ppu.FrameReady += rgb => rgbData = rgb;
+
+            for (int i = 0; i < config.ScreenHeight + 1; i++)
+                ppu.Tick();
+
+            Assert.That(rgbData, Is.Not.Null);
+            Assert.That(rgbData!.Count, Is.EqualTo(config.ScreenWidth * config.ScreenHeight * 3));
+        }
+
+        [Test]
+        public void FrameReady_AllBlackPixels_AllZeroRgb()
+        {
+            // Empty CHR ROM → all pixel values 0 → RGB (0, 0, 0)
+            var config = PpuTestHelpers.CreateTickConfig();
+            var rom = PpuTestHelpers.CreateChrRom(config); // all zeros
+            var ppu = new Ppu(config, rom);
+            IReadOnlyList<byte>? rgbData = null;
+            ppu.FrameReady += rgb => rgbData = rgb;
+
+            for (int i = 0; i < config.ScreenHeight + 1; i++)
+                ppu.Tick();
+
+            Assert.That(rgbData, Is.Not.Null);
+            Assert.That(rgbData!.All(b => b == 0), Is.True);
+        }
+
+        [Test]
+        public void FrameReady_AllWhitePixels_AllMaxRgb()
+        {
+            // CHR ROM tile 0 all 0xFF → all pixel values 1 → RGB (255, 255, 255)
+            var config = PpuTestHelpers.CreateTickConfig();
+            var rom = PpuTestHelpers.CreateChrRomWithTile(config, 0,
+                [0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF]);
+            var ppu = new Ppu(config, rom);
+            IReadOnlyList<byte>? rgbData = null;
+            ppu.FrameReady += rgb => rgbData = rgb;
+
+            for (int i = 0; i < config.ScreenHeight + 1; i++)
+                ppu.Tick();
+
+            Assert.That(rgbData, Is.Not.Null);
+            Assert.That(rgbData!.All(b => b == 255), Is.True);
+        }
+
+        [Test]
+        public void FrameReady_FiredOncePerFrame()
+        {
+            var config = PpuTestHelpers.CreateTickConfig();
+            var rom = PpuTestHelpers.CreateChrRom(config);
+            var ppu = new Ppu(config, rom);
+            int frameCount = 0;
+            ppu.FrameReady += _ => frameCount++;
+
+            int totalFirstFrame = config.ScreenHeight + 1 + config.VBlankScanlineCount;
+            for (int i = 0; i < totalFirstFrame; i++)
+                ppu.Tick();
+
+            Assert.That(frameCount, Is.EqualTo(1));
+
+            for (int i = 0; i < config.ScreenHeight + 1; i++)
+                ppu.Tick();
+
+            Assert.That(frameCount, Is.EqualTo(2));
+        }
     }
 }

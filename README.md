@@ -50,8 +50,14 @@ dotnet test cpu-simple.sln -c Debug
 ### Run the backend
 
 ```pwsh
-# Run the Main project
+# Run the backend (headless, 10Hz)
 dotnet run --project Backend/Backend.csproj
+
+# Run the backend with PPU rendering window (60fps, default scale 4×)
+dotnet run --project Backend/Backend.csproj -- --vram 256
+
+# Run with custom scale
+dotnet run --project Backend/Backend.csproj -- --vram 256 --scale 2
 ```
 
 ### Generate the treesitter grammar
@@ -160,7 +166,9 @@ I did review and tested the code but exercise caution when using it.
   - [ ] When assembled, if sidebar was never opened, open the configured panels, otherwise just re-open sidebar
   - [ ] Test if assembler errors are handled
 - [ ] Implement PPU and map some memory for it
-   - [ ] Remove the `NullMmioDevice` in CPU in favor of an empty `MmioRouter`
+   - [ ] Rename Backend to Emulator.
+   - [ ] What about PPU micro-code?
+   - [ ] Check if it would make more sense to diminish the per-tick status rather than suppressing it entirely in windowed mode
    - [ ] Use `#if x16` to change assumption that sprites are tiled aligned where needed for 16bit build
    - [ ] Use vector lookup table for IRQ address
 - [ ] Implement sound chip and map some memory for it too (for 16-bit version)
