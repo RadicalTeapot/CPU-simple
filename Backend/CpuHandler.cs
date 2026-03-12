@@ -13,15 +13,16 @@ namespace Backend
     {
         public event Action<IReadOnlyList<byte>>? FrameReady;
 
-        public CpuHandler(Config config, IOutput output, ILogger logger, StateCommandRegistry cpuCommandRegistry)
+        public CpuHandler(Config config, IOutput output, ILogger logger, StateCommandRegistry cpuCommandRegistry,
+            PpuConfig? ppuConfig = null, IReadOnlyList<byte>? chrData = null)
         {
             _logger = logger;
             _output = output;
-            if (config.VramSize > 0)
+            if (ppuConfig != null)
             {
-                _ppuConfig = PpuConfig.Minimal8Bit;
+                _ppuConfig = ppuConfig;
                 _ppuTickRatio = _ppuConfig.PpuCyclesPerCpuCycle;
-                _ppu = new PPU.Ppu(_ppuConfig, new PPU.Storage.ChrRom(_ppuConfig, new byte[_ppuConfig.BytesPerTile * _ppuConfig.ChrCount])); // TODO fill in the CHR ROM
+                _ppu = new PPU.Ppu(_ppuConfig, chrData);
                 var mmioRouter = new MmioRouter();
                 mmioRouter.Register(0x00, 0x03, _ppu.Registers);
                 _cpu = new CPU.CPU(config, mmioRouter);

@@ -8,7 +8,7 @@ namespace Backend
         public static int Main(string[] args)
         {
             var logger = new ConsoleLogger();
-            var code = ParseArgs(args, logger, out var config, out int scale);
+            var code = ParseArgs(args, logger, out var config, out var scale, out var chrPath);
             switch (code)
             {
                 case HelpExitCode:
@@ -19,21 +19,33 @@ namespace Backend
                     return InvalidArgExitCode;
             }
 
-            PpuConfig? ppuConfig = config.VramSize > 0 ? PpuConfig.Minimal8Bit : null;
-            var application = new BackendApplication(logger, new ConsoleInput(), new ConsoleOutput(), config, ppuConfig, scale);
+            byte[]? chrData = null;
+            if (chrPath != null)
+            {
+                if (!File.Exists(chrPath))
+                {
+                    logger.Error($"CHR ROM file not found: {chrPath}");
+                    return InvalidArgExitCode;
+                }
+                chrData = File.ReadAllBytes(chrPath);
+            }
+
+            var ppuConfig = config.VramSize > 0 ? PpuConfig.Minimal8Bit : null;
+            var application = new BackendApplication(logger, new ConsoleInput(), new ConsoleOutput(), config, ppuConfig, scale, chrData);
             return application.Run();
         }
 
-        internal static int ParseArgs(string[] args, ILogger logger, out CPU.Config config, out int scale)
+        internal static int ParseArgs(string[] args, ILogger logger, out CPU.Config config, out int scale, out string? chrPath)
         {
-            int memorySize = DefaultMemorySize;
-            int stackSize = DefaultStackSize;
-            int registerCount = DefaultRegisterCount;
-            int vramSize = DefaultVramSize;
+            var memorySize = DefaultMemorySize;
+            var stackSize = DefaultStackSize;
+            var registerCount = DefaultRegisterCount;
+            var vramSize = DefaultVramSize;
             scale = DefaultScale;
+            chrPath = null;
 
-            // backend [-m/--memory SIZE] [-s/--stack SIZE] [--registers COUNT] [--vram SIZE] [--scale N] [-h/--help]
-            for (int i = 0; i < args.Length; i++)
+            // backend [-m/--memory SIZE] [-s/--stack SIZE] [--registers COUNT] [--vram SIZE] [--scale N] [--chr PATH] [-h/--help]
+            for (var i = 0; i < args.Length; i++)
             {
                 switch (args[i])
                 {
@@ -100,6 +112,18 @@ namespace Backend
                         else
                         {
                             logger.Error("Invalid scale specified.");
+                            config = default;
+                            return InvalidArgExitCode;
+                        }
+                        break;
+                    case "--chr":
+                        if (i + 1 < args.Length)
+                        {
+                            chrPath = args[++i];
+                        }
+                        else
+                        {
+                            logger.Error("No path specified for --chr.");
                             config = default;
                             return InvalidArgExitCode;
                         }

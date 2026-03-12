@@ -9,21 +9,21 @@ namespace Backend
     public class BackendApplication
     {
         public BackendApplication(ILogger logger, IInput input, IOutput output, CPU.Config cpuConfig,
-            PpuConfig? ppuConfig = null, int displayScale = 4)
+            PpuConfig? ppuConfig = null, int displayScale = 4, IReadOnlyList<byte>? chrData = null)
         {
             _logger = logger;
             _output = output;
 
             _globalCommandRegistry = new GlobalCommandRegistry();
             _stateCommandRegistry = new StateCommandRegistry();
-            _cpuHandler = new CpuHandler(cpuConfig, output, logger, _stateCommandRegistry);
+            _cpuHandler = new CpuHandler(cpuConfig, output, logger, _stateCommandRegistry, ppuConfig, chrData);
             _commandReader = new CommandReader(input, _logger);
 
-            if (ppuConfig != null)
-            {
-                _display = new Display(ppuConfig.ScreenWidth, ppuConfig.ScreenHeight, displayScale);
-                _cpuHandler.FrameReady += _display.UpdateFrame;
-            }
+            if (ppuConfig == null)
+                return;
+            
+            _display = new Display(ppuConfig.ScreenWidth, ppuConfig.ScreenHeight, displayScale);
+            _cpuHandler.FrameReady += _display.UpdateFrame;
         }
 
         public int Run()
@@ -47,7 +47,7 @@ namespace Backend
 
         private int RunWindowed()
         {
-            while (!_display!.ShouldClose && !_quitRequested)
+            while (!Display.ShouldClose && !_quitRequested)
             {
                 if (DrainCommands()) break;
                 _output.StatusSuppressed = true;
@@ -101,7 +101,7 @@ namespace Backend
 
         private bool TryParseCommand(out ParsedCommand? parsedCommand)
         {
-            parsedCommand = default;
+            parsedCommand = null;
             if (!_commandReader.TryGetCommand(out var command)) return false;
             if (string.IsNullOrEmpty(command)) return false;
 

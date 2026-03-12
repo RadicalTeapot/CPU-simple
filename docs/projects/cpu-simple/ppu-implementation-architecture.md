@@ -220,7 +220,7 @@ Exposed read access:
 
 Top-level PPU class. Currently has hardcoded timing constants and no rendering. After the rewrite:
 
-Constructor: `Ppu(PpuConfig config, ChrRom chr)` — creates `VRam(config.Layout.TotalSize)`, then builds `PpuRegisters(config, vram)` and `Renderer(config, vram)` internally.
+Constructor: `Ppu(PpuConfig config, IReadOnlyList<byte>? chrData = null)` — creates `ChrRom` internally from `chrData` (zero-filled if null), then creates `VRam(config.Layout.TotalSize)`, `PpuRegisters(config, vram)`, and `Renderer(config, vram, chrRom)` internally.
 
 Key changes from the current skeleton:
 - Replace the three `const int` timing constants with properties from `_config`.
@@ -237,7 +237,7 @@ Properties/events exposed to Backend:
 - `FrameBuffer FrameBuffer` — planned; read by `DumpPpu` command
 - `PpuTickTrace LastTrace` — planned; read by `SimulationTicker` for watchpoint evaluation
 
-**Connects to**: `CpuHandler` in Backend (created by), `VRam`, `PpuRegisters`, `Renderer`, `ChrRom`.
+**Connects to**: `CpuHandler` in Backend (created by), `VRam`, `PpuRegisters`, `Renderer`. (`ChrRom` is an internal implementation detail, not visible to callers.)
 
 ---
 
@@ -324,8 +324,8 @@ Accept `SimulationTicker` in the constructor; thread it into `CpuStateContext` v
 ### `CpuHandler` — _modified_
 
 **Implemented:**
-- Creates `ChrRom` with a correctly-sized zero-filled buffer at construction (placeholder until a `--chr PATH` argument is added).
-- Creates `Ppu(PpuConfig.Minimal8Bit, chrRom)` and stores `_ppuTickRatio = PpuCyclesPerCpuCycle`.
+- Constructor accepts `PpuConfig? ppuConfig = null` and `IReadOnlyList<byte>? chrData = null`. The PPU is created when `ppuConfig != null`; `chrData` is forwarded to `Ppu` (zero-filled internally if null).
+- Creates `Ppu(ppuConfig, chrData)` and stores `_ppuTickRatio = PpuCyclesPerCpuCycle`.
 - Subscribes `_ppu.FrameReady` and relays it as `public event Action<IReadOnlyList<byte>>? FrameReady` for `BackendApplication` to wire to the display.
 - `Tick()` ticks the PPU proportionally: `microTicks * _ppuTickRatio` times per state tick, where `microTicks` is the CPU trace count for executing states (approximating cycle count), or 1 for idle/halted/error states.
 - `TickFrame()` runs one full PPU frame's worth of state ticks (budget = `TotalScanlines × CyclesPerScanline / PpuCyclesPerCpuCycle`), stopping early if the CPU enters idle/halted/error state and completing remaining PPU ticks to ensure `FrameReady` fires.

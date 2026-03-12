@@ -1,5 +1,4 @@
 using PPU.Configuration;
-using PPU.Storage;
 
 namespace PPU.Tests
 {
@@ -10,8 +9,7 @@ namespace PPU.Tests
         public void Tick_ReturnsTickResult()
         {
             var config = PpuTestHelpers.CreateTickConfig();
-            var rom = PpuTestHelpers.CreateChrRom(config);
-            var ppu = new Ppu(config, rom);
+            var ppu = new Ppu(config);
             var result = ppu.Tick();
             Assert.That(result, Is.InstanceOf<PPU.DebuggerInteraction.PpuTickResult>());
         }
@@ -20,8 +18,7 @@ namespace PPU.Tests
         public void Registers_ReturnsIMmioDevice()
         {
             var config = PpuTestHelpers.CreateTickConfig();
-            var rom = PpuTestHelpers.CreateChrRom(config);
-            var ppu = new Ppu(config, rom);
+            var ppu = new Ppu(config);
             Assert.That(ppu.Registers, Is.Not.Null);
         }
 
@@ -36,8 +33,7 @@ namespace PPU.Tests
             // Ticks 1-8: render scanlines 0-7.
             // Tick 9: scanline=8==ScreenHeight → VBlank.Enter + VBlank.Tick
             var config = PpuTestHelpers.CreateTickConfig();
-            var rom = PpuTestHelpers.CreateChrRom(config);
-            var ppu = new Ppu(config, rom);
+            var ppu = new Ppu(config);
             var vblankFired = false;
             ppu.VBlankStarted += () => vblankFired = true;
             int renderTicks = config.ScreenHeight; // 8
@@ -56,8 +52,7 @@ namespace PPU.Tests
         public void Tick_VBlank_SetsVBlankActive()
         {
             var config = PpuTestHelpers.CreateTickConfig();
-            var rom = PpuTestHelpers.CreateChrRom(config);
-            var ppu = new Ppu(config, rom);
+            var ppu = new Ppu(config);
 
             // Tick through render + into VBlank
             for (int i = 0; i < config.ScreenHeight + 1; i++)
@@ -79,8 +74,7 @@ namespace PPU.Tests
             // ...
 
             var config = PpuTestHelpers.CreateTickConfig();
-            var rom = PpuTestHelpers.CreateChrRom(config);
-            var ppu = new Ppu(config, rom);
+            var ppu = new Ppu(config);
             var vblankCount = 0;
             ppu.VBlankStarted += () => vblankCount++;
 
@@ -106,8 +100,7 @@ namespace PPU.Tests
         public void Tick_FullCycle_ReturnsToRendering()
         {
             var config = PpuTestHelpers.CreateTickConfig();
-            var rom = PpuTestHelpers.CreateChrRom(config);
-            var ppu = new Ppu(config, rom);
+            var ppu = new Ppu(config);
             var vblankCount = 0;
             ppu.VBlankStarted += () => vblankCount++;
 
@@ -132,8 +125,7 @@ namespace PPU.Tests
         public void VBlankStarted_FiredOnlyOncePerFrame()
         {
             var config = PpuTestHelpers.CreateTickConfig();
-            var rom = PpuTestHelpers.CreateChrRom(config);
-            var ppu = new Ppu(config, rom);
+            var ppu = new Ppu(config);
             var vblankCount = 0;
             ppu.VBlankStarted += () => vblankCount++;
 
@@ -149,8 +141,7 @@ namespace PPU.Tests
         public void FrameReady_FiredAtVBlankStart()
         {
             var config = PpuTestHelpers.CreateTickConfig();
-            var rom = PpuTestHelpers.CreateChrRom(config);
-            var ppu = new Ppu(config, rom);
+            var ppu = new Ppu(config);
             bool frameReadyFired = false;
             ppu.FrameReady += _ => frameReadyFired = true;
 
@@ -167,8 +158,7 @@ namespace PPU.Tests
         {
             // VBlankStarted must fire before FrameReady so the CPU gets the interrupt first
             var config = PpuTestHelpers.CreateTickConfig();
-            var rom = PpuTestHelpers.CreateChrRom(config);
-            var ppu = new Ppu(config, rom);
+            var ppu = new Ppu(config);
             bool vblankFired = false;
             bool vblankWasFirstToFire = false;
             ppu.VBlankStarted += () => vblankFired = true;
@@ -184,8 +174,7 @@ namespace PPU.Tests
         public void FrameReady_RgbDataLength_MatchesScreenDimensions()
         {
             var config = PpuTestHelpers.CreateTickConfig();
-            var rom = PpuTestHelpers.CreateChrRom(config);
-            var ppu = new Ppu(config, rom);
+            var ppu = new Ppu(config);
             IReadOnlyList<byte>? rgbData = null;
             ppu.FrameReady += rgb => rgbData = rgb;
 
@@ -201,8 +190,7 @@ namespace PPU.Tests
         {
             // Empty CHR ROM → all pixel values 0 → RGB (0, 0, 0)
             var config = PpuTestHelpers.CreateTickConfig();
-            var rom = PpuTestHelpers.CreateChrRom(config); // all zeros
-            var ppu = new Ppu(config, rom);
+            var ppu = new Ppu(config); // all zeros = default
             IReadOnlyList<byte>? rgbData = null;
             ppu.FrameReady += rgb => rgbData = rgb;
 
@@ -218,9 +206,9 @@ namespace PPU.Tests
         {
             // CHR ROM tile 0 all 0xFF → all pixel values 1 → RGB (255, 255, 255)
             var config = PpuTestHelpers.CreateTickConfig();
-            var rom = PpuTestHelpers.CreateChrRomWithTile(config, 0,
+            var chrData = PpuTestHelpers.CreateChrData(config, 0,
                 [0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF]);
-            var ppu = new Ppu(config, rom);
+            var ppu = new Ppu(config, chrData);
             IReadOnlyList<byte>? rgbData = null;
             ppu.FrameReady += rgb => rgbData = rgb;
 
@@ -235,8 +223,7 @@ namespace PPU.Tests
         public void FrameReady_FiredOncePerFrame()
         {
             var config = PpuTestHelpers.CreateTickConfig();
-            var rom = PpuTestHelpers.CreateChrRom(config);
-            var ppu = new Ppu(config, rom);
+            var ppu = new Ppu(config);
             int frameCount = 0;
             ppu.FrameReady += _ => frameCount++;
 

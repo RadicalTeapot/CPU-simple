@@ -9,8 +9,8 @@ namespace Backend.Tests
         [Test]
         public void FrameReady_FiredAfterTickFrame_WhenPpuEnabled()
         {
-            var config = new CPU.Config(256, 16, 4, vramSize: 256);
-            var handler = CreateHandler(config);
+            var config = new CPU.Config(256, 16, 4, vramSize: 0);
+            var handler = CreateHandler(config, PpuConfig.Minimal8Bit);
             bool fired = false;
             handler.FrameReady += _ => fired = true;
 
@@ -35,8 +35,8 @@ namespace Backend.Tests
         [Test]
         public void FrameReady_RgbDataLength_MatchesPpuScreenSize()
         {
-            var config = new CPU.Config(256, 16, 4, vramSize: 256);
-            var handler = CreateHandler(config);
+            var config = new CPU.Config(256, 16, 4, vramSize: 0);
+            var handler = CreateHandler(config, PpuConfig.Minimal8Bit);
             IReadOnlyList<byte>? rgbData = null;
             handler.FrameReady += rgb => rgbData = rgb;
 
@@ -50,8 +50,8 @@ namespace Backend.Tests
         [Test]
         public void FrameReady_FiredOncePerTickFrame()
         {
-            var config = new CPU.Config(256, 16, 4, vramSize: 256);
-            var handler = CreateHandler(config);
+            var config = new CPU.Config(256, 16, 4, vramSize: 0);
+            var handler = CreateHandler(config, PpuConfig.Minimal8Bit);
             int frameCount = 0;
             handler.FrameReady += _ => frameCount++;
 
@@ -60,9 +60,27 @@ namespace Backend.Tests
             Assert.That(frameCount, Is.EqualTo(1));
         }
 
-        private static CpuHandler CreateHandler(CPU.Config config)
+        [Test]
+        public void FrameReady_WithChrData_RendersCorrectPixels()
         {
-            return new CpuHandler(config, new TestOutput(), new TestLogger(), new StateCommandRegistry());
+            // All-0xFF CHR data → all tile rows fully lit → all pixels white → all RGB bytes 255
+            var ppuConfig = PpuConfig.Minimal8Bit;
+            var chrData = new byte[ppuConfig.BytesPerTile * ppuConfig.ChrCount];
+            Array.Fill(chrData, (byte)0xFF);
+            var config = new CPU.Config(256, 16, 4, vramSize: 0);
+            var handler = new CpuHandler(config, new TestOutput(), new TestLogger(), new StateCommandRegistry(), ppuConfig, chrData);
+            IReadOnlyList<byte>? rgbData = null;
+            handler.FrameReady += rgb => rgbData = rgb;
+
+            handler.TickFrame();
+
+            Assert.That(rgbData, Is.Not.Null);
+            Assert.That(rgbData!.All(b => b == 255), Is.True);
+        }
+
+        private static CpuHandler CreateHandler(CPU.Config config, PPU.Configuration.PpuConfig? ppuConfig = null)
+        {
+            return new CpuHandler(config, new TestOutput(), new TestLogger(), new StateCommandRegistry(), ppuConfig);
         }
     }
 }

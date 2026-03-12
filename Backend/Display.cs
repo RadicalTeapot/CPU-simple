@@ -4,12 +4,10 @@ namespace Backend
 {
     internal class Display : IDisposable
     {
-        public bool ShouldClose => Raylib.WindowShouldClose();
+        public static bool ShouldClose => Raylib.WindowShouldClose();
 
         public Display(int screenWidth, int screenHeight, int scale)
         {
-            _screenWidth = screenWidth;
-            _screenHeight = screenHeight;
             _scale = scale;
             _colors = new Color[screenWidth * screenHeight];
 
@@ -22,9 +20,9 @@ namespace Backend
 
         public void UpdateFrame(IReadOnlyList<byte> rgbPixels)
         {
-            for (int i = 0; i < _colors.Length; i++)
+            for (var i = 0; i < _colors.Length; i++)
             {
-                int offset = i * 3;
+                var offset = i * 3;
                 _colors[i] = new Color(rgbPixels[offset], rgbPixels[offset + 1], rgbPixels[offset + 2], (byte)255);
             }
             unsafe
@@ -50,8 +48,6 @@ namespace Backend
             Raylib.CloseWindow();
         }
 
-        private readonly int _screenWidth;
-        private readonly int _screenHeight;
         private readonly int _scale;
         private readonly Color[] _colors;
         private readonly Texture2D _texture;

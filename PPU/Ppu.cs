@@ -12,14 +12,15 @@ namespace PPU
         public event Action? VBlankStarted;
         public event Action<IReadOnlyList<byte>>? FrameReady;
 
-        public Ppu(PpuConfig config, ChrRom rom)
+        public Ppu(PpuConfig config, IReadOnlyList<byte>? chrData = null)
         {
             _config = config;
             _rgbBuffer = new byte[config.ScreenWidth * config.ScreenHeight * 3];
 
+            var chrRom = new ChrRom(config, chrData ?? new byte[config.BytesPerTile * config.ChrCount]);
             var vram = new Vram(config);
             _registers = new PpuRegisters(vram);
-            _renderer = new Renderer(config, vram, rom, _registers);
+            _renderer = new Renderer(config, vram, chrRom, _registers);
 
             // Setup the state machine for scanline ticking
             _vBlankState = new VBlankState(config, _registers);

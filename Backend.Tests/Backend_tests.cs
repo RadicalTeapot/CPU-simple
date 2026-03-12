@@ -14,7 +14,7 @@ namespace Backend.Tests
         [Test]
         public void ParseArgs_NoArgs_ReturnsDefaultConfig()
         {
-            var code = Backend.ParseArgs([], _logger, out var config, out _);
+            var code = Backend.ParseArgs([], _logger, out var config, out _, out _);
             Assert.Multiple(() =>
             {
                 Assert.That(code, Is.EqualTo(0));
@@ -27,7 +27,7 @@ namespace Backend.Tests
         [Test]
         public void ParseArgs_ValidMemoryShort_SetsMemorySize()
         {
-            var code = Backend.ParseArgs(["-m", "512"], _logger, out var config, out _);
+            var code = Backend.ParseArgs(["-m", "512"], _logger, out var config, out _, out _);
             Assert.Multiple(() =>
             {
                 Assert.That(code, Is.EqualTo(0));
@@ -38,7 +38,7 @@ namespace Backend.Tests
         [Test]
         public void ParseArgs_ValidMemoryLong_SetsMemorySize()
         {
-            var code = Backend.ParseArgs(["--memory", "1024"], _logger, out var config, out _);
+            var code = Backend.ParseArgs(["--memory", "1024"], _logger, out var config, out _, out _);
             Assert.Multiple(() =>
             {
                 Assert.That(code, Is.EqualTo(0));
@@ -49,7 +49,7 @@ namespace Backend.Tests
         [Test]
         public void ParseArgs_ValidStack_SetsStackSize()
         {
-            var code = Backend.ParseArgs(["-s", "32"], _logger, out var config, out _);
+            var code = Backend.ParseArgs(["-s", "32"], _logger, out var config, out _, out _);
             Assert.Multiple(() =>
             {
                 Assert.That(code, Is.EqualTo(0));
@@ -60,7 +60,7 @@ namespace Backend.Tests
         [Test]
         public void ParseArgs_ValidRegisters_SetsRegisterCount()
         {
-            var code = Backend.ParseArgs(["--registers", "8"], _logger, out var config, out _);
+            var code = Backend.ParseArgs(["--registers", "8"], _logger, out var config, out _, out _);
             Assert.Multiple(() =>
             {
                 Assert.That(code, Is.EqualTo(0));
@@ -71,28 +71,28 @@ namespace Backend.Tests
         [Test]
         public void ParseArgs_HelpShort_ReturnsHelpExitCode()
         {
-            var code = Backend.ParseArgs(["-h"], _logger, out _, out _);
+            var code = Backend.ParseArgs(["-h"], _logger, out _, out _, out _);
             Assert.That(code, Is.EqualTo(1));
         }
 
         [Test]
         public void ParseArgs_HelpLong_ReturnsHelpExitCode()
         {
-            var code = Backend.ParseArgs(["--help"], _logger, out _, out _);
+            var code = Backend.ParseArgs(["--help"], _logger, out _, out _, out _);
             Assert.That(code, Is.EqualTo(1));
         }
 
         [Test]
         public void ParseArgs_UnknownArg_ReturnsInvalidExitCode()
         {
-            var code = Backend.ParseArgs(["--unknown"], _logger, out _, out _);
+            var code = Backend.ParseArgs(["--unknown"], _logger, out _, out _, out _);
             Assert.That(code, Is.EqualTo(2));
         }
 
         [Test]
         public void ParseArgs_InvalidMemoryValue_ReturnsInvalidExitCode()
         {
-            var code = Backend.ParseArgs(["-m", "abc"], _logger, out _, out _);
+            var code = Backend.ParseArgs(["-m", "abc"], _logger, out _, out _, out _);
             Assert.Multiple(() =>
             {
                 Assert.That(code, Is.EqualTo(2));
@@ -103,28 +103,28 @@ namespace Backend.Tests
         [Test]
         public void ParseArgs_MissingMemoryValue_ReturnsInvalidExitCode()
         {
-            var code = Backend.ParseArgs(["-m"], _logger, out _, out _);
+            var code = Backend.ParseArgs(["-m"], _logger, out _, out _, out _);
             Assert.That(code, Is.EqualTo(2));
         }
 
         [Test]
         public void ParseArgs_InvalidStackValue_ReturnsInvalidExitCode()
         {
-            var code = Backend.ParseArgs(["-s", "notanumber"], _logger, out _, out _);
+            var code = Backend.ParseArgs(["-s", "notanumber"], _logger, out _, out _, out _);
             Assert.That(code, Is.EqualTo(2));
         }
 
         [Test]
         public void ParseArgs_InvalidRegistersValue_ReturnsInvalidExitCode()
         {
-            var code = Backend.ParseArgs(["--registers", "xyz"], _logger, out _, out _);
+            var code = Backend.ParseArgs(["--registers", "xyz"], _logger, out _, out _, out _);
             Assert.That(code, Is.EqualTo(2));
         }
 
         [Test]
         public void ParseArgs_MultipleValidArgs_SetsAll()
         {
-            var code = Backend.ParseArgs(["-m", "512", "-s", "32", "--registers", "8"], _logger, out var config, out _);
+            var code = Backend.ParseArgs(["-m", "512", "-s", "32", "--registers", "8"], _logger, out var config, out _, out _);
             Assert.Multiple(() =>
             {
                 Assert.That(code, Is.EqualTo(0));
@@ -137,7 +137,7 @@ namespace Backend.Tests
         [Test]
         public void ParseArgs_DefaultScale_IsFour()
         {
-            var code = Backend.ParseArgs([], _logger, out _, out int scale);
+            var code = Backend.ParseArgs([], _logger, out _, out int scale, out _);
             Assert.Multiple(() =>
             {
                 Assert.That(code, Is.EqualTo(0));
@@ -148,7 +148,7 @@ namespace Backend.Tests
         [Test]
         public void ParseArgs_ValidScale_SetsScale()
         {
-            var code = Backend.ParseArgs(["--scale", "2"], _logger, out _, out int scale);
+            var code = Backend.ParseArgs(["--scale", "2"], _logger, out _, out int scale, out _);
             Assert.Multiple(() =>
             {
                 Assert.That(code, Is.EqualTo(0));
@@ -159,7 +159,7 @@ namespace Backend.Tests
         [Test]
         public void ParseArgs_InvalidScaleValue_ReturnsInvalidExitCode()
         {
-            var code = Backend.ParseArgs(["--scale", "big"], _logger, out _, out _);
+            var code = Backend.ParseArgs(["--scale", "big"], _logger, out _, out _, out _);
             Assert.Multiple(() =>
             {
                 Assert.That(code, Is.EqualTo(2));
@@ -170,8 +170,37 @@ namespace Backend.Tests
         [Test]
         public void ParseArgs_MissingScaleValue_ReturnsInvalidExitCode()
         {
-            var code = Backend.ParseArgs(["--scale"], _logger, out _, out _);
+            var code = Backend.ParseArgs(["--scale"], _logger, out _, out _, out _);
             Assert.That(code, Is.EqualTo(2));
+        }
+
+        [Test]
+        public void ParseArgs_ValidChr_SetsChrPath()
+        {
+            var code = Backend.ParseArgs(["--chr", "/some/file.chr"], _logger, out _, out _, out string? chrPath);
+            Assert.Multiple(() =>
+            {
+                Assert.That(code, Is.EqualTo(0));
+                Assert.That(chrPath, Is.EqualTo("/some/file.chr"));
+            });
+        }
+
+        [Test]
+        public void ParseArgs_MissingChrValue_ReturnsInvalidExitCode()
+        {
+            var code = Backend.ParseArgs(["--chr"], _logger, out _, out _, out _);
+            Assert.That(code, Is.EqualTo(2));
+        }
+
+        [Test]
+        public void ParseArgs_NoChr_ChrPathIsNull()
+        {
+            var code = Backend.ParseArgs([], _logger, out _, out _, out string? chrPath);
+            Assert.Multiple(() =>
+            {
+                Assert.That(code, Is.EqualTo(0));
+                Assert.That(chrPath, Is.Null);
+            });
         }
     }
 }

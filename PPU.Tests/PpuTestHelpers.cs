@@ -44,15 +44,17 @@ namespace PPU.Tests
             return new ChrRom(config, data);
         }
 
-        public static ChrRom CreateChrRomWithTile(PpuConfig config, int tileIndex, byte[] rowBytes)
+        public static byte[] CreateChrData(PpuConfig config, int tileIndex, byte[] rowBytes)
         {
-            var size = config.BytesPerTile * config.ChrCount;
-            var data = new byte[size];
+            var data = new byte[config.BytesPerTile * config.ChrCount];
             var offset = tileIndex * config.BytesPerTile;
             for (int i = 0; i < rowBytes.Length && i < config.BytesPerTile; i++)
                 data[offset + i] = rowBytes[i];
-            return new ChrRom(config, data);
+            return data;
         }
+
+        public static ChrRom CreateChrRomWithTile(PpuConfig config, int tileIndex, byte[] rowBytes)
+            => new ChrRom(config, CreateChrData(config, tileIndex, rowBytes));
 
         public static void WriteOamEntry(Vram vram, PpuConfig config, int spriteIndex,
             byte position, byte tileIndex, byte attributes)
