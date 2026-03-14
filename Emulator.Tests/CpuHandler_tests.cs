@@ -68,7 +68,7 @@ namespace Emulator.Tests
             var chrData = new byte[ppuConfig.BytesPerTile * ppuConfig.ChrCount];
             Array.Fill(chrData, (byte)0xFF);
             var config = new CPU.Config(256, 16, 4, vramSize: 0);
-            var handler = new CpuHandler(config, new TestOutput(), new TestLogger(), new StateCommandRegistry(), ppuConfig, chrData);
+            var handler = CreateHandler(config, ppuConfig, chrData);
             IReadOnlyList<byte>? rgbData = null;
             handler.FrameReady += rgb => rgbData = rgb;
 
@@ -78,9 +78,18 @@ namespace Emulator.Tests
             Assert.That(rgbData!.All(b => b == 255), Is.True);
         }
 
-        private static CpuHandler CreateHandler(CPU.Config config, PPU.Configuration.PpuConfig? ppuConfig = null)
+        private static CpuHandler CreateHandler(CPU.Config config, PpuConfig? ppuConfig = null, IReadOnlyList<byte>? chrData = null, IReadOnlyList<byte>? progData = null)
         {
-            return new CpuHandler(config, new TestOutput(), new TestLogger(), new StateCommandRegistry(), ppuConfig);
+            var context = new CpuHandler.CpuHandlerContext(
+                config,
+                new TestLogger(),
+                new TestOutput(),
+                new StateCommandRegistry(),
+                ppuConfig,
+                chrData,
+                progData
+            );
+            return new CpuHandler(context);
         }
     }
 }

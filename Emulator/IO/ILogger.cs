@@ -17,7 +17,7 @@
 
         public void LogUsage()
         {
-            Log("Usage: emulator [-m/--memory SIZE] [-s/--stack SIZE] [--registers COUNT] [-h/--help]");
+            Log($"Usage: {Emulator.Usage}");
         }
 
         public void Error(string message)

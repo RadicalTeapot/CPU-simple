@@ -8,21 +8,40 @@ namespace Emulator
 {
     public class EmulatorApplication
     {
-        public EmulatorApplication(ILogger logger, IInput input, IOutput output, CPU.Config cpuConfig,
-            PpuConfig? ppuConfig = null, int displayScale = 4, IReadOnlyList<byte>? chrData = null)
+        public record EmulatorContext(
+            ILogger Logger,
+            IInput Input,
+            IOutput Output,
+            CPU.Config CpuConfig,
+            PpuConfig? PpuConfig = null,
+            int DisplayScale = 4,
+            IReadOnlyList<byte>? ChrData = null,
+            IReadOnlyList<byte>? ProgData = null
+        );
+
+        public EmulatorApplication(EmulatorContext context)
         {
-            _logger = logger;
-            _output = output;
+            _logger = context.Logger;
+            _output = context.Output;
 
             _globalCommandRegistry = new GlobalCommandRegistry();
             _stateCommandRegistry = new StateCommandRegistry();
-            _cpuHandler = new CpuHandler(cpuConfig, output, logger, _stateCommandRegistry, ppuConfig, chrData);
-            _commandReader = new CommandReader(input, _logger);
+            var cpuHandlerContext = new CpuHandler.CpuHandlerContext(
+                context.CpuConfig,
+                context.Logger,
+                context.Output,
+                _stateCommandRegistry,
+                context.PpuConfig,
+                context.ChrData,
+                context.ProgData
+            );
+            _cpuHandler = new CpuHandler(cpuHandlerContext);
+            _commandReader = new CommandReader(context.Input, _logger);
 
-            if (ppuConfig == null)
+            if (context.PpuConfig == null)
                 return;
             
-            _display = new Display(ppuConfig.ScreenWidth, ppuConfig.ScreenHeight, displayScale);
+            _display = new Display(context.PpuConfig.ScreenWidth, context.PpuConfig.ScreenHeight, context.DisplayScale);
             _cpuHandler.FrameReady += _display.UpdateFrame;
         }
 

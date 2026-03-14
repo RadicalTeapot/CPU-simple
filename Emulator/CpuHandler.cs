@@ -11,31 +11,40 @@ namespace Emulator
 {
     internal class CpuHandler
     {
+        public record CpuHandlerContext(
+            CPU.Config CpuConfig,
+            ILogger Logger,
+            IOutput Output,
+            StateCommandRegistry CpuCommandRegistry,
+            PpuConfig? PpuConfig = null,
+            IReadOnlyList<byte>? ChrData = null,
+            IReadOnlyList<byte>? ProgData = null
+        );
+
         public event Action<IReadOnlyList<byte>>? FrameReady;
 
-        public CpuHandler(Config config, IOutput output, ILogger logger, StateCommandRegistry cpuCommandRegistry,
-            PpuConfig? ppuConfig = null, IReadOnlyList<byte>? chrData = null)
+        public CpuHandler(CpuHandlerContext context)
         {
-            _logger = logger;
-            _output = output;
-            if (ppuConfig != null)
+            _logger = context.Logger;
+            _output = context.Output;
+            if (context.PpuConfig != null)
             {
-                _ppuConfig = ppuConfig;
+                _ppuConfig = context.PpuConfig;
                 _ppuTickRatio = _ppuConfig.PpuCyclesPerCpuCycle;
-                _ppu = new PPU.Ppu(_ppuConfig, chrData);
+                _ppu = new PPU.Ppu(_ppuConfig, context.ChrData);
                 var mmioRouter = new MmioRouter();
                 mmioRouter.Register(0x00, 0x03, _ppu.Registers);
-                _cpu = new CPU.CPU(config, mmioRouter);
+                _cpu = new CPU.CPU(context.CpuConfig, mmioRouter);
                 _ppu.VBlankStarted += _cpu.RequestInterrupt;
                 _ppu.FrameReady += rgb => FrameReady?.Invoke(rgb);
             }
             else
             {
-                _cpu = new CPU.CPU(config);
+                _cpu = new CPU.CPU(context.CpuConfig);
             }
             _breakpointContainer = new BreakpointContainer();
             _watchpointContainer = new WatchpointContainer();
-            _cpuStateFactory = new CpuStateFactory(_cpu, _logger, _output, _breakpointContainer, _watchpointContainer, cpuCommandRegistry);
+            _cpuStateFactory = new CpuStateFactory(_cpu, _logger, _output, _breakpointContainer, _watchpointContainer, context.CpuCommandRegistry);
             _currentState = _cpuStateFactory.CreateIdleState();
         }
 

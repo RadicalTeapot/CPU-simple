@@ -5,10 +5,12 @@ namespace Emulator
 {
     public class Emulator
     {
+        public const string Usage = "emulator [-m/--memory SIZE] [-s/--stack SIZE] [--registers COUNT] [--vram SIZE] [--scale N] [--chr PATH] [--prog PATH] [-h/--help]";
+
         public static int Main(string[] args)
         {
             var logger = new ConsoleLogger();
-            var code = ParseArgs(args, logger, out var config, out var scale, out var chrPath);
+            var code = ParseArgs(args, logger, out var result);
             switch (code)
             {
                 case HelpExitCode:
@@ -20,31 +22,61 @@ namespace Emulator
             }
 
             byte[]? chrData = null;
-            if (chrPath != null)
+            if (result.ChrPath != null)
             {
-                if (!File.Exists(chrPath))
+                if (!File.Exists(result.ChrPath))
                 {
-                    logger.Error($"CHR ROM file not found: {chrPath}");
+                    logger.Error($"CHR ROM file not found: {result.ChrPath}");
                     return InvalidArgExitCode;
                 }
-                chrData = File.ReadAllBytes(chrPath);
+                chrData = File.ReadAllBytes(result.ChrPath);
             }
 
-            var ppuConfig = config.VramSize > 0 ? PpuConfig.Minimal8Bit : null;
-            var application = new EmulatorApplication(logger, new ConsoleInput(), new ConsoleOutput(), config, ppuConfig, scale, chrData);
+            byte[]? progData = null;
+            if (result.ProgPath != null) 
+            {
+                if (!File.Exists(result.ProgPath))
+                {
+                    logger.Error($"Program file not found: {result.ProgPath}");
+                    return InvalidArgExitCode;
+                }
+                progData = File.ReadAllBytes(result.ProgPath);
+            }
+
+            var ppuConfig = result.Config.VramSize > 0 ? PpuConfig.Minimal8Bit : null;
+            if (ppuConfig != null && ppuConfig.ChrInRom && chrData == null)
+            {
+                logger.Error("PPU configuration requires CHR data, but no CHR ROM was provided.");
+                return InvalidArgExitCode;
+            }
+
+            var context = new EmulatorApplication.EmulatorContext(
+                logger,
+                new ConsoleInput(),
+                new ConsoleOutput(),
+                result.Config,
+                ppuConfig,
+                result.Scale,
+                chrData,
+                progData
+            );
+
+            var application = new EmulatorApplication(context);
             return application.Run();
         }
 
-        internal static int ParseArgs(string[] args, ILogger logger, out CPU.Config config, out int scale, out string? chrPath)
+        internal static int ParseArgs(string[] args, ILogger logger, out ParsedArgsResult result)
         {
             var memorySize = DefaultMemorySize;
             var stackSize = DefaultStackSize;
             var registerCount = DefaultRegisterCount;
             var vramSize = DefaultVramSize;
-            scale = DefaultScale;
-            chrPath = null;
+            var scale = DefaultScale;
+            string? chrPath = null;
+            string? progPath = null;
+            result = new(default, scale, chrPath, progPath);
 
-            // emulator [-m/--memory SIZE] [-s/--stack SIZE] [--registers COUNT] [--vram SIZE] [--scale N] [--chr PATH] [-h/--help]
+            // emulator [-m/--memory SIZE] [-s/--stack SIZE] [--registers COUNT] [--vram SIZE] [--scale N] [--chr PATH] [--prog PATH] [-h/--help]
             for (var i = 0; i < args.Length; i++)
             {
                 switch (args[i])
@@ -59,7 +91,6 @@ namespace Emulator
                         else
                         {
                             logger.Error("Invalid memory size specified.");
-                            config = default;
                             return InvalidArgExitCode;
                         }
                         break;
@@ -73,7 +104,6 @@ namespace Emulator
                         else
                         {
                             logger.Error("Invalid stack size specified.");
-                            config = default;
                             return InvalidArgExitCode;
                         }
                         break;
@@ -86,7 +116,6 @@ namespace Emulator
                         else
                         {
                             logger.Error("Invalid register count specified.");
-                            config = default;
                             return InvalidArgExitCode;
                         }
                         break;
@@ -99,7 +128,6 @@ namespace Emulator
                         else
                         {
                             logger.Error("Invalid VRAM size specified.");
-                            config = default;
                             return InvalidArgExitCode;
                         }
                         break;
@@ -112,7 +140,6 @@ namespace Emulator
                         else
                         {
                             logger.Error("Invalid scale specified.");
-                            config = default;
                             return InvalidArgExitCode;
                         }
                         break;
@@ -124,23 +151,44 @@ namespace Emulator
                         else
                         {
                             logger.Error("No path specified for --chr.");
-                            config = default;
+                            return InvalidArgExitCode;
+                        }
+                        break;
+                    case "--prog":
+                        if (i + 1 < args.Length)
+                        {
+                            progPath = args[++i];
+                        }
+                        else
+                        {
+                            logger.Error("No path specified for --prog.");
                             return InvalidArgExitCode;
                         }
                         break;
                     case "-h":
                     case "--help":
-                        config = default;
                         return HelpExitCode;
                     default:
                         logger.Error($"Unknown argument: {args[i]}");
-                        config = default;
                         return InvalidArgExitCode;
                 }
             }
-            config = new CPU.Config(memorySize, stackSize, registerCount, vramSize);
+
+            result = new(
+                new CPU.Config(memorySize, stackSize, registerCount, vramSize),
+                scale,
+                chrPath,
+                progPath
+            );
             return 0;
         }
+
+        internal record ParsedArgsResult(
+            CPU.Config Config,
+            int Scale,
+            string? ChrPath,
+            string? ProgPath
+        );
 
         private const int DefaultMemorySize = 256;
         private const int DefaultStackSize = 16;
