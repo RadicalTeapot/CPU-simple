@@ -1,6 +1,6 @@
 # PPU Implementation Architecture
 
-This document describes the class-level design of the PPU project and the Backend changes required to integrate it. It is scoped to the **minimal 8-bit configuration** (256-byte VRAM, 1bpp, 16×13 tilemap, CHR in ROM) as the first implementation target.
+This document describes the class-level design of the PPU project and the Emulator changes required to integrate it. It is scoped to the **minimal 8-bit configuration** (256-byte VRAM, 1bpp, 16×13 tilemap, CHR in ROM) as the first implementation target.
 
 Refer to `ppu.md` for the authoritative design reference (MMIO layout, VRAM layout, rendering rules, co-simulation model). This document assumes familiarity with that reference.
 
@@ -15,7 +15,7 @@ The architecture is organised into four layers:
 | Configuration | PPU | Parameter structs that drive all sizing and timing decisions |
 | Storage | PPU | VRAM, MMIO registers, CHR ROM |
 | Rendering | PPU | Scanline pipeline, sprite evaluation, pixel output |
-| Debugger integration | PPU + Backend | Tick traces, watchpoints, co-simulation coordinator |
+| Debugger integration | PPU + Emulator | Tick traces, watchpoints, co-simulation coordinator |
 
 ---
 
@@ -38,7 +38,7 @@ Central parameter object. No logic — pure data. Drives every other class.
 | `BytesPerSprite` | 3 for minimal |
 | `MaxSpritesPerScanline` | 8 |
 | `CyclesPerScanline`, `VBlankStartScanline`, `TotalScanlines` | Scanline timing constants |
-| `PpuCyclesPerCpuCycle` | Clock ratio; set by Backend before simulation starts |
+| `PpuCyclesPerCpuCycle` | Clock ratio; set by Emulator before simulation starts |
 | `Layout` | Computed property returning `new PpuVramLayout(this)` |
 
 Static factory methods:
@@ -195,7 +195,7 @@ Flat `byte[]` of `ScreenWidth × ScreenHeight` pixels. One byte per pixel: `0` =
 - `void Clear()` — reset all pixels to `0`
 - `ReadOnlySpan<byte> AsReadOnly()` — for the `dump-ppu` debugger command
 
-**Connects to**: `Renderer` (owned by), `ScanlineRenderer` (written per scanline), `Ppu` (exposed read-only to Backend for `DumpPpu`).
+**Connects to**: `Renderer` (owned by), `ScanlineRenderer` (written per scanline), `Ppu` (exposed read-only to Emulator for `DumpPpu`).
 
 ---
 
@@ -228,16 +228,16 @@ Key changes from the current skeleton:
 - During each active scanline (when `_scanlineCycle == 0`), call `_renderer.RenderActiveScanline(...)`.
 - When `_scanline == VBlankStartScanline`: set `_registers.VBlankActive = true`, fire `VBlankStarted`.
 - When `_scanline` wraps back to `0`: call `_renderer.BeginFrame()`.
-- Build a `PpuTickTrace` each tick and store it in `LastTrace` for the Backend to collect.
+- Build a `PpuTickTrace` each tick and store it in `LastTrace` for the Emulator to collect.
 
-Properties/events exposed to Backend:
+Properties/events exposed to Emulator:
 - `IMmioDevice Registers` — existing; wired into `BusDecoder`
-- `event Action? VBlankStarted` — existing; Backend wires to `cpu.RequestInterrupt()`
-- `event Action<IReadOnlyList<byte>>? FrameReady` — **implemented**; fires after `VBlankStarted` with an RGB pixel buffer (`ScreenWidth × ScreenHeight × 3` bytes). The conversion (1bpp → monochrome RGB) lives in `ConvertFramebufferToRgb()`. Backend wires to `display.UpdateFrame(rgb)`.
+- `event Action? VBlankStarted` — existing; Emulator wires to `cpu.RequestInterrupt()`
+- `event Action<IReadOnlyList<byte>>? FrameReady` — **implemented**; fires after `VBlankStarted` with an RGB pixel buffer (`ScreenWidth × ScreenHeight × 3` bytes). The conversion (1bpp → monochrome RGB) lives in `ConvertFramebufferToRgb()`. Emulator wires to `display.UpdateFrame(rgb)`.
 - `FrameBuffer FrameBuffer` — planned; read by `DumpPpu` command
 - `PpuTickTrace LastTrace` — planned; read by `SimulationTicker` for watchpoint evaluation
 
-**Connects to**: `CpuHandler` in Backend (created by), `VRam`, `PpuRegisters`, `Renderer`. (`ChrRom` is an internal implementation detail, not visible to callers.)
+**Connects to**: `CpuHandler` in Emulator (created by), `VRam`, `PpuRegisters`, `Renderer`. (`ChrRom` is an internal implementation detail, not visible to callers.)
 
 ---
 
@@ -253,17 +253,17 @@ Analogous to the CPU's `TickTrace`. Captures PPU state at one tick.
 | `ScanlineCycle` | `int` | Cycle within the current scanline |
 | `Event` | `PpuEvent` enum | `None`, `VBlankStart`, `VBlankEnd`, `FrameComplete` |
 
-**Connects to**: `Ppu` (produced each tick), `PpuWatchpointContainer` in Backend (evaluated for matches).
+**Connects to**: `Ppu` (produced each tick), `PpuWatchpointContainer` in Emulator (evaluated for matches).
 
 ---
 
 ### `PpuTickResult` (struct) — _new, in `PPU` project_
 
-Return value of `Ppu.Tick()`. A single field: `bool HaltRequested`. The `SimulationTicker` in Backend checks this after each PPU tick and stops the co-simulation loop early if set.
+Return value of `Ppu.Tick()`. A single field: `bool HaltRequested`. The `SimulationTicker` in Emulator checks this after each PPU tick and stops the co-simulation loop early if set.
 
 ---
 
-### `IPpuWatchpoint` (interface) — _new, in `Backend` project_
+### `IPpuWatchpoint` (interface) — _new, in `Emulator` project_
 
 Mirrors `IWatchpoint` but operates on `PpuTickTrace`.
 
@@ -279,7 +279,7 @@ Concrete implementations:
 
 ---
 
-### `PpuWatchpointContainer` (class) — _new, in `Backend` project_
+### `PpuWatchpointContainer` (class) — _new, in `Emulator` project_
 
 Structurally identical to `WatchpointContainer` but typed for `IPpuWatchpoint` / `PpuTickTrace`. Shares `NextId()` counter with the CPU `WatchpointContainer` so IDs are globally unique across both containers.
 
@@ -289,7 +289,7 @@ Structurally identical to `WatchpointContainer` but typed for `IPpuWatchpoint` /
 
 ---
 
-### `SimulationTicker` (class) — _new, in `Backend` project_
+### `SimulationTicker` (class) — _new, in `Emulator` project_
 
 The central co-simulation coordinator. This class exists because executing states (`SteppingState`, `TickingState`, `RunningState`) call `cpu.Step()` or `cpu.Tick()` internally — and each of those CPU ticks must be followed by N PPU ticks. Without this class, the PPU would only get one tick per `CpuHandler.Tick()` call regardless of how many CPU micro-ticks occurred inside the state machine.
 
@@ -307,7 +307,7 @@ internal class SimulationTicker(CPU.CPU cpu, Ppu? ppu, PpuWatchpointContainer pp
 
 ---
 
-## Backend Changes
+## Emulator Changes
 
 ### `CpuStateContext` — _modify_
 
@@ -326,7 +326,7 @@ Accept `SimulationTicker` in the constructor; thread it into `CpuStateContext` v
 **Implemented:**
 - Constructor accepts `PpuConfig? ppuConfig = null` and `IReadOnlyList<byte>? chrData = null`. The PPU is created when `ppuConfig != null`; `chrData` is forwarded to `Ppu` (zero-filled internally if null).
 - Creates `Ppu(ppuConfig, chrData)` and stores `_ppuTickRatio = PpuCyclesPerCpuCycle`.
-- Subscribes `_ppu.FrameReady` and relays it as `public event Action<IReadOnlyList<byte>>? FrameReady` for `BackendApplication` to wire to the display.
+- Subscribes `_ppu.FrameReady` and relays it as `public event Action<IReadOnlyList<byte>>? FrameReady` for `EmulatorApplication` to wire to the display.
 - `Tick()` ticks the PPU proportionally: `microTicks * _ppuTickRatio` times per state tick, where `microTicks` is the CPU trace count for executing states (approximating cycle count), or 1 for idle/halted/error states.
 - `TickFrame()` runs one full PPU frame's worth of state ticks (budget = `TotalScanlines × CyclesPerScanline / PpuCyclesPerCpuCycle`), stopping early if the CPU enters idle/halted/error state and completing remaining PPU ticks to ensure `FrameReady` fires.
 
@@ -335,7 +335,7 @@ Accept `SimulationTicker` in the constructor; thread it into `CpuStateContext` v
 
 ### `Display` — _new, implemented_
 
-`Backend/Display.cs` wraps the Raylib window lifecycle:
+`Emulator/Display.cs` wraps the Raylib window lifecycle:
 - Constructor: `Display(int screenWidth, int screenHeight, int scale)` — calls `InitWindow`, allocates `Color[]` and `Texture2D`, sets 60fps target.
 - `void UpdateFrame(IReadOnlyList<byte> rgbPixels)` — converts RGB triplets to `Color[]` and calls `UpdateTexture`.
 - `void Render()` — `BeginDrawing` / `DrawTextureEx` (scaled) / `EndDrawing`.
@@ -343,7 +343,7 @@ Accept `SimulationTicker` in the constructor; thread it into `CpuStateContext` v
 - `IDisposable` — `UnloadTexture` + `CloseWindow`.
 - Default scale: 4 (128×104 → 512×416 for Minimal8Bit).
 
-### `BackendApplication` — _modified_
+### `EmulatorApplication` — _modified_
 
 `Run()` now dispatches to `RunHeadless()` or `RunWindowed()` based on whether a `Display` was created:
 - **Headless** (no `--vram`): original 10Hz `while(true)` loop, unchanged behaviour.
@@ -355,7 +355,7 @@ Accept `SimulationTicker` in the constructor; thread it into `CpuStateContext` v
 
 ### `DumpPpu` (class) — _new global command_
 
-New `Backend/Commands/GlobalCommands/DumpPpu.cs`, attribute `[Command("dump-ppu", "dppu")]`.
+New `Emulator/Commands/GlobalCommands/DumpPpu.cs`, attribute `[Command("dump-ppu", "dppu")]`.
 
 Outputs current PPU state as JSON:
 ```json
@@ -392,7 +392,7 @@ PPU/
     PpuTickResult.cs        ← new (struct)
   Ppu.cs                    ← existing, significant rewrite
 
-Backend/
+Emulator/
   SimulationTicker.cs                          ← new
   PpuWatchpointContainer.cs                   ← new (+ IPpuWatchpoint, VBlankWatchpoint, ScanlineWatchpoint)
   Commands/GlobalCommands/DumpPpu.cs          ← new
@@ -587,7 +587,7 @@ classDiagram
         +PpuTickResult Tick()
     }
 
-    %% ── Backend project ──────────────────────────────────────────────
+    %% ── Emulator project ──────────────────────────────────────────────
 
     class IPpuWatchpoint {
         <<interface, internal>>

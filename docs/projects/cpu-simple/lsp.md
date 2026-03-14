@@ -108,7 +108,7 @@ cpu_simple.setup({
 })
 ```
 
-The plugin searches common build output paths automatically (same pattern as `backend_path` and `assembler_path`). When configured, a `FileType` autocmd for `csasm` calls `vim.lsp.start()` to attach the server.
+The plugin searches common build output paths automatically (same pattern as `emulator_path` and `assembler_path`). When configured, a `FileType` autocmd for `csasm` calls `vim.lsp.start()` to attach the server.
 
 Verify the LSP is attached with `:LspInfo` or `:checkhealth lsp`.
 

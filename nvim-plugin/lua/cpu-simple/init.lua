@@ -9,7 +9,7 @@ local keymaps_core = require("cpu-simple.core.keymaps")
 local events_core = require("cpu-simple.core.events")
 local autocmds_core = require("cpu-simple.core.autocmds")
 
-local backend_factory = require("cpu-simple.features.backend")
+local emulator_factory = require("cpu-simple.features.emulator")
 local program_factory = require("cpu-simple.features.program")
 local breakpoints_factory = require("cpu-simple.features.breakpoints")
 local watchpoints_factory = require("cpu-simple.features.watchpoints")
@@ -30,7 +30,7 @@ local ctx = {
   api = M,
 }
 
-local backend_feature = nil
+local emulator_feature = nil
 local program_feature = nil
 local breakpoints_feature = nil
 local watchpoints_feature = nil
@@ -39,16 +39,16 @@ local annotations_feature = nil
 local lsp_feature = nil
 
 local function ensure_features()
-  if backend_feature then
+  if emulator_feature then
     return
   end
 
-  backend_feature = backend_factory.new(ctx)
+  emulator_feature = emulator_factory.new(ctx)
   annotations_feature = annotations_factory.new(ctx)
-  breakpoints_feature = breakpoints_factory.new(ctx, backend_feature)
-  watchpoints_feature = watchpoints_factory.new(ctx, backend_feature)
-  navigation_feature = navigation_factory.new(ctx, backend_feature)
-  program_feature = program_factory.new(ctx, backend_feature)
+  breakpoints_feature = breakpoints_factory.new(ctx, emulator_feature)
+  watchpoints_feature = watchpoints_factory.new(ctx, emulator_feature)
+  navigation_feature = navigation_factory.new(ctx, emulator_feature)
+  program_feature = program_factory.new(ctx, emulator_feature)
   lsp_feature = lsp_factory.new(ctx)
 end
 
@@ -85,19 +85,19 @@ function M.start_lsp()
   lsp_feature.start()
 end
 
-function M.backend_start()
+function M.emulator_start()
   ensure_features()
-  backend_feature.start()
+  emulator_feature.start()
 end
 
-function M.backend_stop()
+function M.emulator_stop()
   ensure_features()
-  backend_feature.stop()
+  emulator_feature.stop()
 end
 
-function M.backend_status()
+function M.emulator_status()
   ensure_features()
-  backend_feature.status()
+  emulator_feature.status()
 end
 
 function M.assemble()
@@ -292,24 +292,24 @@ end
 
 function M.send(cmd)
   ensure_features()
-  backend_feature.send(cmd)
+  emulator_feature.send(cmd)
 end
 
 function M.is_running()
   ensure_features()
-  return backend_feature.is_running()
+  return emulator_feature.is_running()
 end
 
 function M.get_statusline()
-  local backend = deps.get("backend")
-  if not backend.is_running() then
-    return "Backend stopped"
+  local emulator = deps.get("emulator")
+  if not emulator.is_running() then
+    return "Emulator stopped"
   end
 
   local state = deps.get("state")
   local s = state.status
   if not s then
-    return "Backend running: no status"
+    return "Emulator running: no status"
   end
 
   local zero = s.flags.zero and 1 or 0

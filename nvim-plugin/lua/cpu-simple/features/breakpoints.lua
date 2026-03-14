@@ -1,15 +1,15 @@
 local M = {}
 
-function M.new(ctx, backend_feature)
+function M.new(ctx, emulator_feature)
   local feature = {}
 
-  feature.set_breakpoint = backend_feature.with_running_backend(function(address)
+  feature.set_breakpoint = emulator_feature.with_running_emulator(function(address)
     local commands = ctx.deps.get("commands")
-    local backend = ctx.deps.get("backend")
-    backend.send(string.format("%s %d", commands.BREAK_TGL, address))
+    local emulator = ctx.deps.get("emulator")
+    emulator.send(string.format("%s %d", commands.BREAK_TGL, address))
   end)
 
-  feature.set_breakpoint_at_cursor = backend_feature.with_running_backend(function()
+  feature.set_breakpoint_at_cursor = emulator_feature.with_running_emulator(function()
     local assembler = ctx.deps.get("assembler")
     local span = assembler.get_address_span_from_current_line()
     if not span then
@@ -26,10 +26,10 @@ function M.new(ctx, backend_feature)
     feature.set_breakpoint(address)
   end)
 
-  feature.clear_all_breakpoints = backend_feature.with_running_backend(function()
+  feature.clear_all_breakpoints = emulator_feature.with_running_emulator(function()
     local commands = ctx.deps.get("commands")
-    local backend = ctx.deps.get("backend")
-    backend.send(commands.BREAK_CLR)
+    local emulator = ctx.deps.get("emulator")
+    emulator.send(commands.BREAK_CLR)
   end)
 
   function feature.highlight_breakpoints()

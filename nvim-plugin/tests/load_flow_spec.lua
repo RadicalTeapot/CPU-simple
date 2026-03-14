@@ -15,7 +15,7 @@ local tmpfile = vim.fn.tempname()
 vim.fn.writefile({ "00", "01" }, tmpfile)
 
 local sends = {}
-local backend_stub = {
+local emulator_stub = {
   start = function() return true end,
   stop = function() end,
   send = function(cmd)
@@ -48,7 +48,7 @@ local state_stub = {
 }
 
 deps.set("display", display_stub)
-deps.set("backend", backend_stub)
+deps.set("emulator", emulator_stub)
 deps.set("assembler", assembler_stub)
 deps.set("state", state_stub)
 deps.set("events", events)
@@ -67,7 +67,7 @@ t.assert_equal(state_stub.memory, nil, "memory cache should be cleared")
 t.assert_equal(state_stub.stack, nil, "stack cache should be cleared")
 t.assert_equal(clear_highlight_calls, 1, "memory highlight cache should be cleared")
 
-t.assert_equal(#sends, 1, "exactly one backend command should be sent")
+t.assert_equal(#sends, 1, "exactly one emulator command should be sent")
 local expected_path = vim.fn.fnamemodify(tmpfile, ":p")
 t.assert_equal(sends[1], "load " .. expected_path, "load command should use absolute path")
 t.assert_equal(state_stub.loaded_program, expected_path, "loaded_program should be set to absolute path")

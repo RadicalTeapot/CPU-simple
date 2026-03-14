@@ -20,9 +20,9 @@ vim.cmd('color retrobox')
 -- Keymappings for common operations
 local opts = { noremap = true }
 
--- Start/stop backend
-vim.keymap.set("n", "<leader>cs", "<cmd>CpuBackendStart<cr>", vim.tbl_extend("force", opts, { desc = "CPU: Start backend" }))
-vim.keymap.set("n", "<leader>cq", "<cmd>CpuBackendStop<cr>", vim.tbl_extend("force", opts, { desc = "CPU: Stop backend" }))
+-- Start/stop emulator
+vim.keymap.set("n", "<leader>cs", "<cmd>CpuEmulatorStart<cr>", vim.tbl_extend("force", opts, { desc = "CPU: Start emulator" }))
+vim.keymap.set("n", "<leader>cq", "<cmd>CpuEmulatorStop<cr>", vim.tbl_extend("force", opts, { desc = "CPU: Stop emulator" }))
 
 -- Assemble and load
 vim.keymap.set("n", "<leader>ca", "<cmd>CpuAssemble<cr>", vim.tbl_extend("force", opts, { desc = "CPU: Assemble" }))
@@ -64,12 +64,12 @@ local function find_executable(name, search_paths)
     return name -- fallback to name (hope it's in PATH)
 end
 
--- Detect common build paths for Backend and Assembler
-local backend_paths = {
-    "../Backend/bin/Debug/net10.0/Backend",
-    "./Backend/bin/Debug/net10.0/Backend",
-    "../Backend/bin/Release/net10.0/Backend",
-    "./Backend/bin/Release/net10.0/Backend",
+-- Detect common build paths for Emulator and Assembler
+local emulator_paths = {
+    "../Emulator/bin/Debug/net10.0/Emulator",
+    "./Emulator/bin/Debug/net10.0/Emulator",
+    "../Emulator/bin/Release/net10.0/Emulator",
+    "./Emulator/bin/Release/net10.0/Emulator",
 }
 
 local assembler_paths = {
@@ -80,8 +80,8 @@ local assembler_paths = {
 }
 
 cpu_simple.setup({
-    -- Path to Backend executable (auto-detected from common locations)
-    backend_path = find_executable("Backend", backend_paths),
+    -- Path to Emulator executable (auto-detected from common locations)
+    emulator_path = find_executable("Emulator", emulator_paths),
     -- Path to Assembler executable (auto-detected from common locations)
     assembler_path = find_executable("Assembler", assembler_paths),
     -- Assembler options
@@ -175,13 +175,13 @@ vim.filetype.add({ extension = { csasm = "csasm" } })
 
 Then add the language to Neovim, connect the parser to the language and connect the file extension with the language.
 
-### Backend JSON protocol
+### Emulator JSON protocol
 
-The plugin communicates with the backend exclusively through JSON messages on stdin/stdout.
+The plugin communicates with the emulator exclusively through JSON messages on stdin/stdout.
 
 #### Status response
 
-After each step/tick the backend emits a `status` message. The key field for the plugin is `traces` — an array of per-tick records that replaced the old `memory_changes`/`stack_changes` flat lists:
+After each step/tick the emulator emits a `status` message. The key field for the plugin is `traces` — an array of per-tick records that replaced the old `memory_changes`/`stack_changes` flat lists:
 
 ```json
 {
@@ -233,13 +233,13 @@ After each step/tick the backend emits a `status` message. The key field for the
 
 #### Watchpoint messages
 
-When a watchpoint fires, the backend emits a `watchpoint_hit` message and transitions to Idle:
+When a watchpoint fires, the emulator emits a `watchpoint_hit` message and transitions to Idle:
 
 ```json
 { "type": "watchpoint_hit", "id": 1, "description": "on-write 0x000C" }
 ```
 
-After any `watchpoint` command that mutates state (`on-write`, `on-read`, `on-phase`, `remove`, `clear`), the backend also emits the full watchpoint list:
+After any `watchpoint` command that mutates state (`on-write`, `on-read`, `on-phase`, `remove`, `clear`), the emulator also emits the full watchpoint list:
 
 ```json
 { "type": "watchpoint_list", "watchpoints": [{ "id": 1, "description": "on-write 0x000C" }] }
@@ -251,14 +251,14 @@ The plugin handles both:
 
 `state.watchpoints` is populated as `{ { id=number, description=string }, … }` and cleared in `state.clear()`.
 
-Watchpoints are managed via the `:CpuWp*` commands (see Commands reference). `state.watchpoints` is always kept in sync because the backend emits a `watchpoint_list` after every mutating operation.
+Watchpoints are managed via the `:CpuWp*` commands (see Commands reference). `state.watchpoints` is always kept in sync because the emulator emits a `watchpoint_list` after every mutating operation.
 
 ### Commands reference
 
 | Neovim command | Default keymap | Description |
 |---|---|---|
-| `CpuBackendStart` | `<leader>cs` | Start the backend process |
-| `CpuBackendStop` | `<leader>cq` | Stop the backend process |
+| `CpuEmulatorStart` | `<leader>cs` | Start the emulator process |
+| `CpuEmulatorStop` | `<leader>cq` | Stop the emulator process |
 | `CpuAssemble` | `<leader>ca` | Assemble current buffer |
 | `CpuLoad [path]` | `<leader>cl` | Load machine code into CPU |
 | `CpuRun` | `<leader>cr` | Run until halt |
@@ -285,7 +285,7 @@ Watchpoints are managed via the `:CpuWp*` commands (see Commands reference). `st
 Follow-up cleanup backlog:
 
 - Move command metadata (name, args, desc, handler) to a single declarative table to reduce command boilerplate.
-- Replace optimistic `state.loaded_program` assignment on `CpuLoad` with an explicit backend acknowledgement flow.
+- Replace optimistic `state.loaded_program` assignment on `CpuLoad` with an explicit emulator acknowledgement flow.
 - Add more feature-level specs for navigation and source annotation edge-cases around missing/partial debug info.
 - Consider surfacing per-tick trace data in the sidebar (e.g., a "tick log" panel) for instruction-level introspection.
 

@@ -12,7 +12,7 @@ deps.reset()
 events.clear()
 
 local display_stub, display_calls = t.make_display_stub()
-local backend_stub = {
+local emulator_stub = {
   start = function() return true end,
   stop = function() end,
   send = function() return true end,
@@ -28,7 +28,7 @@ local state_stub = {
 }
 
 deps.set("display", display_stub)
-deps.set("backend", backend_stub)
+deps.set("emulator", emulator_stub)
 deps.set("assembler", assembler_stub)
 deps.set("state", state_stub)
 deps.set("events", events)
@@ -40,9 +40,9 @@ cpu.setup({ lsp_path = nil })
 local commands = vim.api.nvim_get_commands({ builtin = false })
 
 local expected = {
-  "CpuBackendStart",
-  "CpuBackendStop",
-  "CpuBackendStatus",
+  "CpuEmulatorStart",
+  "CpuEmulatorStop",
+  "CpuEmulatorStatus",
   "CpuAssemble",
   "CpuLoad",
   "CpuRun",

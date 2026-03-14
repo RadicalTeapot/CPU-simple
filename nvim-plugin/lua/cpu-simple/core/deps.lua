@@ -1,7 +1,7 @@
 local M = {}
 
 local MODULE_PATHS = {
-  backend = "cpu-simple.backend",
+  emulator = "cpu-simple.emulator",
   assembler = "cpu-simple.assembler",
   display = "cpu-simple.display",
   state = "cpu-simple.state",

@@ -53,7 +53,7 @@ See [vector-table.md](vector-table.md) for the full design rationale and impleme
 External hardware (e.g., a PPU) calls `CPU.RequestInterrupt()`. This sets an internal `_pendingInterrupt` flag inside `TickHandler`.
 
 ```csharp
-// External hardware / backend
+// External hardware / emulator
 cpu.RequestInterrupt();
 ```
 

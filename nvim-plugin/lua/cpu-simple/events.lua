@@ -13,8 +13,8 @@ M.BREAKPOINT_UPDATED = "breakpoint_updated"
 M.BREAKPOINT_HIT = "breakpoint_hit"
 M.WATCHPOINT_HIT = "watchpoint_hit"
 M.WATCHPOINT_UPDATED = "watchpoint_updated"
-M.BACKEND_STARTED = "backend_started"
-M.BACKEND_STOPPED = "backend_stopped"
+M.EMULATOR_STARTED = "emulator_started"
+M.EMULATOR_STOPPED = "emulator_stopped"
 
 -- Registered subscribers for each event ({callback = function, opts = {once = bool}})
 M.subscribers = {}

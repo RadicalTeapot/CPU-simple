@@ -1,7 +1,7 @@
 # CPU Simple
 
 A minimal educational 8-bit CPU implemented in C# with a small runtime, opcode set, and tests. 
-This repository contains the CPU core, a backend server acting a simple debugger, a test suite, a compiler and a Neovim plugin to serve as the IDE.
+This repository contains the CPU core, a emulator server acting a simple debugger, a test suite, a compiler and a Neovim plugin to serve as the IDE.
 
 ## Repository Structure
 
@@ -9,7 +9,7 @@ This repository contains the CPU core, a backend server acting a simple debugger
 - `CPU.Tests/`: Unit tests for CPU and opcodes
 - `Assembler/`: Compiler to convert assembly files into machine code
 - `Assembler.Tests/` : Unit test for the assembler code
-- `Backend/`: Console application that hosts/runs the CPU to be used for debugging
+- `Emulator/`: Console application that hosts/runs the CPU to be used for debugging
 - `nvim-plugin/`: Neovim plugin to serve as the IDE
 - `tree-sitter-grammar/`: Tree sitter grammar generator for the assembly language
 - `docs/`: Design and specification documents (including instruction timing model in `docs/projects/cpu-simple/micro-code.md`)
@@ -47,17 +47,17 @@ dotnet build cpu-simple.sln -c Debug
 dotnet test cpu-simple.sln -c Debug
 ```
 
-### Run the backend
+### Run the emulator
 
 ```pwsh
-# Run the backend (headless, 10Hz)
-dotnet run --project Backend/Backend.csproj
+# Run the emulator (headless, 10Hz)
+dotnet run --project Emulator/Emulator.csproj
 
-# Run the backend with PPU rendering window (60fps, default scale 4×)
-dotnet run --project Backend/Backend.csproj -- --vram 256
+# Run the emulator with PPU rendering window (60fps, default scale 4×)
+dotnet run --project Emulator/Emulator.csproj -- --vram 256
 
 # Run with custom scale
-dotnet run --project Backend/Backend.csproj -- --vram 256 --scale 2
+dotnet run --project Emulator/Emulator.csproj -- --vram 256 --scale 2
 ```
 
 ### Generate the treesitter grammar
@@ -105,7 +105,7 @@ Run the Neovim plugin integration tests:
 
 ```lua
 require("cpu-simple").setup({
-  backend_path = "/path/to/Backend.exe",
+  emulator_path = "/path/to/Emulator.exe",
   assembler_path = "/path/to/Assembler.exe",
   memory_size = 256,
   stack_size = 16,
@@ -131,12 +131,12 @@ require("cpu-simple").setup({
 
 ### Commands
 
-- `:CpuStart`: Start the CPU backend process
-- `:CpuStop`: Stop the CPU backend process
+- `:CpuStart`: Start the CPU emulator process
+- `:CpuStop`: Stop the CPU emulator process
 - `:CpuAssemble`: Assemble the current buffer to machine code
 - `:CpuLoad`: Load machine code into the CPU
 - `:CpuRun`: Run the loaded program
-- `:CpuSend`: Send a raw command to the CPU backend
+- `:CpuSend`: Send a raw command to the CPU emulator
 - `:CpuDump`: Dump CPU state, memory and stack contents
 
 ## Project Goals
@@ -166,7 +166,6 @@ I did review and tested the code but exercise caution when using it.
   - [ ] When assembled, if sidebar was never opened, open the configured panels, otherwise just re-open sidebar
   - [ ] Test if assembler errors are handled
 - [ ] Implement PPU and map some memory for it
-   - [ ] Rename Backend to Emulator.
    - [ ] What about PPU micro-code?
    - [ ] Check if it would make more sense to diminish the per-tick status rather than suppressing it entirely in windowed mode
    - [ ] Use `#if x16` to change assumption that sprites are tiled aligned where needed for 16bit build

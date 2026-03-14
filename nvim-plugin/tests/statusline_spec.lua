@@ -8,7 +8,7 @@ local deps = require("cpu-simple.core.deps")
 deps.reset()
 
 local running = false
-local backend_stub = {
+local emulator_stub = {
   is_running = function()
     return running
   end,
@@ -18,13 +18,13 @@ local state_stub = {
   status = nil,
 }
 
-deps.set("backend", backend_stub)
+deps.set("emulator", emulator_stub)
 deps.set("state", state_stub)
 
-t.assert_equal(cpu.get_statusline(), "Backend stopped", "statusline when backend stopped")
+t.assert_equal(cpu.get_statusline(), "Emulator stopped", "statusline when emulator stopped")
 
 running = true
-t.assert_equal(cpu.get_statusline(), "Backend running: no status", "statusline when no status data")
+t.assert_equal(cpu.get_statusline(), "Emulator running: no status", "statusline when no status data")
 
 state_stub.status = {
   cycles = 12,

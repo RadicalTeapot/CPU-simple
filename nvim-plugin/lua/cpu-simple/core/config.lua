@@ -1,7 +1,7 @@
 local M = {}
 
 M.defaults = {
-  backend_path = "Backend.exe",
+  emulator_path = "Emulator.exe",
   assembler_path = "Assembler.exe",
   lsp_path = nil,
   assembler_options = {

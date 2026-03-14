@@ -7,22 +7,22 @@ function M.register(ctx, api)
 
   local create = vim.api.nvim_create_user_command
 
-  create("CpuBackendStart", function()
-    api.backend_start()
+  create("CpuEmulatorStart", function()
+    api.emulator_start()
   end, {
-    desc = "Start the CPU backend process",
+    desc = "Start the CPU emulator process",
   })
 
-  create("CpuBackendStop", function()
-    api.backend_stop()
+  create("CpuEmulatorStop", function()
+    api.emulator_stop()
   end, {
-    desc = "Stop the CPU backend process",
+    desc = "Stop the CPU emulator process",
   })
 
-  create("CpuBackendStatus", function()
-    api.backend_status()
+  create("CpuEmulatorStatus", function()
+    api.emulator_status()
   end, {
-    desc = "Get backend process status",
+    desc = "Get emulator process status",
   })
 
   create("CpuAssemble", function()

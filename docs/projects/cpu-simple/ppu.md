@@ -317,7 +317,7 @@ After the last visible scanline (and the post-render idle line), the PPU enters 
 
 At the start of VBlank:
 1. The PPU sets the VBlank flag in PPUSTATUS.
-2. The PPU fires the `VBlankStarted` event; the Backend calls `cpu.RequestInterrupt()`.
+2. The PPU fires the `VBlankStarted` event; the Emulator calls `cpu.RequestInterrupt()`.
 3. The PPU converts the completed framebuffer to RGB and fires `FrameReady` with the pixel data. The CPU gets the interrupt before the display reads the frame.
 4. The CPU's ISR runs: uploads tile data, updates the tilemap, rewrites OAM.
 5. VBlank ends; the PPU clears the VBlank flag and resets to scanline 0.
@@ -552,7 +552,7 @@ The CPU and PPU run at independent clock rates. In real hardware these rates are
 - How many CPU cycles fit inside one VBlank window
 - How precisely mid-frame timing effects can be controlled
 
-`PpuConfig.PpuCyclesPerCpuCycle` holds this ratio. It must be set before the simulation starts and is documented alongside other simulation parameters in the Backend. The 16-bit build default of 341 cycles per scanline / 262 scanlines follows NES proportions; the 8-bit build default (171/137) scales proportionally for the smaller display.
+`PpuConfig.PpuCyclesPerCpuCycle` holds this ratio. It must be set before the simulation starts and is documented alongside other simulation parameters in the Emulator. The 16-bit build default of 341 cycles per scanline / 262 scanlines follows NES proportions; the 8-bit build default (171/137) scales proportionally for the smaller display.
 
 ### Simpler alternative: single-threaded co-simulation
 
@@ -584,7 +584,7 @@ void TickFrame()
 }
 ```
 
-There is no thread concurrency, so no data races and no synchronization primitives needed. VBlank is detected during `ppu.Tick()` and fires `VBlankStarted`, which the Backend wires to `cpu.RequestInterrupt()`, and `FrameReady`, which the Backend wires to `display.UpdateFrame(rgb)`.
+There is no thread concurrency, so no data races and no synchronization primitives needed. VBlank is detected during `ppu.Tick()` and fires `VBlankStarted`, which the Emulator wires to `cpu.RequestInterrupt()`, and `FrameReady`, which the Emulator wires to `display.UpdateFrame(rgb)`.
 
 **Note:** PPU ticks happen after the full CPU state tick rather than interleaved cycle-by-cycle. The total PPU tick count per state tick is proportional to the number of CPU micro-ticks that actually ran. This is an approximation — true cycle-interleaved co-simulation is a follow-up.
 
@@ -594,7 +594,7 @@ The interrupt the PPU fires at the start of VBlank is a **notification** — it 
 
 ### VBlank notification: decoupling PPU from CPU
 
-The PPU does not hold a direct reference to the CPU or the display. It exposes events that the Backend subscribes to:
+The PPU does not hold a direct reference to the CPU or the display. It exposes events that the Emulator subscribes to:
 
 ```csharp
 ppu.VBlankStarted += () => cpu.RequestInterrupt();
@@ -642,6 +642,6 @@ void TickBoth()
 }
 ```
 
-### Ownership and integration with the Backend state machine
+### Ownership and integration with the Emulator state machine
 
-The Backend owns the PPU. The execution states (`SteppingState`, `TickingState`, `RunningState`) must all advance the PPU by the correct number of ticks per CPU tick. A shared helper (e.g., on `CpuStateFactory` or a new `SimulationTicker`) ensures no state class can forget to tick the PPU.
+The Emulator owns the PPU. The execution states (`SteppingState`, `TickingState`, `RunningState`) must all advance the PPU by the correct number of ticks per CPU tick. A shared helper (e.g., on `CpuStateFactory` or a new `SimulationTicker`) ensures no state class can forget to tick the PPU.

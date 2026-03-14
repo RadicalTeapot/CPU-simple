@@ -1,9 +1,9 @@
 -- CPU state module for cpu-simple
--- Stores CPU state separately from backend process management
+-- Stores CPU state separately from emulator process management
 
 local M = {}
 
--- CPU state (populated by backend responses)
+-- CPU state (populated by emulator responses)
 M.status = nil   -- { cycles, pc, sp, registers, flags }
 M.stack = nil    -- Array of stack values
 M.memory = nil   -- Array of memory values
@@ -12,8 +12,8 @@ M.watchpoints = {}  -- Array of watchpoint objects ({ id = number, description =
 M.is_halted = false
 M.loaded_program = false  -- Whether a program is loaded
 
---- Update CPU status from backend response
----@param json table Parsed JSON object from backend
+--- Update CPU status from emulator response
+---@param json table Parsed JSON object from emulator
 function M.update_status(json)
   if not json then
     return
@@ -74,8 +74,8 @@ function M.update_status(json)
   end
 end
 
---- Update stack from backend response
----@param json table Parsed JSON object from backend
+--- Update stack from emulator response
+---@param json table Parsed JSON object from emulator
 function M.update_stack(json)
   if not json then
     return
@@ -91,8 +91,8 @@ function M.update_stack(json)
   M.stack = stack_values
 end
 
---- Update memory from backend response
----@param json table Parsed JSON object from backend
+--- Update memory from emulator response
+---@param json table Parsed JSON object from emulator
 function M.update_memory(json)
   if not json then
     return
@@ -108,8 +108,8 @@ function M.update_memory(json)
   M.memory = memory_values
 end
 
---- Update breakpoint list from backend response
----@param json table Parsed JSON object from backend
+--- Update breakpoint list from emulator response
+---@param json table Parsed JSON object from emulator
 function M.set_breakpoints(json)
   if not json then
     return
@@ -125,8 +125,8 @@ function M.set_breakpoints(json)
   M.breakpoints = breakpoints
 end
 
---- Update watchpoint list from backend response
----@param json table Parsed JSON object from backend
+--- Update watchpoint list from emulator response
+---@param json table Parsed JSON object from emulator
 function M.set_watchpoints(json)
   if not json then
     return
