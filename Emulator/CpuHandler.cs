@@ -42,6 +42,13 @@ namespace Emulator
             {
                 _cpu = new CPU.CPU(context.CpuConfig);
             }
+
+            if (context.ProgData != null)
+            {
+                _cpu.LoadProgram([.. context.ProgData]);
+                _cpu.Reset();
+            }
+
             _breakpointContainer = new BreakpointContainer();
             _watchpointContainer = new WatchpointContainer();
             _cpuStateFactory = new CpuStateFactory(_cpu, _logger, _output, _breakpointContainer, _watchpointContainer, context.CpuCommandRegistry);
