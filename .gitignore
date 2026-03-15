@@ -61,3 +61,4 @@ $null
 tests/
 !nvim-plugin/tests/
 !nvim-plugin/tests/**
+data/cpu_programs/bin/*

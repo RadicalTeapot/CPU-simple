@@ -176,3 +176,10 @@ I did review and tested the code but exercise caution when using it.
 - [/] Cleanup docs and document design choices
   - [ ] Rewrite lexer, parser and analyser documentation
   - [ ] Update and merge memory, memory-mapper and mmio
+
+## Issues
+
+- Document common language features too (';' for comment, ...)
+- Run in windowed mode in Neovim (using specific command)
+- Zero flag status is not set properly in neovim
+- Highlight .data positions in "live" memory also 

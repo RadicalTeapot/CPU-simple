@@ -1,0 +1,64 @@
+; Draw a sprite moving around the world
+.text
+ldi r3, #0x01                   ; R3 -> update tracker
+main:
+    cpi r3, #0x01
+    jzc [main]                  ; Jump back if r3 != 1
+    cal [updateSpritePos]       ; Execute the function to update sprite
+    jmp [main]                  ; Loop
+
+updateSpritePos:
+    psh r0
+    psh r1
+
+    ; Update X and Y position
+    lda r0, [spriteData]        ; Load x position
+    lda r1, [spriteData+#0x01]  ; Load y position
+    inc r0                      ; Increment x
+    cpi r0, #0x10               ; Compare to screen width
+    jzc [setMemoryValues]       ; Jump if not equal
+    ldi r0, #0x00               ; Reset x
+    inc r1                      ; Increment y
+    cpi r1, #0x0D               ; Compare to screen height
+    jzc [setMemoryValues]       ; Jump if not equal
+    ldi r1, #0x00               ; Reset y
+
+    setMemoryValues:
+    sta r0, [spriteData]        ; Store x position
+    sta r1, [spriteData+#0x01]  ; Store y position
+
+    ; Update sprite oam entry position
+    ani r0, #0x0F               ; Not needed due to logic above
+    ani r1, #0x0F               ; Not needed due to logic above
+    lsh r1 
+    lsh r1 
+    lsh r1 
+    lsh r1                      ; Move r1 to high nibble
+    or r0, r1
+    sta r0, [spriteOamEntry]
+
+    pop r1
+    pop r0
+    ret
+
+.data
+    spriteData: .zero #0x02
+    spriteOamEntry: 
+        .byte #0x00 ; Position
+        .byte #0x00 ; Tile index
+        .byte #0x00 ; Attributes are all zero in that example and could be skipped
+
+.irq
+    psh r0
+    ldi r0, #0xd0                       ; First OAM entry address in VRAM
+    sta r0, [#0xe8]                     ; Set PPU data address to OAM entry address
+    lda r0, [spriteOamEntry]            ; Load position byte
+    sta r0, [#0xe9]                     ; Write position byte to VRAM
+    lda r0, [spriteOamEntry + #0x01]    ; Load Tile index
+    sta r0, [#0xe9]                     ; Write Tile index to VRAM
+    lda r0, [spriteOamEntry + #0x02]    ; Load attributes
+    sta r0, [#0xe9]                     ; Write attributes to VRAM
+    ldi r3, #0x01                       ; Mark for sprite update
+    pop r0
+    rti
+    
