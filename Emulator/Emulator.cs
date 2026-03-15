@@ -11,6 +11,7 @@ namespace Emulator
         {
             var logger = new ConsoleLogger();
             var code = ParseArgs(args, logger, out var result);
+            
             switch (code)
             {
                 case HelpExitCode:
@@ -19,6 +20,11 @@ namespace Emulator
                 case InvalidArgExitCode:
                     logger.LogUsage();
                     return InvalidArgExitCode;
+            }
+
+            if (!ValidateArgs(result, logger))
+            {
+                return InvalidArgExitCode;
             }
 
             byte[]? chrData = null;
@@ -41,6 +47,11 @@ namespace Emulator
                     return InvalidArgExitCode;
                 }
                 progData = File.ReadAllBytes(result.ProgPath);
+                if (progData.Length > result.Config.MemorySize - result.Config.StackSize) // TODO This should take into account the actual memory layout and reserved areas, not just stack size (e.g. MMIO size)
+                {
+                    logger.Error($"Program size ({progData.Length} bytes) exceeds available memory ({result.Config.MemorySize - result.Config.StackSize} bytes).");
+                    return InvalidArgExitCode;
+                }
             }
 
             var ppuConfig = result.Config.VramSize > 0 ? PpuConfig.Minimal8Bit : null;
@@ -189,6 +200,62 @@ namespace Emulator
             string? ChrPath,
             string? ProgPath
         );
+
+        private static bool ValidateArgs(ParsedArgsResult args, ILogger logger)
+        {
+            if (args.Config.MemorySize <= 0)
+            {
+                logger.Error("Memory size must be a positive integer.");
+                return false;
+            }
+#if x16
+            if (args.Config.MemorySize > 65536)
+            {
+                logger.Error("Memory size exceeds maximum size (65536).");
+#else
+            if (args.Config.MemorySize > 256)
+            {
+                logger.Error("Memory size exceeds maximum size (256).");
+#endif
+                return false;
+            }
+            if (args.Config.StackSize <= 0)
+            {
+                logger.Error("Stack size must be a positive integer.");
+                return false;
+            }
+            if (args.Config.StackSize >= args.Config.MemorySize)
+            {
+                logger.Error("Stack size must be smaller than memory size.");
+                return false;
+            }
+            if (args.Config.RegisterCount <= 0)
+            {
+                logger.Error("Register count must be a positive integer.");
+                return false;
+            }
+            if (args.Config.VramSize < 0)
+            {
+                logger.Error("VRAM size cannot be negative.");
+                return false;
+            }
+            if (args.Scale <= 0)
+            {
+                logger.Error("Scale must be a positive integer.");
+                return false;
+            }
+            if (args.ChrPath !=  null && !File.Exists(args.ChrPath))
+            {
+                logger.Error($"Character file not found: {args.ChrPath}");
+                return false;
+            }
+            if (args.ProgPath != null && !File.Exists(args.ProgPath))
+            {
+                logger.Error($"Program file not found: {args.ProgPath}");
+                return false;
+            }
+            return true;
+        }
 
         private const int DefaultMemorySize = 256;
         private const int DefaultStackSize = 16;
