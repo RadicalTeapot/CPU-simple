@@ -4,6 +4,7 @@ ldi r3, #0x01                   ; R3 -> update tracker
 main:
     cpi r3, #0x01
     jzc [main]                  ; Jump back if r3 != 1
+    ldi r3, #0x00               ; Disable sprite update until next interrupt
     cal [updateSpritePos]       ; Execute the function to update sprite
     jmp [main]                  ; Loop
 
@@ -28,14 +29,16 @@ updateSpritePos:
     sta r1, [spriteData+#0x01]  ; Store y position
 
     ; Update sprite oam entry position
-    ani r0, #0x0F               ; Not needed due to logic above
-    ani r1, #0x0F               ; Not needed due to logic above
+    ;ani r0, #0x0F               ; Not needed due to logic above
+    ;ani r1, #0x0F               ; Not needed due to logic above
     lsh r1 
     lsh r1 
     lsh r1 
     lsh r1                      ; Move r1 to high nibble
     or r0, r1
+    sei                         ; Disable interrupt to avoid race condition with spriteOamEntry
     sta r0, [spriteOamEntry]
+    cli                         ; Enable interrupt
 
     pop r1
     pop r0
