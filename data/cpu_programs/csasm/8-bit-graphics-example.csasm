@@ -1,10 +1,21 @@
 ; Draw a sprite moving around the world
+.data
+    spriteData: .zero #0x02             ; X and Y position
+    spriteOamEntry: 
+        .byte #0x00                     ; Position
+        .byte #0x51                     ; Tile index
+        .byte #0x00                     ; Attributes are all zero in that example and could be skipped
+    updateFrameCount: .byte #0x10       ; Update sprite position every 16 frames
+    updateFlag: .byte #0x10             ; If >= to updateFrameCount, update sprite position
+
 .text
-ldi r3, #0x01                   ; R3 -> update tracker
 main:
-    cpi r3, #0x01
-    jzc [main]                  ; Jump back if r3 != 1
-    ldi r3, #0x00               ; Disable sprite update until next interrupt
+    ; Check update flag
+    lda r0, [updateFlag]
+    cpa r0, [updateFrameCount]  ; Check if update is needed
+
+    jzc [main]                  ; Loop if update is not needed
+
     cal [updateSpritePos]       ; Execute the function to update sprite
     jmp [main]                  ; Loop
 
@@ -36,23 +47,21 @@ updateSpritePos:
     lsh r1 
     lsh r1                      ; Move r1 to high nibble
     or r0, r1
+
     sei                         ; Disable interrupt to avoid race condition with spriteOamEntry
     sta r0, [spriteOamEntry]
-    cli                         ; Enable interrupt
+    ; Set update flag
+    ldi r0, #0x00               ; Disable sprite update until next interrupt
+    sta r0, [updateFlag]
+    cli                         ; Enable interrupt again
 
     pop r1
     pop r0
     ret
 
-.data
-    spriteData: .zero #0x02
-    spriteOamEntry: 
-        .byte #0x00 ; Position
-        .byte #0x00 ; Tile index
-        .byte #0x00 ; Attributes are all zero in that example and could be skipped
-
 .irq
     psh r0
+
     ldi r0, #0xd0                       ; First OAM entry address in VRAM
     sta r0, [#0xe8]                     ; Set PPU data address to OAM entry address
     lda r0, [spriteOamEntry]            ; Load position byte
@@ -61,7 +70,12 @@ updateSpritePos:
     sta r0, [#0xe9]                     ; Write Tile index to VRAM
     lda r0, [spriteOamEntry + #0x02]    ; Load attributes
     sta r0, [#0xe9]                     ; Write attributes to VRAM
-    ldi r3, #0x01                       ; Mark for sprite update
+
+    ; Set update flag
+    lda r0, [updateFlag]
+    inc r0
+    sta r0, [updateFlag]
+
     pop r0
     rti
     
