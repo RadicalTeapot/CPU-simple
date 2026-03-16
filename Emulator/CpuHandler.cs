@@ -52,7 +52,9 @@ namespace Emulator
             _breakpointContainer = new BreakpointContainer();
             _watchpointContainer = new WatchpointContainer();
             _cpuStateFactory = new CpuStateFactory(_cpu, _logger, _output, _breakpointContainer, _watchpointContainer, context.CpuCommandRegistry);
-            _currentState = _cpuStateFactory.CreateIdleState();
+            _currentState = context.ProgData == null
+                ? _cpuStateFactory.CreateIdleState()
+                : _cpuStateFactory.CreateRunningState(new Run.Config(Run.Mode.ToHalt, 0));
         }
 
         public void HandleGlobalCommand(IGlobalCommand globalCommand, string[] args)

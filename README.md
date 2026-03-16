@@ -165,6 +165,7 @@ I did review and tested the code but exercise caution when using it.
 - [ ] Implement CPU IDE ([inspiration for some UI](https://github.com/AfaanBilal/NanoCore/blob/master/assets/NanoCoreTUI.gif)) in Neovim
   - [ ] When assembled, if sidebar was never opened, open the configured panels, otherwise just re-open sidebar
   - [ ] Test if assembler errors are handled
+  - [ ] Add info about how much space a program uses in Neovim
 - [ ] Implement PPU and map some memory for it
    - [ ] What about PPU micro-code?
    - [ ] Check if it would make more sense to diminish the per-tick status rather than suppressing it entirely in windowed mode
