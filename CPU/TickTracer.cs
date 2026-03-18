@@ -7,14 +7,13 @@ namespace CPU
     {
         public TickTrace[] LastTraces => [.. _traces];
 
-        public TickTracer(State state, Stack stack, Memory memory)
+        public TickTracer(State state, Stack stack, BusDecoder bus)
         {
             _state = state;
             _stack = stack;
-            _memory = memory;
             _registersBefore = new byte[_state.RegisterCount];
             _busRecorder = new BusRecorder();
-            _memory.Recorder = _busRecorder;
+            bus.Recorder = _busRecorder;
             _stack.Recorder = _busRecorder;
         }
 
@@ -25,6 +24,7 @@ namespace CPU
             _spBefore = (int)_stack.SP;
             _zBefore = _state.Z;
             _cBefore = _state.C;
+            _iBefore = _state.I;
             SnapshotRegisters();
         }
 
@@ -44,6 +44,8 @@ namespace CPU
                 ZeroFlagAfter: _state.Z,
                 CarryFlagBefore: _cBefore,
                 CarryFlagAfter: _state.C,
+                InterruptDisableFlagBefore: _iBefore,
+                InterruptDisableFlagAfter: _state.I,
                 Bus: _busRecorder.LastAccess
             );
             _traces.Add(trace);
@@ -84,6 +86,7 @@ namespace CPU
             MicroPhase.FetchOperand16High => TickType.Bus,
             MicroPhase.MemoryRead => TickType.Bus,
             MicroPhase.MemoryWrite => TickType.Bus,
+            MicroPhase.JumpToInterrupt => TickType.Internal,
             MicroPhase.AluOp => TickType.Internal,
             MicroPhase.EffectiveAddrComputation => TickType.Internal,
             MicroPhase.ValueComposition => TickType.Internal,
@@ -94,11 +97,11 @@ namespace CPU
         private int _spBefore;
         private bool _zBefore;
         private bool _cBefore;
+        private bool _iBefore;
         private readonly List<TickTrace> _traces = [];
         private readonly byte[] _registersBefore;
         private readonly BusRecorder _busRecorder;
         private readonly State _state;
         private readonly Stack _stack;
-        private readonly Memory _memory;
     }
 }

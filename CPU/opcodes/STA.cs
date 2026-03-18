@@ -6,10 +6,10 @@ namespace CPU.opcodes
     [Opcode(OpcodeBaseCode.STA, OpcodeGroupBaseCode.StoreAndIndirect)]
     internal class STA : BaseOpcode
     {
-        public STA(byte instructionByte, State state, Memory memory, Stack stack)
+        public STA(byte instructionByte, State state, IBus bus, Stack stack)
         {
             _state = state;
-            _memory = memory;
+            _bus = bus;
             _registerIdx = OpcodeHelpers.GetDestinationRegisterIdx(instructionByte);
 #if x16
             SetPhases(MicroPhase.FetchOperand16Low, Read1, Read2, ComposeAddress, Write);
@@ -21,11 +21,11 @@ namespace CPU.opcodes
         private MicroPhase Read1()
         {
 #if x16
-            _addressLow = _memory.ReadByte(_state.GetPC());
+            _addressLow = _bus.ReadByte(_state.GetPC());
             _state.IncrementPC();
             return MicroPhase.FetchOperand16High;
 #else
-            _effectiveAddress = _memory.ReadByte(_state.GetPC());
+            _effectiveAddress = _bus.ReadByte(_state.GetPC());
             _state.IncrementPC();
             return MicroPhase.MemoryWrite;
 #endif
@@ -34,7 +34,7 @@ namespace CPU.opcodes
 #if x16
         private MicroPhase Read2()
         {
-            _addressHigh = _memory.ReadByte(_state.GetPC());
+            _addressHigh = _bus.ReadByte(_state.GetPC());
             _state.IncrementPC();
             return MicroPhase.ValueComposition;
         }
@@ -48,7 +48,7 @@ namespace CPU.opcodes
 
         private MicroPhase Write()
         {
-            _memory.WriteByte(_effectiveAddress, _state.GetRegister(_registerIdx));
+            _bus.WriteByte(_effectiveAddress, _state.GetRegister(_registerIdx));
             return MicroPhase.Done;
         }
 
@@ -61,6 +61,6 @@ namespace CPU.opcodes
 #endif
         private readonly byte _registerIdx;
         private readonly State _state;
-        private readonly Memory _memory;
+        private readonly IBus _bus;
     }
 }

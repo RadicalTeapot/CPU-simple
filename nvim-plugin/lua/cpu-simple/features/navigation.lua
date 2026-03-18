@@ -12,7 +12,7 @@ local function sort_breakpoint_lines(state, assembler)
   return bp_lines
 end
 
-function M.new(ctx, backend_feature)
+function M.new(ctx, emulator_feature)
   local feature = {}
 
   function feature.goto_next_breakpoint()
@@ -122,10 +122,10 @@ function M.new(ctx, backend_feature)
     vim.api.nvim_win_set_cursor(0, { pc_line, 0 })
   end
 
-  feature.run_to_cursor = backend_feature.with_running_backend(function()
+  feature.run_to_cursor = emulator_feature.with_running_emulator(function()
     local assembler = ctx.deps.get("assembler")
     local commands = ctx.deps.get("commands")
-    local backend = ctx.deps.get("backend")
+    local emulator = ctx.deps.get("emulator")
     local state = ctx.deps.get("state")
 
     if not state.loaded_program then
@@ -139,7 +139,7 @@ function M.new(ctx, backend_feature)
       return
     end
 
-    backend.send(string.format("%s %d", commands.RUN_TO, span.start_address))
+    emulator.send(string.format("%s %d", commands.RUN_TO, span.start_address))
   end)
 
   return feature

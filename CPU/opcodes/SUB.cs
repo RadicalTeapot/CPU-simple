@@ -6,7 +6,7 @@ namespace CPU.opcodes
     [Opcode(OpcodeBaseCode.SUB, OpcodeGroupBaseCode.Subtract)]
     internal class SUB : BaseOpcode
     {
-        public SUB(byte instructionByte, State state, Memory memory, Stack stack)
+        public SUB(byte instructionByte, State state, IBus bus, Stack stack)
         {
             _state = state;
             _sourceRegisterIdx = OpcodeHelpers.GetSourceRegisterIdx(instructionByte);

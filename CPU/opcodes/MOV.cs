@@ -6,7 +6,7 @@ namespace CPU.opcodes
     [Opcode(OpcodeBaseCode.MOV, OpcodeGroupBaseCode.Move)]
     internal class MOV : IOpcode
     {
-        public MOV(byte instructionByte, State state, Memory memory, Stack stack)
+        public MOV(byte instructionByte, State state, IBus bus, Stack stack)
         {
             _state = state;
             _sourceRegisterIdx = OpcodeHelpers.GetSourceRegisterIdx(instructionByte);

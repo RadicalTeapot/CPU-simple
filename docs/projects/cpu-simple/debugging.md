@@ -1,6 +1,6 @@
 # Debugging
 
-This document describes how debugging works end-to-end in CPU-simple: from the tick-level trace capture inside the CPU, through the Backend JSON protocol, to the Neovim IDE.
+This document describes how debugging works end-to-end in CPU-simple: from the tick-level trace capture inside the CPU, through the Emulator JSON protocol, to the Neovim IDE.
 
 ## Architecture Overview
 
@@ -11,7 +11,7 @@ CPU (TickTracer)
 CpuInspector.Traces
    │  exposed by CPU.GetInspector()
    ▼
-Backend (ConsoleOutput)
+Emulator (ConsoleOutput)
    │  serialises as JSON "status" → stdout
    ▼
 nvim-plugin (state.lua)
@@ -54,7 +54,7 @@ A shared `BusRecorder` instance is wired to both `Memory.Recorder` and `Stack.Re
 - Opcode fetch: `Memory.ReadByte` used by `TickHandler.FetchCurrentInstruction` is typed (byte/ushort), so it is also recorded
 
 **What is not recorded:**
-- Debug overloads: `Memory.ReadByte(int)` — used only by the Backend debugger for inspecting state
+- Debug overloads: `Memory.ReadByte(int)` — used only by the Emulator debugger for inspecting state
 - Bulk operations: `Memory.ReadBytes`, `Memory.LoadBytes` — not bus transactions
 
 ### Data model
@@ -90,13 +90,15 @@ public record TickTrace(
 
 `CPU.GetInspector()` passes `_tracer` directly to the `CpuInspector` constructor, which reads `tracer.LastTraces` into `CpuInspector.Traces`. `Reset()` calls `_tracer.Clear()`.
 
-The Backend accesses traces only via `GetInspector()` — it never touches `TickHandler` or `TickTracer` directly.
+The Emulator accesses traces only via `GetInspector()` — it never touches `TickHandler` or `TickTracer` directly.
 
 ---
 
-## 3. Backend Serialisation
+## 3. Emulator Serialisation
 
-`ConsoleOutput.WriteStatus` in `Backend/IO/IOutput.cs` serialises each `TickTrace` into a JSON object within the `traces` array of the `status` message.
+`ConsoleOutput.WriteStatus` in `Emulator/IO/IOutput.cs` serialises each `TickTrace` into a JSON object within the `traces` array of the `status` message.
+
+**Windowed mode suppression**: In windowed mode (`--vram SIZE`), `EmulatorApplication` sets `IOutput.StatusSuppressed = true` around each `TickFrame()` call. `ConsoleOutput.WriteStatus()` early-returns when this flag is true, avoiding ~230 K JSON messages/second that would saturate stdout. Event outputs (`WriteBreakpointHit`, `WriteWatchpointHit`) are never suppressed — they still flow through even in windowed mode.
 
 Relevant JSON fields per trace:
 
@@ -113,7 +115,7 @@ Relevant JSON fields per trace:
 | `carry_flag_before` / `carry_flag_after` | Carry flag state |
 | `bus` | `{ address, data, direction, type }` or `null` |
 
-The `status` command handler (`Backend/Commands/GlobalCommands/Status.cs`) shows a compact human-readable summary: `[T{tick} {type} {bus-direction}]` per trace.
+The `status` command handler (`Emulator/Commands/GlobalCommands/Status.cs`) shows a compact human-readable summary: `[T{tick} {type} {bus-direction}]` per trace.
 
 ---
 
@@ -163,9 +165,9 @@ M.watchpoints = { { id=number, description=string }, … }
 
 ## 5. Stepping vs Ticking
 
-The Backend exposes two granularities:
+The Emulator exposes two granularities:
 
-| Backend command | Alias | CPU call | Traces produced |
+| Emulator command | Alias | CPU call | Traces produced |
 |---|---|---|---|
 | `step [count]` | `s` | `CPU.Step()` | One trace per micro-tick across the full instruction |
 | `tick [count]` | `t` | `CPU.Tick()` | One trace for the single micro-tick executed |
@@ -180,7 +182,7 @@ From the plugin's perspective both produce the same `status` JSON; only the numb
 
 Watchpoints are conditional breakpoints that fire at tick boundaries. They are checked inside `ExecutingCpuState.Tick()` — after the breakpoint check, before the completion check — so they work during `step`, `tick`, and `run`.
 
-There are two watchpoint types, implemented in `Backend/WatchpointContainer.cs`.
+There are two watchpoint types, implemented in `Emulator/WatchpointContainer.cs`.
 
 ### Types
 
@@ -199,7 +201,7 @@ There are two watchpoint types, implemented in `Backend/WatchpointContainer.cs`.
 
 Watchpoint IDs are auto-incremented integers starting at 1, assigned by `WatchpointContainer.NextId()`. They never reset within a session (even after `clear`), ensuring old IDs can never collide with new ones.
 
-### Backend commands
+### Emulator commands
 
 ```
 watchpoint on-write <address>    # break after a memory write to <address>
@@ -212,15 +214,15 @@ watchpoint list                  # list all watchpoints with ids and description
 
 Alias: `wp`. Valid `<phase>` names are the `MicroPhase` enum values: `FetchOpcode`, `FetchOperand`, `FetchOperand16Low`, `FetchOperand16High`, `MemoryRead`, `MemoryWrite`, `JumpToInterrupt`, `AluOp`, `EffectiveAddrComputation`, `ValueComposition`, `Done`.
 
-### Backend output
+### Emulator output
 
-When a watchpoint fires, the backend transitions to `IdleState` and emits:
+When a watchpoint fires, the emulator transitions to `IdleState` and emits:
 
 ```json
 { "type": "watchpoint_hit", "id": 1, "description": "on-write 0x000C" }
 ```
 
-After any mutation (`on-write`, `on-read`, `on-phase`, `remove`, `clear`), the backend also emits the full list:
+After any mutation (`on-write`, `on-read`, `on-phase`, `remove`, `clear`), the emulator also emits the full list:
 
 ```json
 { "type": "watchpoint_list", "watchpoints": [{ "id": 1, "description": "on-write 0x000C" }] }

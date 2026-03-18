@@ -6,7 +6,7 @@ namespace CPU.opcodes
     [Opcode(OpcodeBaseCode.RET, OpcodeGroupBaseCode.SystemAndJump)]
     internal class RET : BaseOpcode
     {
-        public RET(byte instructionByte, State state, Memory memory, Stack stack)
+        public RET(byte instructionByte, State state, IBus bus, Stack stack)
         {
             _state = state;
             _stack = stack;

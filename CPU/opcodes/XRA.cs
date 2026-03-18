@@ -6,10 +6,10 @@ namespace CPU.opcodes
     [Opcode(OpcodeBaseCode.XRA, OpcodeGroupBaseCode.SingleRegisterLogicOne)]
     internal class XRA : BaseOpcode
     {
-        public XRA(byte instructionByte, State state, Memory memory, Stack stack)
+        public XRA(byte instructionByte, State state, IBus bus, Stack stack)
         {
             _state = state;
-            _memory = memory;
+            _bus = bus;
             _registerIdx = OpcodeHelpers.GetDestinationRegisterIdx(instructionByte);
 #if x16
             SetPhases(MicroPhase.FetchOperand16Low, Read1, Read2, ComposeAddress, GetMemoryValue, AluOp);
@@ -21,11 +21,11 @@ namespace CPU.opcodes
         private MicroPhase Read1()
         {
 #if x16
-            _addressLow = _memory.ReadByte(_state.GetPC());
+            _addressLow = _bus.ReadByte(_state.GetPC());
             _state.IncrementPC();
             return MicroPhase.FetchOperand16High;
 #else
-            _effectiveAddress = _memory.ReadByte(_state.GetPC());
+            _effectiveAddress = _bus.ReadByte(_state.GetPC());
             _state.IncrementPC();
             return MicroPhase.MemoryRead;
 #endif
@@ -34,7 +34,7 @@ namespace CPU.opcodes
 #if x16
         private MicroPhase Read2()
         {
-            _addressHigh = _memory.ReadByte(_state.GetPC());
+            _addressHigh = _bus.ReadByte(_state.GetPC());
             _state.IncrementPC();
             return MicroPhase.ValueComposition;
         }
@@ -48,7 +48,7 @@ namespace CPU.opcodes
 
         private MicroPhase GetMemoryValue()
         {
-            _addressValue = _memory.ReadByte(_effectiveAddress);
+            _addressValue = _bus.ReadByte(_effectiveAddress);
             return MicroPhase.AluOp;
         }
 
@@ -71,6 +71,6 @@ namespace CPU.opcodes
         private byte _addressValue;
         private readonly byte _registerIdx;
         private readonly State _state;
-        private readonly Memory _memory;
+        private readonly IBus _bus;
     }
 }

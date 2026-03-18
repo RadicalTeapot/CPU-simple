@@ -4,7 +4,7 @@ using CPU.microcode;
 namespace CPU.opcodes
 {
     [Opcode(OpcodeBaseCode.SEC, OpcodeGroupBaseCode.SystemAndJump)]
-    internal class SEC(byte instructionByte, State state, Memory memory, Stack stack) : IOpcode
+    internal class SEC(byte instructionByte, State state, IBus bus, Stack stack) : IOpcode
     {
         public MicroPhase GetStartPhaseType() => MicroPhase.Done;
 

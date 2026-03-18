@@ -1,0 +1,23 @@
+﻿using Emulator.IO;
+
+namespace Emulator.CpuStates
+{
+    internal class SteppingState(
+        CpuStateContext context,
+        BreakpointContainer breakpoints,
+        WatchpointContainer watchpoints,
+        IOutput output,
+        int numberOfInstructions
+        ) : ExecutingCpuState(context, breakpoints, watchpoints, output, "stepping")
+    {
+        protected override bool IsExecutionComplete { get => _executedSteps >= numberOfInstructions; }
+
+        protected override void ExecuteStep()
+        {
+            Context.Cpu.Step();
+            _executedSteps++;
+        }
+
+        private int _executedSteps = 0;
+    }
+}

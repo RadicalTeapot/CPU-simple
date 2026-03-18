@@ -1,4 +1,5 @@
 using NUnit.Framework;
+using CPU.components;
 using CPU.opcodes;
 using CPU.microcode;
 
@@ -13,6 +14,8 @@ namespace CPU.Tests
         [TestCase((byte)OpcodeBaseCode.SEC)]
         [TestCase((byte)OpcodeBaseCode.CLZ)]
         [TestCase((byte)OpcodeBaseCode.SEZ)]
+        [TestCase((byte)OpcodeBaseCode.SEI)]
+        [TestCase((byte)OpcodeBaseCode.CLI)]
         public void ZeroExecute(byte opcodeByte)
         {
             var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
@@ -352,6 +355,49 @@ namespace CPU.Tests
             // FetchOpcode + FetchOperand + MemoryRead = 3 traces
             Assert.That(inspector.Traces, Has.Length.EqualTo(3));
 #endif
+        }
+
+        [Test]
+        public void Rti()
+        {
+            var cpu = OpcodeTestHelpers.CreateCPUWithProgram(
+                program: [(byte)OpcodeBaseCode.RTI],
+                out _,
+                out var stack,
+                out _);
+            stack.PushByte(0x00); // status byte
+            stack.PushAddress(0x00);
+
+#if x16
+            MicroPhase[] expected = [MicroPhase.MemoryRead, MicroPhase.MemoryRead, MicroPhase.ValueComposition, MicroPhase.MemoryRead, MicroPhase.FetchOpcode];
+#else
+            MicroPhase[] expected = [MicroPhase.MemoryRead, MicroPhase.MemoryRead, MicroPhase.FetchOpcode];
+#endif
+            Assert.That(TickSequence(cpu), Is.EqualTo(expected));
+        }
+
+        [Test]
+        public void Isr_TickSequence()
+        {
+            var state = new State(4);
+            var stack = new components.Stack(16);
+            var memory = new Memory(232); // 256 - 16 (stack) - 8 (MMIO) = 232 main memory
+            var irqVectorTableAddress = 232 - Config.VectorTableSize;
+            var handlerAddress = 0x10;
+            var cpu = new CPU(state, stack, memory, irqVectorTableAddress);
+
+            memory.LoadBytes(0, [(byte)OpcodeBaseCode.NOP]);
+            memory.LoadBytes(handlerAddress, [(byte)OpcodeBaseCode.RTI]);
+            memory.LoadBytes(irqVectorTableAddress, [(byte)handlerAddress]);
+
+            cpu.RequestInterrupt();
+
+#if x16
+            MicroPhase[] expected = [MicroPhase.MemoryWrite, MicroPhase.MemoryWrite, MicroPhase.MemoryWrite, MicroPhase.MemoryRead, MicroPhase.MemoryRead, MicroPhase.FetchOpcode];
+#else
+            MicroPhase[] expected = [MicroPhase.MemoryWrite, MicroPhase.MemoryWrite, MicroPhase.MemoryRead, MicroPhase.FetchOpcode];
+#endif
+            Assert.That(TickSequence(cpu), Is.EqualTo(expected));
         }
 
         private static MicroPhase[] TickSequence(CPU cpu)

@@ -18,8 +18,8 @@ function M.setup(ctx)
       vim.keymap.set("n", "gd", "<cmd>CpuGotoDef<cr>", vim.tbl_extend("force", opts, { desc = "Go to symbol definition" }))
       vim.keymap.set("n", "]p", "<cmd>CpuGotoPC<cr>", vim.tbl_extend("force", opts, { desc = "Go to PC" }))
 
-      vim.keymap.set("n", "<leader>cs", "<cmd>CpuBackendStart<cr>", vim.tbl_extend("force", opts, { desc = "CPU: Start backend" }))
-      vim.keymap.set("n", "<leader>cq", "<cmd>CpuBackendStop<cr>", vim.tbl_extend("force", opts, { desc = "CPU: Stop backend" }))
+      vim.keymap.set("n", "<leader>cs", "<cmd>CpuEmulatorStart<cr>", vim.tbl_extend("force", opts, { desc = "CPU: Start emulator" }))
+      vim.keymap.set("n", "<leader>cq", "<cmd>CpuEmulatorStop<cr>", vim.tbl_extend("force", opts, { desc = "CPU: Stop emulator" }))
 
       vim.keymap.set("n", "<leader>ca", "<cmd>CpuAssemble<cr>", vim.tbl_extend("force", opts, { desc = "CPU: Assemble" }))
       vim.keymap.set("n", "<leader>cl", "<cmd>CpuLoad<cr>", vim.tbl_extend("force", opts, { desc = "CPU: Load" }))

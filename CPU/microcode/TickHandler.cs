@@ -6,9 +6,10 @@ namespace CPU.microcode
 {
     internal record TickHandlerConfig(
         State State,
-        Memory Memory,
+        IBus Bus,
         Stack Stack,
-        OpcodeFactory OpcodeFactory
+        OpcodeFactory OpcodeFactory,
+        int IrqVectorTableAddress
     ) { }
 
     internal class TickHandler
@@ -16,9 +17,10 @@ namespace CPU.microcode
         public TickHandler(TickHandlerConfig context)
         {
             _state = context.State;
-            _memory = context.Memory;
+            _bus = context.Bus;
             _stack = context.Stack;
             _opcodeFactory = context.OpcodeFactory;
+            _irqVectorTableAddress = context.IrqVectorTableAddress;
         }
 
         public void RequestInterrupt()
@@ -72,7 +74,7 @@ namespace CPU.microcode
 
         private void FetchCurrentInstruction()
         {
-            if (_pendingInterrupt)
+            if (_pendingInterrupt && !_state.I)
             {
                 JumpToInterrupt();
                 return;
@@ -80,9 +82,9 @@ namespace CPU.microcode
 
             _phaseCount = 0;
 
-            var instruction = _memory.ReadByte(_state.GetPC());
+            var instruction = _bus.ReadByte(_state.GetPC());
             _currentBaseCode = _opcodeFactory.GetOpcodeBaseCodeFromInstruction(instruction);
-            _currentOpcode = _opcodeFactory.CreateOpcode(instruction, _state, _memory, _stack);
+            _currentOpcode = _opcodeFactory.CreateOpcode(instruction, _state, _bus, _stack);
 
             _state.IncrementPC();
         }
@@ -90,7 +92,10 @@ namespace CPU.microcode
         private void JumpToInterrupt()
         {
             _pendingInterrupt = false;
-            _currentPhase = MicroPhase.JumpToInterrupt;
+            _phaseCount = 0;
+            _currentBaseCode = OpcodeBaseCode.NOP;
+            _currentOpcode = new InterruptServiceRoutine(_state, _stack, _bus, _irqVectorTableAddress);
+            _currentPhase = _currentOpcode.GetStartPhaseType();
         }
 
         private MicroPhase _currentPhase = MicroPhase.FetchOpcode;
@@ -100,8 +105,9 @@ namespace CPU.microcode
         private OpcodeBaseCode _currentBaseCode = OpcodeBaseCode.NOP;
         private IOpcode? _currentOpcode = null;
         private readonly State _state;
-        private readonly Memory _memory;
+        private readonly IBus _bus;
         private readonly Stack _stack;
         private readonly OpcodeFactory _opcodeFactory;
+        private readonly int _irqVectorTableAddress;
     }
 }

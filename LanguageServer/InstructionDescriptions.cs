@@ -11,7 +11,10 @@ public static class InstructionDescriptions
         ["sec"] = ("Set carry flag.", "sec"),
         ["clz"] = ("Clear zero flag.", "clz"),
         ["sez"] = ("Set zero flag.", "sez"),
+        ["sei"] = ("Set interrupt disable flag. Prevents interrupts from being serviced.", "sei"),
+        ["cli"] = ("Clear interrupt disable flag. Allows interrupts to be serviced.", "cli"),
         ["ret"] = ("Return from subroutine. Pops the return address from the stack and jumps to it.", "ret"),
+        ["rti"] = ("Return from interrupt. Restores PC and flags (Z, C, I) from stack.", "rti"),
 
         // Single memory address (jumps/calls)
         ["jmp"] = ("Unconditional jump to address.", "jmp address"),

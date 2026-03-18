@@ -18,7 +18,11 @@ Program data starts at `0x00`
 
 ## Layout
 
-| Address range | Use         | Size (in bytes) |
-| ------------- | ----------- | --------------- |
-| 0x00 - 0xEF   | Code + data | 240             |
-| 0xF0 - 0xFF   | Stack       | 16              |
+| Address range | Use                        | Size (in bytes) |
+| ------------- | -------------------------- | --------------- |
+| 0x00 – 0xE6   | Code + data + IRQ handler  | 231             |
+| 0xE7          | IRQ vector table           | 1               |
+| 0xE8 – 0xEF   | MMIO                       | 8               |
+| 0xF0 – 0xFF   | Stack                      | 16              |
+
+The IRQ vector table holds the address of the interrupt handler. Code, data, and the handler itself are placed sequentially starting at `0x00`; the assembler emits the vector table entry at `0xE7` pointing to wherever the handler ended up. See [vector-table.md](vector-table.md) for details.

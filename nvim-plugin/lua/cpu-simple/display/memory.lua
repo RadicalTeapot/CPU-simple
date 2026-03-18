@@ -321,7 +321,7 @@ events.on(events.STATUS_UPDATED, function()
   end
 end)
 
-events.on(events.BACKEND_STOPPED, function()
+events.on(events.EMULATOR_STOPPED, function()
   M.clear_highlight_state()
   if M.is_visible() then
     M.render()

@@ -6,17 +6,17 @@ namespace CPU.opcodes
     [Opcode(OpcodeBaseCode.LDX, OpcodeGroupBaseCode.StoreAndIndirect)]
     internal class LDX : BaseOpcode
     {
-        public LDX(byte instructionByte, State state, Memory memory, Stack stack)
+        public LDX(byte instructionByte, State state, IBus bus, Stack stack)
         {
             _state = state;
-            _memory = memory;
+            _bus = bus;
             _registerIdx = OpcodeHelpers.GetDestinationRegisterIdx(instructionByte);
             SetPhases(MicroPhase.FetchOperand, ReadOffsetAndImmediate, EffectiveAddrComputation, GetMemoryValue);
         }
 
         private MicroPhase ReadOffsetAndImmediate()
         {
-            var value = _memory.ReadByte(_state.GetPC());
+            var value = _bus.ReadByte(_state.GetPC());
             _state.IncrementPC();
             _indirectRegisterIdx = (byte)(value & 0b11);
             _immediateValue = (byte)(value >> 2);
@@ -32,7 +32,7 @@ namespace CPU.opcodes
 
         private MicroPhase GetMemoryValue()
         {
-            var value = _memory.ReadByte(_effectiveAddress);
+            var value = _bus.ReadByte(_effectiveAddress);
             _state.SetRegister(_registerIdx, value);
             return MicroPhase.Done;
         }
@@ -42,6 +42,6 @@ namespace CPU.opcodes
         private byte _indirectRegisterIdx;
         private readonly byte _registerIdx;
         private readonly State _state;
-        private readonly Memory _memory;
+        private readonly IBus _bus;
     }
 }

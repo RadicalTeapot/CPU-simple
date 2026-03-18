@@ -7,7 +7,7 @@ namespace CPU.opcodes
     [Opcode(OpcodeBaseCode.ADD, OpcodeGroupBaseCode.Add)]
     internal class ADD : BaseOpcode
     {
-        public ADD(byte instructionByte, State state, Memory memory, Stack stack)
+        public ADD(byte instructionByte, State state, IBus bus, Stack stack)
         {
             _state = state;
             _sourceRegisterIdx = OpcodeHelpers.GetSourceRegisterIdx(instructionByte);

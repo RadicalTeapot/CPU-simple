@@ -1,5 +1,5 @@
 -- Command constants for cpu-simple
--- Centralizes all backend command strings for maintainability
+-- Centralizes all emulator command strings for maintainability
 
 local M = {}
 

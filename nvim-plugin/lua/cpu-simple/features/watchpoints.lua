@@ -8,30 +8,30 @@ local micro_phases = {
 
 M.phases = micro_phases
 
-function M.new(ctx, backend_feature)
+function M.new(ctx, emulator_feature)
   local feature = {}
 
   local commands = ctx.deps.get("commands")
-  local backend = ctx.deps.get("backend")
+  local emulator = ctx.deps.get("emulator")
 
-  feature.add_write_watchpoint = backend_feature.with_running_backend(function(address)
-    backend.send(string.format("%s %d", commands.WATCH_WRITE, address))
+  feature.add_write_watchpoint = emulator_feature.with_running_emulator(function(address)
+    emulator.send(string.format("%s %d", commands.WATCH_WRITE, address))
   end)
 
-  feature.add_read_watchpoint = backend_feature.with_running_backend(function(address)
-    backend.send(string.format("%s %d", commands.WATCH_READ, address))
+  feature.add_read_watchpoint = emulator_feature.with_running_emulator(function(address)
+    emulator.send(string.format("%s %d", commands.WATCH_READ, address))
   end)
 
-  feature.add_phase_watchpoint = backend_feature.with_running_backend(function(phase)
-    backend.send(string.format("%s %s", commands.WATCH_PHASE, phase))
+  feature.add_phase_watchpoint = emulator_feature.with_running_emulator(function(phase)
+    emulator.send(string.format("%s %s", commands.WATCH_PHASE, phase))
   end)
 
-  feature.remove_watchpoint = backend_feature.with_running_backend(function(id)
-    backend.send(string.format("%s %d", commands.WATCH_REMOVE, id))
+  feature.remove_watchpoint = emulator_feature.with_running_emulator(function(id)
+    emulator.send(string.format("%s %d", commands.WATCH_REMOVE, id))
   end)
 
-  feature.clear_all_watchpoints = backend_feature.with_running_backend(function()
-    backend.send(commands.WATCH_CLR)
+  feature.clear_all_watchpoints = emulator_feature.with_running_emulator(function()
+    emulator.send(commands.WATCH_CLR)
   end)
 
   function feature.list_watchpoints()

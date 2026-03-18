@@ -322,5 +322,144 @@ namespace Assembler.Tests
             var symbols = AnalyserTestsHelper.GetSymbols(program);
             Assert.That(symbols, Has.Count.EqualTo(3)); // start, end, myval
         }
+
+        // === IRQ Section Tests ===
+
+        [Test]
+        public void IrqSection_CreatesAtCorrectAddress()
+        {
+            var program = string.Join("\n", [
+                ".irq",
+                "handler:",
+                "  RTI"
+            ]);
+
+            var bytes = AnalyserTestsHelper.AnalyseAndEmit(program);
+            var irqVectorTableAddress = new CPU.Config().IrqVectorTableAddress;
+            // Layout: RTI at 0x00, fill gap, 1-byte vector table at irqVectorTableAddress pointing to 0x00
+            Assert.That(bytes.Length, Is.EqualTo(irqVectorTableAddress + 1));
+            Assert.That(bytes[0], Is.EqualTo((byte)CPU.opcodes.OpcodeBaseCode.RTI));
+            Assert.That(bytes[irqVectorTableAddress], Is.EqualTo(0x00)); // vector table points to handler at 0x00
+        }
+
+        [Test]
+        public void IrqSection_InstructionsAllowed()
+        {
+            var program = string.Join("\n", [
+                ".irq",
+                "  SEI",
+                "  RTI"
+            ]);
+
+            var emitNodes = AnalyserTestsHelper.AnalyseProgram(program);
+            // SEI + RTI (handler, sequential) + fill node + vector table node
+            Assert.That(emitNodes, Has.Count.EqualTo(4));
+        }
+
+        [Test]
+        public void IrqSection_DataDirectivesRejected()
+        {
+            var program = string.Join("\n", [
+                ".irq",
+                "  .byte #0xFF"
+            ]);
+
+            Assert.Throws<AggregateException>(() => AnalyserTestsHelper.AnalyseProgram(program));
+        }
+
+        [Test]
+        public void IrqSection_DuplicateRejected()
+        {
+            var program = string.Join("\n", [
+                ".irq",
+                "  RTI",
+                ".irq",
+                "  RTI"
+            ]);
+
+            Assert.Throws<AggregateException>(() => AnalyserTestsHelper.AnalyseProgram(program));
+        }
+
+        [Test]
+        public void IrqSection_AfterTextCode_VectorTablePointsToHandlerAddress()
+        {
+            var program = string.Join("\n", [
+                ".text",
+                "  NOP",    // 0x00
+                "  HLT",    // 0x01
+                ".irq",
+                "  RTI"     // 0x02 — handler placed sequentially after text
+            ]);
+
+            var bytes = AnalyserTestsHelper.AnalyseAndEmit(program);
+            var irqVectorTableAddress = new CPU.Config().IrqVectorTableAddress;
+            Assert.That(bytes[2], Is.EqualTo((byte)CPU.opcodes.OpcodeBaseCode.RTI));
+            Assert.That(bytes[irqVectorTableAddress], Is.EqualTo(0x02)); // vector table points to handler at 0x02
+        }
+
+        [Test]
+        public void IrqSection_WithDataSection_AllSectionsSequential()
+        {
+            var program = string.Join("\n", [
+                ".text",
+                "  NOP",       // 0x00
+                ".data",
+                "  .byte #0xAB", // 0x01
+                ".irq",
+                "  RTI"          // 0x02 — irq placed after text + data
+            ]);
+
+            var bytes = AnalyserTestsHelper.AnalyseAndEmit(program);
+            var irqVectorTableAddress = new CPU.Config().IrqVectorTableAddress;
+            Assert.That(bytes[0], Is.EqualTo((byte)CPU.opcodes.OpcodeBaseCode.NOP));
+            Assert.That(bytes[1], Is.EqualTo(0xAB));
+            Assert.That(bytes[2], Is.EqualTo((byte)CPU.opcodes.OpcodeBaseCode.RTI));
+            Assert.That(bytes[irqVectorTableAddress], Is.EqualTo(0x02)); // vector table points to irq start at 0x02
+        }
+
+        [Test]
+        public void IrqSection_HandlerLargerThanOldLimit_AssemblesCorrectly()
+        {
+            // Old IrqSectionSize was 16 bytes; this handler is 18 bytes (17 NOPs + RTI)
+            var instructions = string.Join("\n", Enumerable.Repeat("  NOP", 17).Append("  RTI"));
+            var program = ".irq\n" + instructions;
+
+            var bytes = AnalyserTestsHelper.AnalyseAndEmit(program);
+            var irqVectorTableAddress = new CPU.Config().IrqVectorTableAddress;
+            Assert.That(bytes[0], Is.EqualTo((byte)CPU.opcodes.OpcodeBaseCode.NOP));
+            Assert.That(bytes[17], Is.EqualTo((byte)CPU.opcodes.OpcodeBaseCode.RTI));
+            Assert.That(bytes[irqVectorTableAddress], Is.EqualTo(0x00)); // vector table points to handler at 0x00
+        }
+
+        [Test]
+        public void IrqSection_SectionsExceedVectorTableAddress_Throws()
+        {
+            // Use a small memory size so _irqVectorTableAddress = 39+1-16-8-1 = 15.
+            // 15 NOPs (text) + RTI (irq) = 16 bytes > 15, so gap < 0.
+            var analyser = new Analyser(memorySize: 40);
+            var program = string.Join("\n", Enumerable.Repeat("NOP", 15)) + "\n.irq\n  RTI";
+            var programNode = AnalyserTestsHelper.ParseProgram(program);
+            var ex = Assert.Throws<AnalyserException>(() => analyser.Run(programNode));
+            Assert.That(ex!.Message, Does.Contain("exceed"));
+        }
+
+        [Test]
+        public void IrqSection_SectionsExactlyFillToVectorTableAddress_DoesNotThrow()
+        {
+            // _irqVectorTableAddress = 15 (same setup); 14 NOPs + RTI = 15 bytes == 15 → gap == 0.
+            var analyser = new Analyser(memorySize: 40);
+            var program = string.Join("\n", Enumerable.Repeat("NOP", 14)) + "\n.irq\n  RTI";
+            var programNode = AnalyserTestsHelper.ParseProgram(program);
+            Assert.DoesNotThrow(() => analyser.Run(programNode));
+        }
+
+        [TestCase("SEI", (byte)CPU.opcodes.OpcodeBaseCode.SEI)]
+        [TestCase("CLI", (byte)CPU.opcodes.OpcodeBaseCode.CLI)]
+        [TestCase("RTI", (byte)CPU.opcodes.OpcodeBaseCode.RTI)]
+        public void InterruptOpcodes_AssembleCorrectly(string mnemonic, byte expectedByte)
+        {
+            var bytes = AnalyserTestsHelper.AnalyseAndEmit(mnemonic);
+            Assert.That(bytes[0], Is.EqualTo(expectedByte));
+        }
     }
 }

@@ -30,6 +30,9 @@ namespace Assembler
             memorySize = memorySize == 0 || memorySize > 256 ? 255 : (memorySize - 1);
 #endif
             _memoryAddressValueProcessor = new MemoryAddressValueProcessor(memorySize);
+            // IRQ vector table address: placed VectorTableSize bytes before the MMIO region.
+            // Default 8-bit: 256 - 16 - 8 - 1 = 231 = 0xE7.
+            _irqVectorTableAddress = memorySize + 1 - DefaultStackSize - CPU.Config.MmioRegionSize - CPU.Config.VectorTableSize;
         }
 
         public IList<IEmitNode> Run(Parser.ProgramNode program)
@@ -61,6 +64,7 @@ namespace Assembler
             }
 
             // Second pass: place sections and resolve labels
+            // All sections (text, data, irq) are placed sequentially
             var sectionOffset = 0;
             foreach (var section in _sections)
             {
@@ -77,6 +81,23 @@ namespace Assembler
                 {
                     emitNodes.AddRange(analysisNode.EmitNodes);
                 }
+            }
+
+            // Emit fill gap + vector table pointing to the IRQ handler
+            if (_irqSectionIndex >= 0)
+            {
+                var irqSection = _sections[_irqSectionIndex];
+                var gap = _irqVectorTableAddress - sectionOffset;
+                if (gap < 0)
+                {
+                    throw new AnalyserException("IRQ section and vector table exceed memory size; adjust section sizes or memory size", 0, 0);
+                }
+
+                if (gap > 0)
+                {
+                    emitNodes.Add(new FillEmitNode(gap, 0x00, new AST.NodeSpan(0, 0, 0)));
+                }
+                emitNodes.Add(new IrqVectorTableEmitNode(irqSection.StartAddress, new AST.NodeSpan(0, 0, 0)));
             }
             _analysisRan = true;
             return emitNodes;
@@ -99,6 +120,7 @@ namespace Assembler
         {
             _sections = [new Section(Section.Type.Text)]; // Text section should always be first
             _currentSectionIndex = TextSectionIndex;
+            _irqSectionIndex = -1;
             _labelManager = new LabelReferenceManager();
             _analysisRan = false;
         }
@@ -120,9 +142,9 @@ namespace Assembler
             if (statement.HasInstruction)
             {
                 var instruction = statement.GetInstruction();
-                if (CurrentSection.SectionType != Section.Type.Text)
+                if (CurrentSection.SectionType == Section.Type.Data)
                 {
-                    throw new AnalyserException("Instructions are only allowed in the text section", 
+                    throw new AnalyserException("Instructions are not allowed in data sections",
                         instruction.Span.Line, instruction.Span.StartColumn);
                 }
                 HandleInstruction(instruction);
@@ -137,9 +159,20 @@ namespace Assembler
                 switch (headerDirective.Directive)
                 {
                     case "data":
-                        var section = new Section(Section.Type.Data);
-                        _sections.Add(section);
+                        var dataSection = new Section(Section.Type.Data);
+                        _sections.Add(dataSection);
                         _currentSectionIndex = _sections.Count - 1;
+                        break;
+                    case "irq":
+                        if (_irqSectionIndex >= 0)
+                        {
+                            throw new AnalyserException("Duplicate .irq directive; only one IRQ section is allowed",
+                                headerDirective.Span.Line, headerDirective.Span.StartColumn);
+                        }
+                        var irqSection = new Section(Section.Type.Irq);
+                        _sections.Add(irqSection);
+                        _irqSectionIndex = _sections.Count - 1;
+                        _currentSectionIndex = _irqSectionIndex;
                         break;
                     case "text":
                         _currentSectionIndex = TextSectionIndex; // Switch (back) to the text section
@@ -160,9 +193,10 @@ namespace Assembler
 
         private void HandleDirective(DirectiveNode directive)
         {
-            if (CurrentSection.SectionType == Section.Type.Text)
+            if (CurrentSection.SectionType != Section.Type.Data)
             {
-                throw new AnalyserException("Post directives are not allowed in the text section",
+                var sectionName = CurrentSection.SectionType == Section.Type.Irq ? "IRQ" : "text";
+                throw new AnalyserException($"Data directives are not allowed in the {sectionName} section",
                     directive.Span.Line, directive.Span.StartColumn);
             }
 
@@ -206,7 +240,10 @@ namespace Assembler
                 case OpcodeBaseCode.SEC:
                 case OpcodeBaseCode.CLZ:
                 case OpcodeBaseCode.SEZ:
+                case OpcodeBaseCode.SEI:
+                case OpcodeBaseCode.CLI:
                 case OpcodeBaseCode.RET:
+                case OpcodeBaseCode.RTI:
                     CurrentSection.Nodes.Add(new NoOperandNode(instruction, opcode));
                     break;
                 case OpcodeBaseCode.JMP:
@@ -270,9 +307,12 @@ namespace Assembler
 
         private List<Section> _sections = [];
         private int _currentSectionIndex = 0;
+        private int _irqSectionIndex = -1;
         private LabelReferenceManager _labelManager = new();
         private bool _analysisRan = false;
         private readonly MemoryAddressValueProcessor _memoryAddressValueProcessor;
+        private readonly int _irqVectorTableAddress;
         private const int TextSectionIndex = 0;
+        private const int DefaultStackSize = 16;
     }
 }

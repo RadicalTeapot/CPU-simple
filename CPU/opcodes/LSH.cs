@@ -6,7 +6,7 @@ namespace CPU.opcodes
     [Opcode(OpcodeBaseCode.LSH, OpcodeGroupBaseCode.BitsManipulation)]
     internal class LSH : BaseOpcode
     {
-        public LSH(byte instructionByte, State state, Memory memory, Stack stack)
+        public LSH(byte instructionByte, State state, IBus bus, Stack stack)
         {
             _state = state;
             _registerIdx = OpcodeHelpers.GetDestinationRegisterIdx(instructionByte);

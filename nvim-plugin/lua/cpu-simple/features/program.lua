@@ -8,10 +8,10 @@ local function ensure_program_loaded(state)
   return true
 end
 
-function M.new(ctx, backend_feature)
+function M.new(ctx, emulator_feature)
   local feature = {}
 
-  feature.assemble = backend_feature.with_running_backend(function()
+  feature.assemble = emulator_feature.with_running_emulator(function()
     local assembler = ctx.deps.get("assembler")
     local display = ctx.deps.get("display")
     local events = ctx.deps.get("events")
@@ -43,12 +43,12 @@ function M.new(ctx, backend_feature)
     })
   end)
 
-  feature.load = backend_feature.with_running_backend(function(path)
+  feature.load = emulator_feature.with_running_emulator(function(path)
     local assembler = ctx.deps.get("assembler")
     local display = ctx.deps.get("display")
     local commands = ctx.deps.get("commands")
     local state = ctx.deps.get("state")
-    local backend = ctx.deps.get("backend")
+    local emulator = ctx.deps.get("emulator")
 
     local file_path = path or assembler.get_last_output_path()
     if not file_path then
@@ -71,7 +71,7 @@ function M.new(ctx, backend_feature)
       display.memory.clear_highlight_state()
     end
 
-    backend.send(commands.LOAD .. " " .. file_path)
+    emulator.send(commands.LOAD .. " " .. file_path)
 
     vim.schedule(function()
       state.loaded_program = file_path
@@ -79,71 +79,71 @@ function M.new(ctx, backend_feature)
     end)
   end)
 
-  feature.run = backend_feature.with_running_backend(function()
+  feature.run = emulator_feature.with_running_emulator(function()
     local state = ctx.deps.get("state")
     if not ensure_program_loaded(state) then
       return
     end
 
-    local backend = ctx.deps.get("backend")
+    local emulator = ctx.deps.get("emulator")
     local commands = ctx.deps.get("commands")
-    backend.send(commands.RUN)
+    emulator.send(commands.RUN)
   end)
 
-  feature.step = backend_feature.with_running_backend(function()
+  feature.step = emulator_feature.with_running_emulator(function()
     local state = ctx.deps.get("state")
     if not ensure_program_loaded(state) then
       return
     end
 
-    local backend = ctx.deps.get("backend")
+    local emulator = ctx.deps.get("emulator")
     local commands = ctx.deps.get("commands")
-    backend.send(commands.STEP)
+    emulator.send(commands.STEP)
   end)
 
-  feature.tick = backend_feature.with_running_backend(function()
+  feature.tick = emulator_feature.with_running_emulator(function()
     local state = ctx.deps.get("state")
     if not ensure_program_loaded(state) then
       return
     end
 
-    local backend = ctx.deps.get("backend")
+    local emulator = ctx.deps.get("emulator")
     local commands = ctx.deps.get("commands")
-    backend.send(commands.TICK)
+    emulator.send(commands.TICK)
   end)
 
-  feature.step_over = backend_feature.with_running_backend(function()
+  feature.step_over = emulator_feature.with_running_emulator(function()
     local state = ctx.deps.get("state")
     if not ensure_program_loaded(state) then
       return
     end
 
-    local backend = ctx.deps.get("backend")
+    local emulator = ctx.deps.get("emulator")
     local commands = ctx.deps.get("commands")
-    backend.send(commands.STEP_OVER)
+    emulator.send(commands.STEP_OVER)
   end)
 
-  feature.step_out = backend_feature.with_running_backend(function()
+  feature.step_out = emulator_feature.with_running_emulator(function()
     local state = ctx.deps.get("state")
     if not ensure_program_loaded(state) then
       return
     end
 
-    local backend = ctx.deps.get("backend")
+    local emulator = ctx.deps.get("emulator")
     local commands = ctx.deps.get("commands")
-    backend.send(commands.STEP_OUT)
+    emulator.send(commands.STEP_OUT)
   end)
 
-  feature.reset = backend_feature.with_running_backend(function()
-    local backend = ctx.deps.get("backend")
+  feature.reset = emulator_feature.with_running_emulator(function()
+    local emulator = ctx.deps.get("emulator")
     local commands = ctx.deps.get("commands")
-    backend.send(commands.RESET)
+    emulator.send(commands.RESET)
   end)
 
-  feature.status = backend_feature.with_running_backend(function()
-    local backend = ctx.deps.get("backend")
+  feature.status = emulator_feature.with_running_emulator(function()
+    local emulator = ctx.deps.get("emulator")
     local commands = ctx.deps.get("commands")
-    backend.send(commands.STATUS)
+    emulator.send(commands.STATUS)
   end)
 
   return feature

@@ -2,7 +2,7 @@
 
 namespace CPU.components
 {
-    public class Memory(int size)
+    public class Memory(int size) : IBus
     {
         public int Size { get; } = size;
 

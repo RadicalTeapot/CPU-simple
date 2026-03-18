@@ -6,7 +6,7 @@ namespace CPU.opcodes
     [Opcode(OpcodeBaseCode.POP, OpcodeGroupBaseCode.Load)]
     internal class POP : BaseOpcode
     {
-        public POP(byte instructionByte, State state, Memory memory, Stack stack)
+        public POP(byte instructionByte, State state, IBus bus, Stack stack)
         {
             _state = state;
             _stack = stack;

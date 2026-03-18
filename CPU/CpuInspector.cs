@@ -11,6 +11,7 @@ namespace CPU
         public byte[] Registers { get; }
         public bool ZeroFlag { get; }
         public bool CarryFlag { get; }
+        public bool InterruptDisableFlag { get; }
         public byte[] StackContents { get; }
         public byte[] MemoryContents { get; }
         public TickTrace[] Traces { get; }
@@ -23,6 +24,7 @@ namespace CPU
             PC = state.GetPC();
             ZeroFlag = state.Z;
             CarryFlag = state.C;
+            InterruptDisableFlag = state.I;
             var registers = new byte[state.RegisterCount];
             for (int i = 0; i < state.RegisterCount; i++)
             {

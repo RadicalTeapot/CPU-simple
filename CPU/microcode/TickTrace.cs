@@ -15,6 +15,7 @@ namespace CPU.microcode
         RegisterChange[] RegisterChanges,
         bool ZeroFlagBefore, bool ZeroFlagAfter,
         bool CarryFlagBefore, bool CarryFlagAfter,
+        bool InterruptDisableFlagBefore, bool InterruptDisableFlagAfter,
         BusAccess? Bus
     );
 }

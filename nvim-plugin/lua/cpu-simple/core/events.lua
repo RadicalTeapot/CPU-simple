@@ -21,12 +21,12 @@ function M.setup(ctx, api)
     api.update_pc_virtual_text()
   end)
 
-  events.on(events.BACKEND_STARTED, function()
+  events.on(events.EMULATOR_STARTED, function()
     ctx.runtime.pending_dump_request = false
     vim.cmd("redrawstatus")
   end)
 
-  events.on(events.BACKEND_STOPPED, function()
+  events.on(events.EMULATOR_STOPPED, function()
     local display = ctx.deps.get("display")
 
     ctx.runtime.pending_dump_request = false

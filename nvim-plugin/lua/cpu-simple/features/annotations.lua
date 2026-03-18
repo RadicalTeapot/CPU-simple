@@ -41,8 +41,8 @@ function M.new(ctx)
       return
     end
 
-    local backend = ctx.deps.get("backend")
-    if not backend.is_running() then
+    local emulator = ctx.deps.get("emulator")
+    if not emulator.is_running() then
       return
     end
 
@@ -65,7 +65,7 @@ function M.new(ctx)
     end
 
     ctx.runtime.pending_dump_request = true
-    local sent = backend.send(commands.DUMP)
+    local sent = emulator.send(commands.DUMP)
     if not sent then
       ctx.runtime.pending_dump_request = false
     end

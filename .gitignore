@@ -15,6 +15,10 @@
 [Ll]og/
 [Ll]ogs/
 
+# Rider
+.idea/
+*.sln.DotSettings.user
+
 # Visual Studio cache/options directory
 .vs/
 
@@ -57,3 +61,4 @@ $null
 tests/
 !nvim-plugin/tests/
 !nvim-plugin/tests/**
+data/cpu_programs/bin/*

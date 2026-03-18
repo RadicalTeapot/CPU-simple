@@ -1,7 +1,7 @@
 # CPU Simple
 
 A minimal educational 8-bit CPU implemented in C# with a small runtime, opcode set, and tests. 
-This repository contains the CPU core, a backend server acting a simple debugger, a test suite, a compiler and a Neovim plugin to serve as the IDE.
+This repository contains the CPU core, an emulator server acting a simple debugger, a test suite, a compiler and a Neovim plugin to serve as the IDE.
 
 ## Repository Structure
 
@@ -9,7 +9,7 @@ This repository contains the CPU core, a backend server acting a simple debugger
 - `CPU.Tests/`: Unit tests for CPU and opcodes
 - `Assembler/`: Compiler to convert assembly files into machine code
 - `Assembler.Tests/` : Unit test for the assembler code
-- `Backend/`: Console application that hosts/runs the CPU to be used for debugging
+- `Emulator/`: Console application that hosts/runs the CPU to be used for debugging
 - `nvim-plugin/`: Neovim plugin to serve as the IDE
 - `tree-sitter-grammar/`: Tree sitter grammar generator for the assembly language
 - `docs/`: Design and specification documents (including instruction timing model in `docs/projects/cpu-simple/micro-code.md`)
@@ -26,6 +26,13 @@ This is achieved by setting the `x16` compile flag for 16-bit build.
 - .NET SDK 10.0 or newer installed
 - Node and npm (to build tree sitter grammar)
 - C compiler (to run tree sitter grammar tests)
+- [Raylib](https://www.raylib.com/)
+- [raylib-cs](https://github.com/ChrisDill/Raylib-cs) (C# bindings for [raylib](https://www.raylib.com/)) — used for PPU rendering output
+
+### Install Raylib
+
+- **Windows** (using [Scoop](https://scoop.sh/#/)) `scoop install raylib`
+- **Archlinux** `sudo pacman -S raylib`
 
 ### Build and Test
 
@@ -40,11 +47,17 @@ dotnet build cpu-simple.sln -c Debug
 dotnet test cpu-simple.sln -c Debug
 ```
 
-### Run the backend
+### Run the emulator
 
 ```pwsh
-# Run the Main project
-dotnet run --project Backend/Backend.csproj
+# Run the emulator (headless, 10Hz)
+dotnet run --project Emulator/Emulator.csproj
+
+# Run the emulator with PPU rendering window (60fps, default scale 4×)
+dotnet run --project Emulator/Emulator.csproj -- --vram 256
+
+# Run with custom scale
+dotnet run --project Emulator/Emulator.csproj -- --vram 256 --scale 2
 ```
 
 ### Generate the treesitter grammar
@@ -92,7 +105,7 @@ Run the Neovim plugin integration tests:
 
 ```lua
 require("cpu-simple").setup({
-  backend_path = "/path/to/Backend.exe",
+  emulator_path = "/path/to/Emulator.exe",
   assembler_path = "/path/to/Assembler.exe",
   memory_size = 256,
   stack_size = 16,
@@ -118,12 +131,12 @@ require("cpu-simple").setup({
 
 ### Commands
 
-- `:CpuStart`: Start the CPU backend process
-- `:CpuStop`: Stop the CPU backend process
+- `:CpuEmulatorStart`: Start the CPU emulator process
+- `:CpuEmulatorStop`: Stop the CPU emulator process
 - `:CpuAssemble`: Assemble the current buffer to machine code
 - `:CpuLoad`: Load machine code into the CPU
 - `:CpuRun`: Run the loaded program
-- `:CpuSend`: Send a raw command to the CPU backend
+- `:CpuSend`: Send a raw command to the CPU emulator
 - `:CpuDump`: Dump CPU state, memory and stack contents
 
 ## Project Goals
@@ -152,10 +165,22 @@ I did review and tested the code but exercise caution when using it.
 - [ ] Implement CPU IDE ([inspiration for some UI](https://github.com/AfaanBilal/NanoCore/blob/master/assets/NanoCoreTUI.gif)) in Neovim
   - [ ] When assembled, if sidebar was never opened, open the configured panels, otherwise just re-open sidebar
   - [ ] Test if assembler errors are handled
-- [ ] Implement PPU and map some memory for it (for 16-bit version)
-  - [ ] This will necessitate interrupts
+  - [ ] Add info about how much space a program uses in Neovim
+- [ ] Implement PPU and map some memory for it
+   - [ ] What about PPU micro-code?
+   - [ ] Check if it would make more sense to diminish the per-tick status rather than suppressing it entirely in windowed mode
+   - [ ] Use `#if x16` to change assumption that sprites are tiled aligned where needed for 16bit build
 - [ ] Implement sound chip and map some memory for it too (for 16-bit version)
   - [ ] Write a small MIDI player application
 - [ ] Cleanup opcode constructors to take only necessary parameters (or use an interface to mask un-necessary parameters)
 - [ ] Write a bank of small programs for 8 and 16 bit version and document them
 - [/] Cleanup docs and document design choices
+  - [ ] Rewrite lexer, parser and analyser documentation
+  - [ ] Update and merge memory, memory-mapper and mmio
+
+## Issues
+
+- Document common language features too (';' for comment, ...)
+- Run in windowed mode in Neovim (using specific command)
+- Zero flag status is not set properly in neovim
+- Highlight .data positions in "live" memory also 

@@ -6,7 +6,7 @@ namespace CPU.opcodes
     [Opcode(OpcodeBaseCode.XOR, OpcodeGroupBaseCode.And)]
     internal class XOR : BaseOpcode
     {
-        public XOR(byte instructionByte, State state, Memory memory, Stack stack)
+        public XOR(byte instructionByte, State state, IBus bus, Stack stack)
         {
             _state = state;
             _sourceRegisterIdx = OpcodeHelpers.GetSourceRegisterIdx(instructionByte);
