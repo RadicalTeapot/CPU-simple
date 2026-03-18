@@ -88,6 +88,11 @@ namespace Assembler
             {
                 var irqSection = _sections[_irqSectionIndex];
                 var gap = _irqVectorTableAddress - sectionOffset;
+                if (gap < 0)
+                {
+                    throw new AnalyserException("IRQ section and vector table exceed memory size; adjust section sizes or memory size", 0, 0);
+                }
+
                 if (gap > 0)
                 {
                     emitNodes.Add(new FillEmitNode(gap, 0x00, new AST.NodeSpan(0, 0, 0)));

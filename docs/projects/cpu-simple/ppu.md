@@ -304,11 +304,11 @@ Sprite evaluation happens during the HBlank of the *previous* scanline, so the a
 3. **Pixel output** — For each pixel position:
    - **Background pixel:** tilemap index → CHR row → colormap index → color. If colormap index is 0 (transparent), skip.
    - **Sprite pixel:** check the evaluated sprite list for any sprite covering this X position → CHR row → colormap index → color. If colormap index is 0 (transparent), skip.
-   - **Priority resolution:**
-     - Sprite colormap index is opaque AND sprite priority = "in front" → sprite color wins.
-     - Sprite colormap index is opaque AND sprite priority = "behind" AND background is also opaque → background wins.
-     - Sprite-vs-sprite: lower OAM index wins.
-     - No opaque pixel → backdrop color.
+   - **Priority resolution:** sprites are evaluated in OAM order (lower index first).
+     - **No sprite prioritized:** result = OR(BG, all overlapping sprites). Transparent only if BG and every overlapping sprite are transparent.
+     - **Exactly one sprite prioritized:** result = that sprite's pixel value, regardless of BG or any non-prioritized sprite (whether opaque or transparent).
+     - **Multiple sprites prioritized:** result = OR of all prioritized sprite pixels. BG and non-prioritized sprites are ignored entirely. Transparent only if every prioritized sprite is transparent.
+     - **Early-break optimization:** once a prioritized sprite has been evaluated and its contribution makes the result opaque, the remaining sprites are skipped — further prioritized sprites can only OR with true (no change), and non-prioritized sprites are always ignored once any prioritized sprite has been processed.
    - **Output:** final RGB value sent to the display.
 
 ### VBlank

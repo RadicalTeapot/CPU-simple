@@ -46,7 +46,7 @@ Memory addresses are surrounded by square brackets (e.g., `ada r0, [#0x0C]`), su
 
 ### Directives
 
-Section directives are only semantically valid as the first directive of a statement. There are currently two section directives:
+Section directives are only semantically valid as the first directive of a statement. There are currently three section directives:
 
 - `.text` defines the program section. It always starts to address `0x00`. Muliple sections are concatenated together when emitting machine code.
 - `.data` defines the data declaration section, typically only one such section is declared. Those are emitted in the same order as declared in program, starting right after `.text` section ends.

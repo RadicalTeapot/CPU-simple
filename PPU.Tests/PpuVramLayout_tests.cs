@@ -69,6 +69,17 @@ namespace PPU.Tests
         }
 
         [Test]
+        public void TotalSize_IncludesColormapSize()
+        {
+            var layout = new PpuVramLayout(chrCount: 0, bytesPerTile: 8,
+                colormapCount: 4, bitsPerPixel: 8,
+                tilemapWidth: 2, tilemapHeight: 2,
+                spriteCount: 2, bytesPerSprite: 3);
+            // chrTable=0, colormap=4*8/8=4, tilemap=2*2=4, oam=2*3=6 → total=14
+            Assert.That(layout.TotalSize, Is.EqualTo(14));
+        }
+
+        [Test]
         public void TotalSize_Minimal8Bit_Is256()
         {
             var config = PpuTestHelpers.CreateMinimalConfig();

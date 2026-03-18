@@ -10,7 +10,9 @@ namespace PPU.Storage
     {
         public ChrRom(PpuConfig config, IReadOnlyList<byte> data) 
         {
-            Debug.Assert(data.Count == config.BytesPerTile * config.ChrCount, "CHR ROM data length does not match expected size based on PPU configuration.");
+            if (data.Count != config.BytesPerTile * config.ChrCount)
+                throw new ArgumentException("CHR ROM data length does not match expected size based on PPU configuration.");
+
             _bytesPerTile = config.BytesPerTile;
             _bytesPerRow = _bytesPerTile / config.TileSize;
             _data = data;

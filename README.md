@@ -1,7 +1,7 @@
 # CPU Simple
 
 A minimal educational 8-bit CPU implemented in C# with a small runtime, opcode set, and tests. 
-This repository contains the CPU core, a emulator server acting a simple debugger, a test suite, a compiler and a Neovim plugin to serve as the IDE.
+This repository contains the CPU core, an emulator server acting a simple debugger, a test suite, a compiler and a Neovim plugin to serve as the IDE.
 
 ## Repository Structure
 
@@ -131,8 +131,8 @@ require("cpu-simple").setup({
 
 ### Commands
 
-- `:CpuStart`: Start the CPU emulator process
-- `:CpuStop`: Stop the CPU emulator process
+- `:CpuEmulatorStart`: Start the CPU emulator process
+- `:CpuEmulatorStop`: Stop the CPU emulator process
 - `:CpuAssemble`: Assemble the current buffer to machine code
 - `:CpuLoad`: Load machine code into the CPU
 - `:CpuRun`: Run the loaded program

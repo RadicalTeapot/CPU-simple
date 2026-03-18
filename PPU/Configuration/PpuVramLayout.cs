@@ -33,7 +33,7 @@ namespace PPU.Configuration
             OamBase = TilemapBase + TilemapSize;
             OamSize = spriteCount * bytesPerSprite;
 
-            TotalSize = chrTableSize + TilemapSize + OamSize;
+            TotalSize = chrTableSize + ColormapSize + TilemapSize + OamSize;
         }
 
         public int GetTileAddress(int col, int row) => TilemapBase + (row * _tilemapWidth) + col;

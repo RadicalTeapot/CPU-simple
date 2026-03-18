@@ -70,8 +70,14 @@ namespace Emulator
             {
                 if (DrainCommands()) break;
                 _output.StatusSuppressed = true;
-                _cpuHandler.TickFrame();
-                _output.StatusSuppressed = false;
+                try
+                {
+                    _cpuHandler.TickFrame();
+                }
+                finally
+                {
+                    _output.StatusSuppressed = false; // Ensure that status output is re-enabled even if an exception occurs during TickFrame
+                }
                 _display.Render();
             }
             Cleanup();

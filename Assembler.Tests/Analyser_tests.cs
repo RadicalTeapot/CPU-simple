@@ -431,6 +431,28 @@ namespace Assembler.Tests
             Assert.That(bytes[irqVectorTableAddress], Is.EqualTo(0x00)); // vector table points to handler at 0x00
         }
 
+        [Test]
+        public void IrqSection_SectionsExceedVectorTableAddress_Throws()
+        {
+            // Use a small memory size so _irqVectorTableAddress = 39+1-16-8-1 = 15.
+            // 15 NOPs (text) + RTI (irq) = 16 bytes > 15, so gap < 0.
+            var analyser = new Analyser(memorySize: 40);
+            var program = string.Join("\n", Enumerable.Repeat("NOP", 15)) + "\n.irq\n  RTI";
+            var programNode = AnalyserTestsHelper.ParseProgram(program);
+            var ex = Assert.Throws<AnalyserException>(() => analyser.Run(programNode));
+            Assert.That(ex!.Message, Does.Contain("exceed"));
+        }
+
+        [Test]
+        public void IrqSection_SectionsExactlyFillToVectorTableAddress_DoesNotThrow()
+        {
+            // _irqVectorTableAddress = 15 (same setup); 14 NOPs + RTI = 15 bytes == 15 → gap == 0.
+            var analyser = new Analyser(memorySize: 40);
+            var program = string.Join("\n", Enumerable.Repeat("NOP", 14)) + "\n.irq\n  RTI";
+            var programNode = AnalyserTestsHelper.ParseProgram(program);
+            Assert.DoesNotThrow(() => analyser.Run(programNode));
+        }
+
         [TestCase("SEI", (byte)CPU.opcodes.OpcodeBaseCode.SEI)]
         [TestCase("CLI", (byte)CPU.opcodes.OpcodeBaseCode.CLI)]
         [TestCase("RTI", (byte)CPU.opcodes.OpcodeBaseCode.RTI)]
