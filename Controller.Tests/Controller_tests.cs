@@ -23,7 +23,7 @@ namespace Controller.Tests
         public void ReadRegister_AfterSettingDirection_ReturnsBitSet()
         {
             var controller = new Controller(new ControllerConfiguration(0));
-            controller.ButtonState.Up = true;
+            controller.ButtonState.SetUp();
             Assert.That(controller.Registers.ReadRegister(0) & 0x01, Is.EqualTo(0x01));
         }
 
@@ -31,7 +31,7 @@ namespace Controller.Tests
         public void ReadRegister_Twice_SecondReadIsZero()
         {
             var controller = new Controller(new ControllerConfiguration(0));
-            controller.ButtonState.Left = true;
+            controller.ButtonState.SetLeft();
             controller.Registers.ReadRegister(0);
             Assert.That(controller.Registers.ReadRegister(0), Is.EqualTo(0));
         }

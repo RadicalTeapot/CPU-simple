@@ -1,47 +1,64 @@
 ﻿using Controller.Configuration;
+using Controller.Exceptions;
+using CPU.components;
+using System.Runtime.CompilerServices;
+using static Controller.Exceptions.ControllerException;
 
 namespace Controller.Storage
 {
+    [InlineArray(ButtonsState.MaxButtons)]
+    internal struct ButtonBuffer { private bool _element; }
+
     internal struct CurrentState
     {
         public bool Up;
         public bool Down;
         public bool Left;
         public bool Right;
-        public bool[] Buttons;
+        public ButtonBuffer Buttons;
     }
 
-    public class ButtonsState(ControllerConfiguration configuration)
+    public class ButtonsState
     {
-        public bool Left {
-            set { lock (_lock) _directions[Button.Left] = value; }
-        }
-        public bool Right {
-            set { lock (_lock) _directions[Button.Right] = value; }
-        }
-        public bool Up {
-            set { lock (_lock) _directions[Button.Up] = value; }
-        }
-        public bool Down { 
-            set { lock (_lock) _directions[Button.Down] = value; }
+        public const int MaxButtons = 4; // TODO Allow more buttons by using additional registers for 16bit builds
+
+        public void SetLeft() { lock (_lock) { _directions[Button.Left] = true; } }
+        public void SetRight() { lock (_lock) { _directions[Button.Right] = true; } }
+        public void SetUp() { lock (_lock) { _directions[Button.Up] = true; } }
+        public void SetDown() { lock (_lock) { _directions[Button.Down] = true; } }
+
+        public int ButtonCount => _configuration.ButtonCount;
+
+        public ButtonsState(ControllerConfiguration configuration)
+        {
+            if (configuration == null)
+                throw new ArgumentNullException(nameof(configuration));
+
+            if (configuration.ButtonCount < 0)
+                throw new NegativeButtonCountException("Button count cannot be negative.");
+
+            if (configuration.ButtonCount > MaxButtons)
+                throw new TooManyButtonsException($"Controller supports a maximum of {MaxButtons} buttons, but {configuration.ButtonCount} were configured.");
+
+
+            _configuration = configuration;
+            _buttons = new bool[_configuration.ButtonCount];
         }
 
-        public int ButtonCount => configuration.ButtonCount;
-
-        public void SetButton(int index, bool pressed)
+        public void SetButton(int index)
         {
             if (index < 0 || index >= _buttons.Length)
                 throw new ArgumentOutOfRangeException(nameof(index), $"Button index must be between 0 and {_buttons.Length - 1}.");
 
             lock (_lock)
             {
-                _buttons[index] = pressed;
+                _buttons[index] = true;
             }
         }
 
         internal CurrentState ReadAndReset()
         {
-            CurrentState state;
+            CurrentState state = new();
             lock (_lock)
             {
                 state.Up = _directions[Button.Up];
@@ -53,7 +70,6 @@ namespace Controller.Storage
                 state.Right = _directions[Button.Right];
                 _directions[Button.Right] = false;
 
-                state.Buttons = new bool[_buttons.Length];
                 for (int i = 0; i < _buttons.Length; i++)
                 {
                     state.Buttons[i] = _buttons[i];
@@ -73,12 +89,13 @@ namespace Controller.Storage
         }
 
         private readonly Lock _lock = new();
+        private readonly ControllerConfiguration _configuration;
         private readonly Dictionary<Button, bool> _directions = new() {
             { Button.Up, false },
             { Button.Down, false },
             { Button.Left, false },
             { Button.Right, false },
         };
-        private readonly bool[] _buttons = new bool[configuration.ButtonCount];
+        private readonly bool[] _buttons;
     }
 }

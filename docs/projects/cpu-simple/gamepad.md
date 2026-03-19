@@ -7,8 +7,8 @@ The controller is a read-only MMIO device that exposes gamepad input to the CPU 
 ```
 Frontend thread           Controller thread boundary           CPU thread
 ─────────────────         ──────────────────────────         ───────────────
-ButtonsState.Up = true ──→  lock(_lock): write direction
-ButtonsState.SetButton() ──→ lock(_lock): write custom btn
+ButtonsState.SetUp()     ──→  lock(_lock): _directions[Up] = true (latched)
+ButtonsState.SetButton() ──→  lock(_lock): write custom btn
                                                            ←── ReadRegister(0x00)
                                                                ReadAndReset() [lock]
                                                                → returns snapshot
@@ -54,14 +54,14 @@ A `1` means the button was pressed (latched) since the last STATUS read. The reg
 
 ```csharp
 // Setup (once)
-var config = new ControllerConfiguration(buttonCount: 2);
+var config = new ControllerConfiguration(ButtonCount: 2);
 var controller = new Controller(config);
 // Register with the MMIO bus
-mmioRouter.Register(baseAddress, controller.Registers);
+mmioRouter.Register(baseAddress, 1, controller.Registers);
 
 // Input thread (e.g. Raylib key polling)
-controller.ButtonState.Up = IsKeyDown(KeyboardKey.Up);
-controller.ButtonState.SetButton(0, IsKeyDown(KeyboardKey.A));
+if (IsKeyDown(KeyboardKey.Up)) controller.ButtonState.SetUp();
+if (IsKeyDown(KeyboardKey.A))  controller.ButtonState.SetButton(0);
 
 // CPU assembly — poll the controller
 //   lda r0, [CONTROLLER_STATUS]   ; read and clear

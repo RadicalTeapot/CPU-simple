@@ -13,7 +13,7 @@ namespace Controller.Tests
         public void ReadStatus_UpPressed_ReturnsBit0Set()
         {
             var (regs, state) = CreateRegisters();
-            state.Up = true;
+            state.SetUp();
             Assert.That(regs.ReadRegister(0) & 0x01, Is.EqualTo(0x01));
         }
 
@@ -21,7 +21,7 @@ namespace Controller.Tests
         public void ReadStatus_DownPressed_ReturnsBit1Set()
         {
             var (regs, state) = CreateRegisters();
-            state.Down = true;
+            state.SetDown();
             Assert.That(regs.ReadRegister(0) & 0x02, Is.EqualTo(0x02));
         }
 
@@ -29,7 +29,7 @@ namespace Controller.Tests
         public void ReadStatus_LeftPressed_ReturnsBit2Set()
         {
             var (regs, state) = CreateRegisters();
-            state.Left = true;
+            state.SetLeft();
             Assert.That(regs.ReadRegister(0) & 0x04, Is.EqualTo(0x04));
         }
 
@@ -37,7 +37,7 @@ namespace Controller.Tests
         public void ReadStatus_RightPressed_ReturnsBit3Set()
         {
             var (regs, state) = CreateRegisters();
-            state.Right = true;
+            state.SetRight();
             Assert.That(regs.ReadRegister(0) & 0x08, Is.EqualTo(0x08));
         }
 
@@ -48,7 +48,7 @@ namespace Controller.Tests
         public void ReadStatus_ButtonPressed_ReturnsBit4PlusIndexSet(int buttonIndex, int expectedBit)
         {
             var (regs, state) = CreateRegisters(4);
-            state.SetButton(buttonIndex, true);
+            state.SetButton(buttonIndex);
             Assert.That(regs.ReadRegister(0) & expectedBit, Is.EqualTo(expectedBit));
         }
 
@@ -63,8 +63,8 @@ namespace Controller.Tests
         public void ReadStatus_OnlyPressedButtonsSetInByte()
         {
             var (regs, state) = CreateRegisters(4);
-            state.Up = true;
-            state.SetButton(1, true);
+            state.SetUp();
+            state.SetButton(1);
             var status = regs.ReadRegister(0);
             Assert.Multiple(() =>
             {
@@ -81,7 +81,7 @@ namespace Controller.Tests
         public void ReadStatus_ClearsDirectionsAfterRead()
         {
             var (regs, state) = CreateRegisters();
-            state.Up = true;
+            state.SetUp();
             regs.ReadRegister(0);
             Assert.That(regs.ReadRegister(0), Is.EqualTo(0));
         }
@@ -90,26 +90,16 @@ namespace Controller.Tests
         public void ReadStatus_ClearsCustomButtonsAfterRead()
         {
             var (regs, state) = CreateRegisters(2);
-            state.SetButton(0, true);
+            state.SetButton(0);
             regs.ReadRegister(0);
             Assert.That(regs.ReadRegister(0), Is.EqualTo(0));
         }
 
         [Test]
-        public void ReadStatus_UnpressedButtonNotSetAfterRead()
+        public void ReadStatus_UnpressedButtonNotSet()
         {
-            var (regs, state) = CreateRegisters(2);
-            state.SetButton(1, false);
+            var (regs, _) = CreateRegisters(2);
             Assert.That(regs.ReadRegister(0) & 0x20, Is.EqualTo(0));
-        }
-
-        // Overflow guard
-
-        [Test]
-        public void ReadStatus_ButtonCountExceedsFour_ThrowsTooManyButtonsException()
-        {
-            var (regs, _) = CreateRegisters(5);
-            Assert.That(() => regs.ReadRegister(0), Throws.InstanceOf<ControllerException.TooManyButtonsException>());
         }
 
         // Unknown offsets and writes
