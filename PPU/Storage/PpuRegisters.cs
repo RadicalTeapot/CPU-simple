@@ -2,7 +2,7 @@ using CPU.components;
 
 namespace PPU.Storage
 {
-    public class PpuRegisters(Vram vram) : IMmioDevice
+    internal class PpuRegisters(Vram vram) : IMmioDevice
     {
         public bool VBlankActive { get; set; }
         public bool SpriteOverflow { get; set; }
