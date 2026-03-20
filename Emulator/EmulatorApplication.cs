@@ -1,4 +1,5 @@
-﻿using Emulator.Commands.GlobalCommands;
+﻿using Controller.Configuration;
+using Emulator.Commands.GlobalCommands;
 using Emulator.Commands.StateCommands;
 using Emulator.IO;
 using PPU.Configuration;
@@ -6,6 +7,13 @@ using System.Diagnostics;
 
 namespace Emulator
 {
+    // PPU is required; Controller is optional. Controller without PPU is not constructible.
+    public record PeripheralSet(
+        PpuConfig PpuConfig,
+        IReadOnlyList<byte>? ChrData = null,
+        ControllerConfiguration? ControllerConfig = null
+    );
+
     public class EmulatorApplication
     {
         public record EmulatorContext(
@@ -13,9 +21,8 @@ namespace Emulator
             IInput Input,
             IOutput Output,
             CPU.Config CpuConfig,
-            PpuConfig? PpuConfig = null,
+            PeripheralSet? Peripherals = null,
             int DisplayScale = 4,
-            IReadOnlyList<byte>? ChrData = null,
             IReadOnlyList<byte>? ProgData = null
         );
 
@@ -31,17 +38,16 @@ namespace Emulator
                 context.Logger,
                 context.Output,
                 _stateCommandRegistry,
-                context.PpuConfig,
-                context.ChrData,
+                context.Peripherals,
                 context.ProgData
             );
             _cpuHandler = new CpuHandler(cpuHandlerContext);
             _commandReader = new CommandReader(context.Input, _logger);
 
-            if (context.PpuConfig == null)
+            if (context.Peripherals == null)
                 return;
-            
-            _display = new Display(context.PpuConfig.ScreenWidth, context.PpuConfig.ScreenHeight, context.DisplayScale);
+
+            _display = new Display(context.Peripherals.PpuConfig.ScreenWidth, context.Peripherals.PpuConfig.ScreenHeight, context.DisplayScale);
             _cpuHandler.FrameReady += _display.UpdateFrame;
         }
 

@@ -68,3 +68,20 @@ if (IsKeyDown(KeyboardKey.A))  controller.ButtonState.SetButton(0);
 //   and r0, #0x01                 ; test Up bit
 //   jnz [handle_up]
 ```
+
+### Emulator Integration
+
+The emulator exposes the controller at the application level via `--buttons N` (or `"buttons": N` in `emulator.json`). This requires `--vram` to also be set; specifying `--buttons` without `--vram` is rejected at startup.
+
+In windowed mode (`--vram` present), the emulator polls Raylib keyboard state once per frame and pushes updates to `controller.ButtonState`. In headless mode there is no window and therefore no input source — `--buttons` without `--vram` is rejected for this reason.
+
+For programmatic use (e.g. in tests), construct a `PeripheralSet` directly:
+
+```csharp
+var peripherals = new PeripheralSet(ppuConfig, chrData, new ControllerConfiguration(ButtonCount: 2));
+var context = new EmulatorApplication.EmulatorContext(
+    logger, input, output, cpuConfig,
+    Peripherals: peripherals,
+    DisplayScale: 4
+);
+```

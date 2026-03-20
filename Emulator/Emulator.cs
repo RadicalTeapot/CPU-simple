@@ -1,17 +1,20 @@
-﻿using Emulator.IO;
+using Controller.Configuration;
+using Emulator.IO;
 using PPU.Configuration;
+using System.Text.Json;
 
 namespace Emulator
 {
     public class Emulator
     {
-        public const string Usage = "emulator [-m/--memory SIZE] [-s/--stack SIZE] [--registers COUNT] [--vram SIZE] [--scale N] [--chr PATH] [--prog PATH] [-h/--help]";
+        public const string Usage = "emulator [-m/--memory SIZE] [-s/--stack SIZE] [--registers COUNT] [--vram SIZE] [--scale N] [--chr PATH] [--prog PATH] [--buttons COUNT] [-h/--help]";
 
         public static int Main(string[] args)
         {
             var logger = new ConsoleLogger();
-            var code = ParseArgs(args, logger, out var result);
-            
+            var configFile = LoadConfigFile(logger);
+            var code = ParseArgs(args, logger, out var result, configFile);
+
             switch (code)
             {
                 case HelpExitCode:
@@ -39,7 +42,7 @@ namespace Emulator
             }
 
             byte[]? progData = null;
-            if (result.ProgPath != null) 
+            if (result.ProgPath != null)
             {
                 if (!File.Exists(result.ProgPath))
                 {
@@ -61,14 +64,21 @@ namespace Emulator
                 return InvalidArgExitCode;
             }
 
+            var controllerConfig = result.ButtonCount is > 0
+                ? new ControllerConfiguration(result.ButtonCount.Value)
+                : null;
+
+            var peripherals = ppuConfig != null
+                ? new PeripheralSet(ppuConfig, chrData, controllerConfig)
+                : null;
+
             var context = new EmulatorApplication.EmulatorContext(
                 logger,
                 new ConsoleInput(),
                 new ConsoleOutput(),
                 result.Config,
-                ppuConfig,
+                peripherals,
                 result.Scale,
-                chrData,
                 progData
             );
 
@@ -76,27 +86,29 @@ namespace Emulator
             return application.Run();
         }
 
-        internal static int ParseArgs(string[] args, ILogger logger, out ParsedArgsResult result)
+        internal static int ParseArgs(string[] args, ILogger logger, out ParsedArgsResult result, EmulatorConfig? configFile = null)
         {
-            var memorySize = DefaultMemorySize;
-            var stackSize = DefaultStackSize;
-            var registerCount = DefaultRegisterCount;
-            var vramSize = DefaultVramSize;
-            var scale = DefaultScale;
+            int? memorySize = null;
+            int? stackSize = null;
+            int? registerCount = null;
+            int? vramSize = null;
+            int? scale = null;
             string? chrPath = null;
             string? progPath = null;
-            result = new(default, scale, chrPath, progPath);
+            int? buttonCount = null;
+            result = new(default, DefaultScale, null, null);
 
-            // emulator [-m/--memory SIZE] [-s/--stack SIZE] [--registers COUNT] [--vram SIZE] [--scale N] [--chr PATH] [--prog PATH] [-h/--help]
+            // emulator [-m/--memory SIZE] [-s/--stack SIZE] [--registers COUNT] [--vram SIZE] [--scale N] [--chr PATH] [--prog PATH] [--buttons COUNT] [-h/--help]
             for (var i = 0; i < args.Length; i++)
             {
                 switch (args[i])
                 {
                     case "-m":
                     case "--memory":
-                        if (i + 1 < args.Length && int.TryParse(args[i + 1], out memorySize))
+                        if (i + 1 < args.Length && int.TryParse(args[i + 1], out var mem))
                         {
-                            logger.Log($"Memory size set to {memorySize}");
+                            logger.Log($"Memory size set to {mem}");
+                            memorySize = mem;
                             i++;
                         }
                         else
@@ -107,9 +119,10 @@ namespace Emulator
                         break;
                     case "-s":
                     case "--stack":
-                        if (i + 1 < args.Length && int.TryParse(args[i + 1], out stackSize))
+                        if (i + 1 < args.Length && int.TryParse(args[i + 1], out var stack))
                         {
-                            logger.Log($"Stack size set to {stackSize}");
+                            logger.Log($"Stack size set to {stack}");
+                            stackSize = stack;
                             i++;
                         }
                         else
@@ -119,9 +132,10 @@ namespace Emulator
                         }
                         break;
                     case "--registers":
-                        if (i + 1 < args.Length && int.TryParse(args[i + 1], out registerCount))
+                        if (i + 1 < args.Length && int.TryParse(args[i + 1], out var regs))
                         {
-                            logger.Log($"Register count set to {registerCount}");
+                            logger.Log($"Register count set to {regs}");
+                            registerCount = regs;
                             i++;
                         }
                         else
@@ -131,9 +145,10 @@ namespace Emulator
                         }
                         break;
                     case "--vram":
-                        if (i + 1 < args.Length && int.TryParse(args[i + 1], out vramSize))
+                        if (i + 1 < args.Length && int.TryParse(args[i + 1], out var vram))
                         {
-                            logger.Log($"VRAM size set to {vramSize}");
+                            logger.Log($"VRAM size set to {vram}");
+                            vramSize = vram;
                             i++;
                         }
                         else
@@ -143,9 +158,10 @@ namespace Emulator
                         }
                         break;
                     case "--scale":
-                        if (i + 1 < args.Length && int.TryParse(args[i + 1], out scale))
+                        if (i + 1 < args.Length && int.TryParse(args[i + 1], out var s))
                         {
-                            logger.Log($"Display scale set to {scale}");
+                            logger.Log($"Display scale set to {s}");
+                            scale = s;
                             i++;
                         }
                         else
@@ -176,6 +192,19 @@ namespace Emulator
                             return InvalidArgExitCode;
                         }
                         break;
+                    case "--buttons":
+                        if (i + 1 < args.Length && int.TryParse(args[i + 1], out var buttons))
+                        {
+                            logger.Log($"Button count set to {buttons}");
+                            buttonCount = buttons;
+                            i++;
+                        }
+                        else
+                        {
+                            logger.Error("Invalid button count specified.");
+                            return InvalidArgExitCode;
+                        }
+                        break;
                     case "-h":
                     case "--help":
                         return HelpExitCode;
@@ -186,10 +215,16 @@ namespace Emulator
             }
 
             result = new(
-                new CPU.Config(memorySize, stackSize, registerCount, vramSize),
-                scale,
-                chrPath,
-                progPath
+                new CPU.Config(
+                    memorySize ?? configFile?.Memory ?? DefaultMemorySize,
+                    stackSize ?? configFile?.Stack ?? DefaultStackSize,
+                    registerCount ?? configFile?.Registers ?? DefaultRegisterCount,
+                    vramSize ?? configFile?.Vram ?? DefaultVramSize
+                ),
+                scale ?? configFile?.Scale ?? DefaultScale,
+                chrPath ?? configFile?.Chr,
+                progPath ?? configFile?.Prog,
+                buttonCount ?? configFile?.Buttons
             );
             return 0;
         }
@@ -198,10 +233,22 @@ namespace Emulator
             CPU.Config Config,
             int Scale,
             string? ChrPath,
-            string? ProgPath
+            string? ProgPath,
+            int? ButtonCount = null
         );
 
-        private static bool ValidateArgs(ParsedArgsResult args, ILogger logger)
+        internal record EmulatorConfig(
+            int? Memory = null,
+            int? Stack = null,
+            int? Registers = null,
+            int? Vram = null,
+            int? Scale = null,
+            string? Chr = null,
+            string? Prog = null,
+            int? Buttons = null
+        );
+
+        internal static bool ValidateArgs(ParsedArgsResult args, ILogger logger)
         {
             if (args.Config.MemorySize <= 0)
             {
@@ -244,7 +291,7 @@ namespace Emulator
                 logger.Error("Scale must be a positive integer.");
                 return false;
             }
-            if (args.ChrPath !=  null && !File.Exists(args.ChrPath))
+            if (args.ChrPath != null && !File.Exists(args.ChrPath))
             {
                 logger.Error($"Character file not found: {args.ChrPath}");
                 return false;
@@ -254,7 +301,28 @@ namespace Emulator
                 logger.Error($"Program file not found: {args.ProgPath}");
                 return false;
             }
+            if (args.ButtonCount is > 0 && args.Config.VramSize <= 0)
+            {
+                logger.Error("Controller (--buttons) requires PPU (--vram must also be set).");
+                return false;
+            }
             return true;
+        }
+
+        private static EmulatorConfig? LoadConfigFile(ILogger logger)
+        {
+            const string ConfigFileName = "emulator.json";
+            if (!File.Exists(ConfigFileName)) return null;
+            try
+            {
+                var json = File.ReadAllText(ConfigFileName);
+                return JsonSerializer.Deserialize<EmulatorConfig>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            }
+            catch (Exception ex)
+            {
+                logger.Error($"Failed to load config file '{ConfigFileName}': {ex.Message}");
+                return null;
+            }
         }
 
         private const int DefaultMemorySize = 256;

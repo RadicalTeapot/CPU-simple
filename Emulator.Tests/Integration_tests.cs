@@ -5,6 +5,7 @@ using PPU.Configuration;
 using System;
 using System.Collections.Generic;
 using System.Text;
+using Emulator;
 
 namespace Emulator.Tests
 {
@@ -22,8 +23,8 @@ namespace Emulator.Tests
             var ppuConfig = PpuConfig.Minimal8Bit;
             var context = new EmulatorApplication.EmulatorContext(
                 new ConsoleLogger(), new ConsoleInput(), new ConsoleOutput(),
-                new CPU.Config(), ppuConfig, 4,
-                chrData, progData
+                new CPU.Config(), new PeripheralSet(ppuConfig, chrData), 4,
+                progData
             );
             var application = new EmulatorApplication(context);
             application.Run();
