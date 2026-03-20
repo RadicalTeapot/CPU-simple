@@ -75,6 +75,9 @@ namespace Emulator
             while (!Display.ShouldClose && !_quitRequested)
             {
                 if (DrainCommands()) break;
+                var buttonState = _cpuHandler.ButtonState;
+                if (buttonState != null)
+                    _display!.PollInput(buttonState);
                 _output.StatusSuppressed = true;
                 try
                 {
@@ -84,7 +87,7 @@ namespace Emulator
                 {
                     _output.StatusSuppressed = false; // Ensure that status output is re-enabled even if an exception occurs during TickFrame
                 }
-                _display.Render();
+                _display!.Render();
             }
             Cleanup();
             return 0;

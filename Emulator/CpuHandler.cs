@@ -5,6 +5,7 @@ using Emulator.IO;
 using CPU;
 using CPU.components;
 using CPU.opcodes;
+using Controller.Storage;
 using PPU.Configuration;
 using System.Diagnostics;
 
@@ -22,6 +23,7 @@ namespace Emulator
         );
 
         public event Action<IReadOnlyList<byte>>? FrameReady;
+        public ButtonsState? ButtonState => _controller?.ButtonState;
 
         public CpuHandler(CpuHandlerContext context)
         {

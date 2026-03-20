@@ -73,7 +73,22 @@ if (IsKeyDown(KeyboardKey.A))  controller.ButtonState.SetButton(0);
 
 The emulator exposes the controller at the application level via `--buttons N` (or `"buttons": N` in `emulator.json`). This requires `--vram` to also be set; specifying `--buttons` without `--vram` is rejected at startup.
 
-In windowed mode (`--vram` present), the emulator polls Raylib keyboard state once per frame and pushes updates to `controller.ButtonState`. In headless mode there is no window and therefore no input source — `--buttons` without `--vram` is rejected for this reason.
+In windowed mode (`--vram` present), `Display.PollInput` polls Raylib keyboard state once per frame (before `TickFrame`) and pushes updates to the controller's `ButtonsState`. In headless mode there is no window and therefore no input source — `--buttons` without `--vram` is rejected for this reason.
+
+All Raylib key reads are contained in `Display.PollInput`; no other file calls Raylib input APIs. The default key mapping is:
+
+| Key | Action |
+|-----|--------|
+| Arrow Up | Direction: Up |
+| Arrow Down | Direction: Down |
+| Arrow Left | Direction: Left |
+| Arrow Right | Direction: Right |
+| Z | Button 0 |
+| X | Button 1 |
+| A | Button 2 |
+| S | Button 3 |
+
+Keys are polled with `IsKeyDown` (not `IsKeyPressed`), so holding a key keeps the latch set each frame until the CPU reads and clears the STATUS register. `CpuHandler.ButtonState` (`ButtonsState?`) is the bridge between `CpuHandler` and the emulator loop — it returns null when no controller is configured, which suppresses the poll call entirely.
 
 For programmatic use (e.g. in tests), construct a `PeripheralSet` directly:
 

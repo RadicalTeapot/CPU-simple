@@ -100,6 +100,32 @@ namespace Emulator.Tests
             Assert.That(fired, Is.True);
         }
 
+        [Test]
+        public void ButtonState_IsNull_WhenNoPeripherals()
+        {
+            var handler = CreateHandler(new CPU.Config(256, 16, 4));
+            Assert.That(handler.ButtonState, Is.Null);
+        }
+
+        [Test]
+        public void ButtonState_IsNull_WhenPeripheralsHaveNoController()
+        {
+            var handler = CreateHandler(new CPU.Config(256, 16, 4), PpuConfig.Minimal8Bit);
+            Assert.That(handler.ButtonState, Is.Null);
+        }
+
+        [Test]
+        public void ButtonState_IsNotNull_WhenControllerConfigured()
+        {
+            var peripherals = new PeripheralSet(PpuConfig.Minimal8Bit, ChrData: null, new ControllerConfiguration(ButtonCount: 2));
+            var context = new CpuHandler.CpuHandlerContext(
+                new CPU.Config(256, 16, 4), new TestLogger(), new TestOutput(), new StateCommandRegistry(),
+                peripherals
+            );
+            var handler = new CpuHandler(context);
+            Assert.That(handler.ButtonState, Is.Not.Null);
+        }
+
         private static CpuHandler CreateHandler(CPU.Config config, PpuConfig? ppuConfig = null, IReadOnlyList<byte>? chrData = null, IReadOnlyList<byte>? progData = null)
         {
             var peripherals = ppuConfig != null ? new PeripheralSet(ppuConfig, chrData) : null;
