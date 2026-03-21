@@ -170,6 +170,9 @@ I did review and tested the code but exercise caution when using it.
    - [ ] What about PPU micro-code?
    - [ ] Check if it would make more sense to diminish the per-tick status rather than suppressing it entirely in windowed mode
    - [ ] Use `#if x16` to change assumption that sprites are tiled aligned where needed for 16bit build
+   - [ ] Fix issues highlighted in CpuHandler
+    - current state tick method is actually a step, rename it
+    - using the cpu inspector to get the number of micro-ticks in tickppu is hacky, fix it
 - [ ] Implement sound chip and map some memory for it too (for 16-bit version)
   - [ ] Write a small MIDI player application
 - [ ] Cleanup opcode constructors to take only necessary parameters (or use an interface to mask un-necessary parameters)
