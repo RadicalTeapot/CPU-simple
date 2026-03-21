@@ -1,12 +1,11 @@
-﻿using CPU;
-using CPU.components;
+﻿using CPU.components;
 using CPU.opcodes;
 using Emulator.Commands.GlobalCommands;
 using Emulator.Commands.StateCommands;
 using Emulator.CpuStates;
 using Emulator.IO;
+using Controller.Storage;
 using PPU.Configuration;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Emulator
 {
@@ -17,31 +16,38 @@ namespace Emulator
             ILogger Logger,
             IOutput Output,
             StateCommandRegistry CpuCommandRegistry,
-            PpuConfig? PpuConfig = null,
-            IReadOnlyList<byte>? ChrData = null,
+            PeripheralSet? Peripherals = null,
             IReadOnlyList<byte>? ProgData = null
         );
 
         public event Action<IReadOnlyList<byte>>? FrameReady;
+        public ButtonsState? ButtonState => _controller?.ButtonState;
 
         public CpuHandler(CpuHandlerContext context)
         {
             _logger = context.Logger;
             _output = context.Output;
-            if (context.PpuConfig != null)
+            if (context.Peripherals == null)
             {
-                _ppuConfig = context.PpuConfig;
-                _ppuTickRatio = _ppuConfig.PpuCyclesPerCpuCycle;
-                _ppu = new PPU.Ppu(_ppuConfig, context.ChrData);
-                var mmioRouter = new MmioRouter();
-                mmioRouter.Register(0x00, 0x03, _ppu.Registers);
-                _cpu = new CPU.CPU(context.CpuConfig, mmioRouter);
-                _ppu.VBlankStarted += _cpu.RequestInterrupt;
-                _ppu.FrameReady += rgb => FrameReady?.Invoke(rgb);
+                _cpu = new CPU.CPU(context.CpuConfig);
             }
             else
             {
-                _cpu = new CPU.CPU(context.CpuConfig);
+                var mmioRouter = new MmioRouter();
+                _ppuConfig = context.Peripherals.PpuConfig;
+                _ppuTickRatio = _ppuConfig.PpuCyclesPerCpuCycle;
+                _ppu = new PPU.Ppu(_ppuConfig, context.Peripherals.ChrData);
+                mmioRouter.Register(0x00, 0x03, _ppu.Registers);
+
+                if (context.Peripherals.ControllerConfig != null)
+                {
+                    _controller = new Controller.Controller(context.Peripherals.ControllerConfig);
+                    mmioRouter.Register(0x03, 0x01, _controller.Registers);
+                }
+
+                _cpu = new CPU.CPU(context.CpuConfig, mmioRouter);
+                _ppu.VBlankStarted += _cpu.RequestInterrupt;
+                _ppu.FrameReady += rgb => FrameReady?.Invoke(rgb);
             }
 
             if (context.ProgData != null)
@@ -157,9 +163,13 @@ namespace Emulator
 
         private ICpuState _currentState;
         private readonly CPU.CPU _cpu;
+
         private readonly PPU.Ppu? _ppu;
         private readonly PpuConfig? _ppuConfig;
         private readonly int _ppuTickRatio;
+
+        private readonly Controller.Controller? _controller;
+
         private readonly CpuStateFactory _cpuStateFactory;
         private readonly ILogger _logger;
         private readonly IOutput _output;

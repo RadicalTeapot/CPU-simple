@@ -202,5 +202,127 @@ namespace Emulator.Tests
                 Assert.That(result.ChrPath, Is.Null);
             });
         }
+
+        [Test]
+        public void ParseArgs_ValidButtons_SetsButtonCount()
+        {
+            var code = Emulator.ParseArgs(["--buttons", "2"], _logger, out var result);
+            Assert.Multiple(() =>
+            {
+                Assert.That(code, Is.EqualTo(0));
+                Assert.That(result.ButtonCount, Is.EqualTo(2));
+            });
+        }
+
+        [Test]
+        public void ParseArgs_DefaultButtons_IsNull()
+        {
+            var code = Emulator.ParseArgs([], _logger, out var result);
+            Assert.Multiple(() =>
+            {
+                Assert.That(code, Is.EqualTo(0));
+                Assert.That(result.ButtonCount, Is.Null);
+            });
+        }
+
+        [Test]
+        public void ParseArgs_InvalidButtonsValue_ReturnsInvalidExitCode()
+        {
+            var code = Emulator.ParseArgs(["--buttons", "abc"], _logger, out _);
+            Assert.Multiple(() =>
+            {
+                Assert.That(code, Is.EqualTo(2));
+                Assert.That(_logger.ErrorMessages, Has.Count.GreaterThan(0));
+            });
+        }
+
+        [Test]
+        public void ParseArgs_MissingButtonsValue_ReturnsInvalidExitCode()
+        {
+            var code = Emulator.ParseArgs(["--buttons"], _logger, out _);
+            Assert.That(code, Is.EqualTo(2));
+        }
+
+        [Test]
+        public void ParseArgs_WithConfigFile_UsesConfigValues()
+        {
+            var configFile = new Emulator.EmulatorConfig(Memory: 128, Stack: 8, Registers: 2);
+            var code = Emulator.ParseArgs([], _logger, out var result, configFile);
+            Assert.Multiple(() =>
+            {
+                Assert.That(code, Is.EqualTo(0));
+                Assert.That(result.Config.MemorySize, Is.EqualTo(128));
+                Assert.That(result.Config.StackSize, Is.EqualTo(8));
+                Assert.That(result.Config.RegisterCount, Is.EqualTo(2));
+            });
+        }
+
+        [Test]
+        public void ParseArgs_CliTakesPrecedenceOverConfigFile()
+        {
+            var configFile = new Emulator.EmulatorConfig(Memory: 128);
+            var code = Emulator.ParseArgs(["-m", "200"], _logger, out var result, configFile);
+            Assert.Multiple(() =>
+            {
+                Assert.That(code, Is.EqualTo(0));
+                Assert.That(result.Config.MemorySize, Is.EqualTo(200));
+            });
+        }
+
+        [Test]
+        public void ParseArgs_ConfigFileButtonsUsedWhenCliNotSet()
+        {
+            var configFile = new Emulator.EmulatorConfig(Buttons: 3);
+            var code = Emulator.ParseArgs([], _logger, out var result, configFile);
+            Assert.Multiple(() =>
+            {
+                Assert.That(code, Is.EqualTo(0));
+                Assert.That(result.ButtonCount, Is.EqualTo(3));
+            });
+        }
+
+        [Test]
+        public void ParseArgs_CliButtonsTakePrecedenceOverConfigFile()
+        {
+            var configFile = new Emulator.EmulatorConfig(Buttons: 3);
+            var code = Emulator.ParseArgs(["--buttons", "1"], _logger, out var result, configFile);
+            Assert.Multiple(() =>
+            {
+                Assert.That(code, Is.EqualTo(0));
+                Assert.That(result.ButtonCount, Is.EqualTo(1));
+            });
+        }
+
+        [Test]
+        public void ValidateArgs_ButtonsWithoutVram_ReturnsFalse()
+        {
+            var args = new Emulator.ParsedArgsResult(
+                new CPU.Config(256, 16, 4, vramSize: 0),
+                Scale: 4,
+                ChrPath: null,
+                ProgPath: null,
+                ButtonCount: 2
+            );
+            var result = Emulator.ValidateArgs(args, _logger);
+            Assert.Multiple(() =>
+            {
+                Assert.That(result, Is.False);
+                Assert.That(_logger.ErrorMessages, Has.Count.GreaterThan(0));
+            });
+        }
+
+        [Test]
+        public void ValidateArgs_ButtonsWithVram_ReturnsTrue()
+        {
+            var args = new Emulator.ParsedArgsResult(
+                new CPU.Config(256, 16, 4, vramSize: 256),
+                Scale: 4,
+                ChrPath: null,
+                ProgPath: null,
+                ButtonCount: 2
+            );
+            var result = Emulator.ValidateArgs(args, _logger);
+            Assert.That(result, Is.True);
+        }
     }
 }

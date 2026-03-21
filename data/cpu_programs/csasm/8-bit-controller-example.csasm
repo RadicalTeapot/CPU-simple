@@ -1,0 +1,96 @@
+.data
+    spriteData: 
+        .byte #0x08                     ; X
+        .byte #0x06                     ; Y
+    spriteOamEntry:
+        .byte #0x00                     ; Position
+        .byte #0x51                     ; Tile index
+        .byte #0x00                     ; Attributes are all zero in that example and could be skipped
+    updateFlag: .byte #0x01             ; If set, update position
+
+.text
+main:
+    lda r0, [updateFlag]
+    cpi r0, #0x01
+    jzc [main] ; Jump if not set
+    cal [updatePos]
+    jmp [main]  ; Loop
+
+updatePos:
+    psh r0
+    psh r1
+    psh r2
+
+    ; Load controller
+    lda r0, [#0xEB]
+    lda r1, [spriteData] ; X
+    lda r2, [spriteData + #0x01] ; Y
+readUp:
+    bti r0, #0x01 ; Up
+    jzc [readDown]
+    dec r2
+    cpi r2, #0xFF ; Check for underflow
+    jzc [readDown] ; Jump if not
+    ldi r2, #0x0C ; Wrap to top edge of screen
+readDown:
+    bti r0, #0x02 ; Down
+    jzc [readLeft]
+    inc r2
+    cpi r2, #0x0D  ; Compare to height
+    jzc [readLeft] ; Jump if != height
+    ldi r2, #0x00 ; Wrap to bottom edge of screen
+readLeft:
+    bti r0, #0x04 ; Left
+    jzc [readRight]
+    dec r1
+    cpi r1, #0xFF ; Check for underflow
+    jzc [readRight] ; Jump if not
+    ldi r1, #0x0F ; Wrap to right edge of screen
+readRight:
+    bti r0, #0x08 ; Right
+    jzc [setData]
+    inc r1
+    cpi r1, #0x10  ; Compare to width
+    jzc [setData] ; Jump if != width
+    ldi r1, #0x00 ; Wrap to left edge of screen
+setData:
+    sta r1, [spriteData]
+    sta r2, [spriteData+#0x01]
+
+    ; Update sprite position
+    lsh r2 
+    lsh r2 
+    lsh r2 
+    lsh r2                      ; Move r2 to high nibble
+    or r1, r2
+
+    sei                         ; Disable interrupt to avoid race condition with spriteOamEntry
+    sta r1, [spriteOamEntry]
+    ; Set update flag
+    ldi r0, #0x00               ; Disable sprite update until next interrupt
+    sta r0, [updateFlag]
+    cli                         ; Enable interrupt again
+
+    pop r2
+    pop r1
+    pop r0
+    ret
+
+.irq
+    psh r0
+
+    ldi r0, #0xd0                       ; First OAM entry address in VRAM
+    sta r0, [#0xe8]                     ; Set PPU data address to OAM entry address
+    lda r0, [spriteOamEntry]            ; Load position byte
+    sta r0, [#0xe9]                     ; Write position byte to VRAM
+    lda r0, [spriteOamEntry + #0x01]    ; Load Tile index
+    sta r0, [#0xe9]                     ; Write Tile index to VRAM
+    lda r0, [spriteOamEntry + #0x02]    ; Load attributes
+    sta r0, [#0xe9]                     ; Write attributes to VRAM
+
+    ; Set update flag
+    ldi r0, #0x01
+    sta r0, [updateFlag]
+
+    pop r0
+    rti

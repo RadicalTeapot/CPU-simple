@@ -1,3 +1,4 @@
+using Controller.Storage;
 using Raylib_cs;
 
 namespace Emulator
@@ -31,6 +32,21 @@ namespace Emulator
                 {
                     Raylib.UpdateTexture(_texture, ptr);
                 }
+            }
+        }
+
+        public void PollInput(ButtonsState buttonState)
+        {
+            if (Raylib.IsKeyDown(KeyboardKey.Up))    buttonState.SetUp();
+            if (Raylib.IsKeyDown(KeyboardKey.Down))  buttonState.SetDown();
+            if (Raylib.IsKeyDown(KeyboardKey.Left))  buttonState.SetLeft();
+            if (Raylib.IsKeyDown(KeyboardKey.Right)) buttonState.SetRight();
+
+            ReadOnlySpan<KeyboardKey> buttonKeys = [KeyboardKey.Z, KeyboardKey.X, KeyboardKey.A, KeyboardKey.S];
+            for (int i = 0; i < Math.Min(buttonState.ButtonCount, buttonKeys.Length); i++)
+            {
+                if (Raylib.IsKeyDown(buttonKeys[i]))
+                    buttonState.SetButton(i);
             }
         }
 

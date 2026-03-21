@@ -1,5 +1,7 @@
+using Controller.Configuration;
 using Emulator.Commands.StateCommands;
 using PPU.Configuration;
+using Emulator;
 
 namespace Emulator.Tests
 {
@@ -78,15 +80,61 @@ namespace Emulator.Tests
             Assert.That(rgbData!.All(b => b == 255), Is.True);
         }
 
+        [Test]
+        public void FrameReady_FiredAfterTickFrame_WithControllerAndPpu()
+        {
+            var ppuConfig = PpuConfig.Minimal8Bit;
+            var controllerConfig = new ControllerConfiguration(ButtonCount: 2);
+            var peripherals = new PeripheralSet(ppuConfig, ChrData: null, controllerConfig);
+            var config = new CPU.Config(256, 16, 4, vramSize: 0);
+            var context = new CpuHandler.CpuHandlerContext(
+                config, new TestLogger(), new TestOutput(), new StateCommandRegistry(),
+                peripherals
+            );
+            var handler = new CpuHandler(context);
+            bool fired = false;
+            handler.FrameReady += _ => fired = true;
+
+            handler.TickFrame();
+
+            Assert.That(fired, Is.True);
+        }
+
+        [Test]
+        public void ButtonState_IsNull_WhenNoPeripherals()
+        {
+            var handler = CreateHandler(new CPU.Config(256, 16, 4));
+            Assert.That(handler.ButtonState, Is.Null);
+        }
+
+        [Test]
+        public void ButtonState_IsNull_WhenPeripheralsHaveNoController()
+        {
+            var handler = CreateHandler(new CPU.Config(256, 16, 4), PpuConfig.Minimal8Bit);
+            Assert.That(handler.ButtonState, Is.Null);
+        }
+
+        [Test]
+        public void ButtonState_IsNotNull_WhenControllerConfigured()
+        {
+            var peripherals = new PeripheralSet(PpuConfig.Minimal8Bit, ChrData: null, new ControllerConfiguration(ButtonCount: 2));
+            var context = new CpuHandler.CpuHandlerContext(
+                new CPU.Config(256, 16, 4), new TestLogger(), new TestOutput(), new StateCommandRegistry(),
+                peripherals
+            );
+            var handler = new CpuHandler(context);
+            Assert.That(handler.ButtonState, Is.Not.Null);
+        }
+
         private static CpuHandler CreateHandler(CPU.Config config, PpuConfig? ppuConfig = null, IReadOnlyList<byte>? chrData = null, IReadOnlyList<byte>? progData = null)
         {
+            var peripherals = ppuConfig != null ? new PeripheralSet(ppuConfig, chrData) : null;
             var context = new CpuHandler.CpuHandlerContext(
                 config,
                 new TestLogger(),
                 new TestOutput(),
                 new StateCommandRegistry(),
-                ppuConfig,
-                chrData,
+                peripherals,
                 progData
             );
             return new CpuHandler(context);
