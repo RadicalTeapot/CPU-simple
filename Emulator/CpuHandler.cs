@@ -44,7 +44,7 @@ namespace Emulator
                 if (context.Peripherals.ControllerConfig != null)
                 {
                     _controller = new Controller.Controller(context.Peripherals.ControllerConfig);
-                    mmioRouter.Register(0x04, 0x01, _controller.Registers);
+                    mmioRouter.Register(0x03, 0x01, _controller.Registers);
                 }
 
                 _cpu = new CPU.CPU(context.CpuConfig, mmioRouter);
