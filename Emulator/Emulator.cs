@@ -64,7 +64,7 @@ namespace Emulator
                 return InvalidArgExitCode;
             }
 
-            var controllerConfig = result.ButtonCount is > 0
+            var controllerConfig = result.ButtonCount.HasValue // Check for negative button count is done in ValidateArgs, so we can assume it's valid if it has a value
                 ? new ControllerConfiguration(result.ButtonCount.Value)
                 : null;
 
@@ -301,7 +301,12 @@ namespace Emulator
                 logger.Error($"Program file not found: {args.ProgPath}");
                 return false;
             }
-            if (args.ButtonCount is > 0 && args.Config.VramSize <= 0)
+            if (args.ButtonCount < 0)
+            {
+                logger.Error("Button count cannot be negative.");
+                return false;
+            }
+            if (args.ButtonCount >= 0 && args.Config.VramSize <= 0)
             {
                 logger.Error("Controller (--buttons) requires PPU (--vram must also be set).");
                 return false;

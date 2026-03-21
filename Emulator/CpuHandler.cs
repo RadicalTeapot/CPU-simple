@@ -1,18 +1,11 @@
-﻿using CPU;
-using CPU.components;
+﻿using CPU.components;
 using CPU.opcodes;
 using Emulator.Commands.GlobalCommands;
 using Emulator.Commands.StateCommands;
 using Emulator.CpuStates;
 using Emulator.IO;
-using CPU;
-using CPU.components;
-using CPU.opcodes;
 using Controller.Storage;
 using PPU.Configuration;
-using System.Diagnostics;
-using PPU.Configuration;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Emulator
 {

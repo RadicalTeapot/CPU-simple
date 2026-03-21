@@ -122,7 +122,7 @@ require("cpu-simple").setup({
     },
   },
   source_annotations = {
-    pc_operands_virtual_text = 
+    pc_operands_virtual_text = {
       enabled = true,
     },
   },

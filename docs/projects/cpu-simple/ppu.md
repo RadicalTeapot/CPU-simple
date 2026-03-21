@@ -559,34 +559,97 @@ The CPU and PPU run at independent clock rates. In real hardware these rates are
 Rather than two OS threads, the simulation uses a **single-threaded co-simulation loop**:
 
 ```csharp
-// CpuHandler.Tick() — one CPU state tick + proportional PPU ticks
-void Tick()
+// CpuHandler.TickCore() — execute one CPU instruction + tick the PPU by the proportional amount
+int TickCore()
 {
-    var nextState = _currentState.Tick(); // may run 1 or more CPU micro-ticks
+    var nextState = _currentState.Tick(); // executes a full CPU instruction (1+ micro-ticks)
     int microTicks = _currentState is ExecutingCpuState
-        ? Math.Max(1, _cpu.GetInspector().Traces.Length)
+        ? Math.Max(1, _cpu.GetInspector().Traces.Length) // actual micro-ticks the instruction took
         : 1;
-    for (int i = 0; i < microTicks * PpuCyclesPerCpuCycle; i++)
+    int ppuCycles = microTicks * PpuCyclesPerCpuCycle;
+    for (int i = 0; i < ppuCycles; i++)
         ppu.Tick();
     _currentState = nextState;
+    return ppuCycles; // how many PPU cycles were just advanced
 }
 
-// CpuHandler.TickFrame() — runs a full PPU frame's worth of state ticks
+// CpuHandler.TickFrame() — run the CPU until the PPU has completed exactly one full frame
 void TickFrame()
 {
-    int budget = (TotalScanlines * CyclesPerScanline) / PpuCyclesPerCpuCycle;
-    for (int i = 0; i < budget; i++)
+    int totalPpuCycles = TotalScanlines * CyclesPerScanline; // e.g. 128 × 90 = 11,520
+    int ppuCyclesRun = 0;
+
+    while (ppuCyclesRun < totalPpuCycles)
     {
-        Tick();
+        ppuCyclesRun += TickCore();
         if (cpu is idle/halted/error) break;
     }
-    // If CPU stopped early: tick remaining PPU cycles to fire FrameReady
+
+    // If the CPU stopped early, drive the PPU to end-of-frame so FrameReady still fires
+    if (ppuCyclesRun < totalPpuCycles)
+    {
+        for (int i = ppuCyclesRun; i < totalPpuCycles; i++)
+            ppu.Tick();
+    }
 }
 ```
 
 There is no thread concurrency, so no data races and no synchronization primitives needed. VBlank is detected during `ppu.Tick()` and fires `VBlankStarted`, which the Emulator wires to `cpu.RequestInterrupt()`, and `FrameReady`, which the Emulator wires to `display.UpdateFrame(rgb)`.
 
 **Note:** PPU ticks happen after the full CPU state tick rather than interleaved cycle-by-cycle. The total PPU tick count per state tick is proportional to the number of CPU micro-ticks that actually ran. This is an approximation — true cycle-interleaved co-simulation is a follow-up.
+
+### How `TickFrame` keeps the CPU and PPU in sync
+
+The key design constraint is: **the outer game loop calls `TickFrame` once per rendered frame** (at 60 Hz, targeting ~16.67 ms per iteration). `TickFrame` must therefore simulate exactly one PPU frame — no more, no less — so that one VBlank fires, one `FrameReady` delivers the pixel buffer, and the window renders the result.
+
+#### What "one PPU frame" means in cycles
+
+From `PpuConfig.Minimal8Bit`:
+
+| Parameter | Value |
+|---|---|
+| `TotalScanlines` | 128 (104 visible + 24 VBlank) |
+| `CyclesPerScanline` | 90 |
+| Total PPU cycles per frame | 128 × 90 = **11,520** |
+
+VBlank begins at PPU cycle 9,360 (after the 104 visible scanlines). `FrameReady` fires there. The frame ends at cycle 11,520 when the PPU transitions back to the render state for the next frame.
+
+#### Why a fixed instruction count doesn't work
+
+A naive approach is to run a fixed number of CPU instructions equal to one frame's worth of CPU cycles:
+
+```
+stateTickBudget = TotalScanlines × CyclesPerScanline / PpuCyclesPerCpuCycle
+               = 11,520 / 3
+               = 3,840 CPU cycles
+```
+
+This is correct only if each "state tick" equals exactly one CPU micro-tick. But `CpuHandler.TickCore()` calls `CPU.Step()`, which executes a **full instruction** — a variable number of micro-ticks. For example:
+
+| Instruction | Micro-ticks |
+|---|---|
+| `lda r0, [addr]` | 3 (fetch opcode, fetch operand, read memory) |
+| `cpi r0, #0x01` | 3 (fetch opcode, fetch operand, ALU) |
+| `jzc [label]` | 2 (fetch opcode, fetch operand + branch) |
+
+The tight `main` spin loop (`lda` / `cpi` / `jzc`) costs 8 micro-ticks across 3 instructions — about 2.67 micro-ticks per instruction on average. Running 3,840 such instructions advances the PPU by 3,840 × 2.67 × 3 ≈ **30,720 PPU cycles** — nearly three full frames. VBlank fires twice or three times per outer game loop, so the CPU processes two or three sprite updates between renders. The sprite appears to jump by multiple tiles.
+
+#### The correct approach: count actual PPU cycles
+
+`TickCore()` returns the exact number of PPU cycles it just advanced (`microTicks × PpuCyclesPerCpuCycle`). `TickFrame` accumulates these and stops the loop as soon as the total reaches `TotalScanlines × CyclesPerScanline`. The loop condition is in PPU-cycle space, not instruction-count space, so it is immune to variable instruction lengths.
+
+With `Minimal8Bit` and the spin loop above:
+
+- Each loop iteration (3 instructions) advances 24 PPU cycles
+- After ~390 loop iterations (1,170 instructions), PPU cycle 9,360 is reached — VBlank fires, `FrameReady` delivers the pixel buffer
+- After a few more iterations (VBlank period), PPU cycle 11,520 is reached — the `while` exits
+- VBlank has fired exactly **once**
+
+#### The early-exit path
+
+If the CPU halts or hits a breakpoint mid-frame, the while loop breaks early with `ppuCyclesRun < totalPpuCycles`. The remaining PPU cycles are pumped directly (no CPU involvement) so that:
+- VBlank fires if it hasn't yet — `FrameReady` still delivers a frame and the window doesn't freeze
+- The PPU lands at the correct position for the next frame
 
 ### VBlank interrupt: notification, not synchronization
 

@@ -1,7 +1,7 @@
 .data
     spriteData: 
-        .byte #0x0F                     ; X
-        .byte #0x0C                     ; Y
+        .byte #0x08                     ; X
+        .byte #0x06                     ; Y
     spriteOamEntry:
         .byte #0x00                     ; Position
         .byte #0x51                     ; Tile index
@@ -26,19 +26,19 @@ updatePos:
     lda r1, [spriteData] ; X
     lda r2, [spriteData + #0x01] ; Y
 readUp:
-    bti r0, #0x02 ; Up
+    bti r0, #0x01 ; Up
     jzc [readDown]
-    inc r2
-    cpi r2, #0x0D  ; Compare to height
-    jzc [readDown] ; Jump if != height
-    ldi r2, #0x00 ; Wrap to bottom edge of screen
-readDown:
-    bti r0, #0x01 ; Down
-    jzc [readLeft]
     dec r2
     cpi r2, #0xFF ; Check for underflow
-    jzc [readLeft] ; Jump if not
+    jzc [readDown] ; Jump if not
     ldi r2, #0x0C ; Wrap to top edge of screen
+readDown:
+    bti r0, #0x02 ; Down
+    jzc [readLeft]
+    inc r2
+    cpi r2, #0x0D  ; Compare to height
+    jzc [readLeft] ; Jump if != height
+    ldi r2, #0x00 ; Wrap to bottom edge of screen
 readLeft:
     bti r0, #0x04 ; Left
     jzc [readRight]

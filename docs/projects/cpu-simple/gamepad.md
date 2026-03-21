@@ -44,7 +44,7 @@ A `1` means the button was pressed (latched) since the last STATUS read. The reg
 
 ### Configuration
 
-`ControllerConfiguration(int ButtonCount)` sets the number of custom buttons (0–4). Configuring more than 4 buttons throws `TooManyButtonsException` on STATUS read (8-bit builds only have bits 4–7 available; a 16-bit extension is noted in the TODO comment in `ControllerRegisters`).
+`ControllerConfiguration(int ButtonCount)` sets the number of custom buttons (0–4). Configuring more than 4 buttons throws `TooManyButtonsException` during `ButtonsState` construction (before any STATUS reads occur), since 8-bit builds only have bits 4–7 available; a 16-bit extension is noted in the TODO comment in `ControllerRegisters`.
 
 ### Thread Safety
 

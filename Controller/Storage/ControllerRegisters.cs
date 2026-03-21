@@ -1,4 +1,5 @@
-﻿using Controller.Exceptions;
+﻿using System.Diagnostics;
+using Controller.Exceptions;
 using CPU.components;
 
 namespace Controller.Storage
@@ -21,9 +22,7 @@ namespace Controller.Storage
 
         private byte ReadStatus()
         {
-            if (state.ButtonCount > 4) // TODO Allow more buttons by using additional registers for 16bit builds
-                throw new ControllerException.TooManyButtonsException($"Controller supports a maximum of 4 buttons, but {state.ButtonCount} were configured.");
-
+            Debug.Assert(state.ButtonCount <= 4, "Button count exceeds maximum supported by status register.");
             var currentState = state.ReadAndReset();
             var status = 0;
             if (currentState.Up) status |= 1 << 0;

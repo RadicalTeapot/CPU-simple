@@ -1,6 +1,4 @@
 ﻿using Controller.Configuration;
-using Controller.Exceptions;
-using CPU.components;
 using System.Runtime.CompilerServices;
 using static Controller.Exceptions.ControllerException;
 
