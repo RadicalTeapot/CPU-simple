@@ -1,4 +1,7 @@
-﻿using Emulator.Commands.GlobalCommands;
+﻿using CPU;
+using CPU.components;
+using CPU.opcodes;
+using Emulator.Commands.GlobalCommands;
 using Emulator.Commands.StateCommands;
 using Emulator.CpuStates;
 using Emulator.IO;
@@ -8,6 +11,8 @@ using CPU.opcodes;
 using Controller.Storage;
 using PPU.Configuration;
 using System.Diagnostics;
+using PPU.Configuration;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Emulator
 {
@@ -87,66 +92,80 @@ namespace Emulator
             _currentState = _currentState.GetStateForCommand(cpuCommand, args);
         }
 
-        public void Tick()
-        {
-            ICpuState nextState;
-            try
-            {
-                nextState = _currentState.Tick();
-                TickPpu();
-            }
-            catch (OpcodeException.HaltException)
-            {
-                _logger.Log("CPU reached HALT instruction.");
-                nextState = _cpuStateFactory.CreateHaltedState();
-            }
-            catch (Exception ex)
-            {
-                _logger.Error($"Failure during CPU tick: {ex.Message}");
-                nextState = _cpuStateFactory.CreateErrorState(ex.Message);
-            }
-            _currentState = nextState;
-        }
-
         public void TickFrame()
         {
             if (_ppuConfig == null) return;
 
-            int stateTickBudget = (_ppuConfig.TotalScanlines * _ppuConfig.CyclesPerScanline)
-                                / _ppuTickRatio;
-            int ticksExecuted = 0;
-            for (int i = 0; i < stateTickBudget; i++)
+            int totalPpuCycles = _ppuConfig.TotalScanlines * _ppuConfig.CyclesPerScanline;
+            int ppuCyclesRun = 0;
+
+            while (ppuCyclesRun < totalPpuCycles)
             {
-                Tick();
-                ticksExecuted++;
+                ppuCyclesRun += Tick();
                 if (_currentState is IdleState or HaltedState or ErrorState)
                     break;
             }
 
-            // If CPU stopped early, finish remaining PPU ticks to complete the frame
-            int ppuTicksDone = ticksExecuted * _ppuTickRatio; // approximate, already ticked in Tick()
-            // We accounted for PPU ticks inside Tick(), but if we stopped early the frame isn't done.
-            // Tick remaining PPU cycles so FrameReady fires even if CPU halts mid-frame.
-            int totalPpuTicksNeeded = _ppuConfig.TotalScanlines * _ppuConfig.CyclesPerScanline;
-            // ppuTicksDone is approximate via TickPpu() calls inside Tick()
-            // For simplicity, just tick the remaining scanlines worth of PPU cycles
-            if (ticksExecuted < stateTickBudget && _ppu != null)
+            // If CPU stopped early, finish remaining PPU ticks so FrameReady still fires.
+            if (ppuCyclesRun < totalPpuCycles && _ppu != null)
             {
-                int remaining = totalPpuTicksNeeded - (ticksExecuted * _ppuTickRatio);
+                int remaining = totalPpuCycles - ppuCyclesRun;
                 for (int i = 0; i < remaining; i++)
                     _ppu.Tick();
             }
         }
 
-        private void TickPpu()
+        /// <summary>
+        /// Steps the CPU, ticks the PPU emulation to maintain synchronization, and updates the internal CPU state accordingly.
+        /// </summary>
+        /// <remarks>If the CPU encounters a HALT instruction or an error during execution, the internal
+        /// state is updated to reflect the halted or error condition, and no PPU cycles are executed for that
+        /// tick.</remarks>
+        /// <returns>The number of PPU cycles executed during this tick. Returns 0 if the CPU is halted or an error occurs.</returns>
+        public int Tick()
         {
-            if (_ppu == null) return;
+            ICpuState nextState;
+            int ppuCycles;
+            try
+            {
+                nextState = _currentState.Tick();
+                ppuCycles = TickPpu();
+            }
+            catch (OpcodeException.HaltException)
+            {
+                _logger.Log("CPU reached HALT instruction.");
+                nextState = _cpuStateFactory.CreateHaltedState();
+                ppuCycles = 0;
+            }
+            catch (Exception ex)
+            {
+                _logger.Error($"Failure during CPU tick: {ex.Message}");
+                nextState = _cpuStateFactory.CreateErrorState(ex.Message);
+                ppuCycles = 0;
+            }
+            _currentState = nextState;
+            return ppuCycles;
+        }
+
+        /// <summary>
+        /// Advances the PPU state by a number of ticks based on the current CPU execution
+        /// state.
+        /// </summary>
+        /// <remarks>The number of PPU ticks is determined by the current CPU state and a configured tick
+        /// ratio. This method should be called in synchronization with CPU execution to maintain accurate emulation
+        /// timing.</remarks>
+        /// <returns>The total number of PPU ticks performed. Returns 0 if the PPU is not initialized.</returns>
+        private int TickPpu()
+        {
+            if (_ppu == null) return 0;
 
             int microTicks = _currentState is ExecutingCpuState
-                ? Math.Max(1, _cpu.GetInspector().Traces.Length)
+                ? Math.Max(1, _cpu.GetInspector().Traces.Length) // Relying on traces lenght to determine how many micro-operations were performed in the last CPU tick is quite hacky, find a more robust solution in the future.
                 : 1;
-            for (int i = 0; i < microTicks * _ppuTickRatio; i++)
+            int count = microTicks * _ppuTickRatio;
+            for (int i = 0; i < count; i++)
                 _ppu.Tick();
+            return count;
         }
 
         private ICpuState _currentState;
