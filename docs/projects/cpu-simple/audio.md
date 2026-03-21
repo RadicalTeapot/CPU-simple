@@ -21,7 +21,7 @@ All four registers are **write-only**. The APU occupies 4 MMIO slots (relative o
 | `0x00` | `AUDNOTE` | `[7]` gate, `[6:0]` MIDI note | Gate and pitch |
 | `0x01` | `AUDENV` | `[7:4]` attack, `[3:0]` release | Envelope timing |
 | `0x02` | `AUDFLT` | `[7]` filter mode, `[6:0]` cutoff (MIDI note) | Low-pass filter |
-| `0x03` | `AUDCTL` | `[7:6]` reserved, `[5:4]` pulse width, `[3:0]` gain/sustain | Oscillator control |
+| `0x03` | `AUDCTL` | `[7]` filter slope, `[6]` filter type, `[5:4]` pulse width, `[3:0]` gain/sustain | Oscillator and filter control |
 
 ---
 
@@ -82,7 +82,7 @@ The exact timing curve (linear vs. exponential, milliseconds per step) is TBD an
 
 ## Filter
 
-The filter is a **low-pass filter**. Frequencies above the cutoff are attenuated; frequencies below pass through.
+The filter is a **low-pass filter** or **high-pass filter**. Frequencies above the cutoff are attenuated; frequencies below pass through.
 
 Bit `[7]` of `AUDFLT` selects the filter mode:
 
@@ -94,6 +94,20 @@ Bit `[7]` of `AUDFLT` selects the filter mode:
 The cutoff frequency is expressed as a **MIDI note value** (`[6:0]`, 0–127), using the same formula as pitch. This keeps the filter musically in tune with the oscillator — a cutoff at note N is always harmonically related to a pitch also set to note N.
 
 In ASR mode, `AUDFLT[6:0]` defines the **peak cutoff** (the sustain level of the filter envelope). In fixed mode, the cutoff register can be updated mid-note by the CPU for manual filter sweeps.
+
+Bit `[6]` of `AUDCTL` selects the filter type:
+
+| `AUDFLT[6]` | Mode |
+|-------------|------|
+| `0` | Low pass filter |
+| `1` | High pass filter |
+
+Bit `[7]` of `AUDCTL` selects the filter slope:
+
+| `AUDFLT[7]` | Mode |
+|-------------|------|
+| `0` | 2 pole (12dB) |
+| `1` | 4 pole (24dB) |
 
 ---
 

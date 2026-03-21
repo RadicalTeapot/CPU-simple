@@ -1,0 +1,230 @@
+ ▐▛███▜▌   Claude Code v2.1.76
+▝▜█████▛▘  Sonnet 4.6 · Claude Pro
+  ▘▘ ▝▝    ~\AppData\Local\_code\c-sharp\cpu-simple
+
+❯ I want to implement the audio chip. I know how to create the project and the  
+general chip behavior is detailed in @docs/projects/cpu-simple/audio.md. What I 
+ would like to figure out is how to actually implement the signal generation. A 
+ few questions:                                                                 
+- Generating the pulse wave is simple enough. How to implement the filters.     
+- How to pass the output of the synthetizer to raylib.                          
+  ⎿  Read docs\projects\cpu-simple\audio.md (133 lines)
+
+● Two solid, self-contained answers:
+
+  ---
+  1. Filters — use biquad IIR
+
+  The standard tool for real-time audio filters is the biquad IIR filter (from
+  Robert Bristow-Johnson's Audio EQ Cookbook, a free reference). It handles
+  LP/HP at any slope.
+
+  Direct Form II Transposed (the numerically stable form):
+  y[n] = b0·x[n] + z1
+  z1   = b1·x[n] - a1·y[n] + z2
+  z2   = b2·x[n] - a2·y[n]
+
+  Coefficient calculation given cutoff frequency fc and sample rate fs:
+  w0 = 2π·fc/fs
+  α  = sin(w0) / (2·Q)     # Q = 1/√2 ≈ 0.7071 (Butterworth / maximally flat)
+
+  Low-pass:
+    b0 = (1 − cos(w0)) / 2
+    b1 =  1 − cos(w0)
+    b2 = (1 − cos(w0)) / 2
+    a0 =  1 + α
+    a1 = −2·cos(w0)
+    a2 =  1 − α
+
+  High-pass:
+    b0 =  (1 + cos(w0)) / 2
+    b1 = −(1 + cos(w0))
+    b2 =  (1 + cos(w0)) / 2
+    a0 =  1 + α
+    a1 = −2·cos(w0)
+    a2 =  1 − α
+
+  Normalize all coefficients by dividing by a0.
+
+  Slope:
+  - 2-pole / 12 dB: one biquad stage, coefficients above.
+  - 4-pole / 24 dB: cascade two identical biquad stages (same coefficients,
+  separate z1/z2 state per stage). Same cutoff, same Q.
+
+  Recalculate coefficients whenever the cutoff changes (i.e., every sample in
+  ASR-modulated mode). The state variables z1/z2 are never reset on a
+  coefficient change — that would cause a click. Only reset them on oscillator
+  silence.
+
+  ---
+  2. Passing audio to Raylib
+
+  Raylib has an audio stream API designed for exactly this: you push PCM buffers
+   incrementally.
+
+  Setup (once, alongside InitAudioDevice):
+  AudioStream stream = Raylib.LoadAudioStream(44100, 32, 1); // 44100 Hz, 
+  float32, mono
+  Raylib.PlayAudioStream(stream);
+
+  Per-frame (inside RunWindowed after TickFrame):
+  if (Raylib.IsAudioStreamProcessed(stream))
+  {
+      // Fill _audioBuffer with generated samples
+      Raylib.UpdateAudioStream(stream, _audioBuffer, _audioBuffer.Length);
+  }
+
+  UpdateAudioStream takes a void* / pinned array. In raylib-cs this is:
+  unsafe fixed (float* ptr = _audioBuffer)
+      Raylib.UpdateAudioStream(stream, ptr, _audioBuffer.Length);
+
+  Sample generation — bridging CPU rate to audio rate:
+
+  The APU doesn't generate one sample per CPU tick. Instead, maintain a
+  fractional accumulator:
+
+  cyclesPerSample = cpuClockHz / 44100.0
+
+  Each CPU tick, increment a counter. When it exceeds cyclesPerSample, emit one
+  audio sample and subtract cyclesPerSample from the counter. This gives you
+  correct sample timing without floating-point division in the hot path.
+
+  Buffer size: 44100 / 60 = 735 samples per frame is a good default. Make it a
+  power of two (e.g. 1024) and keep a small ring buffer to avoid underruns if
+  frame timing is slightly irregular.
+
+  ---
+  Alternative: audio callback (Raylib.SetAudioStreamCallback) — Raylib calls
+  your delegate from its audio thread to pull samples. Cleaner timing, but
+  requires a thread-safe ring buffer since everything else runs on the main
+  thread. The push model above is simpler for a single-threaded emulator.
+
+✻ Sautéed for 51s
+
+❯ Can you provide me with a simple example of generating a pulse wave, with a   
+ASR envelope and applying a 12dB low pass filter to it using the same ASR       
+envelope                                                                        
+
+● Here's a self-contained C# script that writes pulse_asr.wav — no dependencies,
+   easy to drop into a dotnet-script file or a scratch console project.
+
+  // Pulse wave + ASR envelope + 12 dB LP biquad, cutoff ASR-modulated
+  // Output: pulse_asr.wav  (mono, 44100 Hz, 16-bit PCM)
+
+  const int   SampleRate = 44100;
+  const float TwoPi      = 2f * MathF.PI;
+
+  // --- Oscillator ----------------------------------------------------------
+  const int   MidiNote  = 60;        // C4 ≈ 261 Hz
+  const float DutyCycle = 0.25f;     // 25 %
+  float noteFreq = 440f * MathF.Pow(2f, (MidiNote - 69) / 12f);
+
+  // --- Envelope (ASR) ------------------------------------------------------
+  const float AttackTime   = 0.08f;  // seconds: 0 → sustain
+  const float SustainLevel = 0.8f;   // peak amplitude, 0–1
+  const float ReleaseTime  = 0.4f;   // seconds: sustain → 0
+  const float GateOnTime   = 0.6f;   // gate held for this long
+
+  // --- Filter --------------------------------------------------------------
+  const int   CutoffMidiNote = 80;   // peak cutoff ≈ 830 Hz during sustain
+  const float FilterQ        = 0.7071f; // Butterworth (maximally flat passband)
+  float cutoffPeak = 440f * MathF.Pow(2f, (CutoffMidiNote - 69) / 12f);
+
+  // --- Buffers / state -----------------------------------------------------
+  float totalDuration = GateOnTime + ReleaseTime + 0.05f;
+  int   totalSamples  = (int)(totalDuration * SampleRate);
+
+  float phase      = 0f;            // oscillator phase [0, 1)
+  float envelope   = 0f;            // current amplitude
+  float z1 = 0f,  z2 = 0f;         // biquad delay elements
+
+  var pcm = new short[totalSamples];
+
+  // --- Sample loop ---------------------------------------------------------
+  for (int i = 0; i < totalSamples; i++)
+  {
+      float t        = (float)i / SampleRate;
+      bool  gateHigh = t < GateOnTime;
+
+      // 1. ASR envelope (linear ramps — good enough for a first implementation)
+      if (gateHigh)
+          envelope = t < AttackTime
+              ? (t / AttackTime) * SustainLevel   // attack: ramp up
+              : SustainLevel;                     // sustain: hold
+      else
+          envelope = SustainLevel * MathF.Max(0f, 1f - (t - GateOnTime) /
+  ReleaseTime); // release: ramp down
+
+      // 2. Oscillator: pulse wave
+      float osc = phase < DutyCycle ? 1f : -1f;
+
+      // 3. Filter: 12 dB/oct LP biquad, cutoff follows the same ASR shape
+      //    envNorm remaps envelope back to [0, 1] so the filter sweep is
+      //    independent of SustainLevel.
+      float envNorm = SustainLevel > 0f ? envelope / SustainLevel : 0f;
+      float cutoff  = MathF.Max(20f, cutoffPeak * envNorm);  // floor at 20 Hz
+
+      float w0    = TwoPi * cutoff / SampleRate;
+      float cosW0 = MathF.Cos(w0);
+      float alpha = MathF.Sin(w0) / (2f * FilterQ);
+
+      // Low-pass biquad coefficients (Audio EQ Cookbook)
+      float b0 =  (1f - cosW0) * 0.5f;
+      float b1 =   1f - cosW0;
+      float b2 =  (1f - cosW0) * 0.5f;
+      float a0 =   1f + alpha;
+      float a1 =  -2f * cosW0;
+      float a2 =   1f - alpha;
+
+      b0 /= a0; b1 /= a0; b2 /= a0;   // normalise once
+                a1 /= a0; a2 /= a0;
+
+      // Direct Form II Transposed — numerically stable
+      float filtered = b0 * osc + z1;
+      z1 = b1 * osc - a1 * filtered + z2;
+      z2 = b2 * osc - a2 * filtered;
+
+      // 4. VCA: apply amplitude envelope
+      float sample = filtered * envelope;
+
+      pcm[i] = (short)(Math.Clamp(sample, -1f, 1f) * 32767f);
+
+      // Advance oscillator phase
+      phase += noteFreq / SampleRate;
+      if (phase >= 1f) phase -= 1f;
+  }
+
+  WriteWav("pulse_asr.wav", pcm, SampleRate);
+  Console.WriteLine("Wrote pulse_asr.wav");
+
+  // --- WAV writer ----------------------------------------------------------
+  static void WriteWav(string path, short[] samples, int sampleRate)
+  {
+      using var w = new BinaryWriter(File.Create(path));
+      int dataBytes = samples.Length * 2;
+      w.Write("RIFF"u8.ToArray()); w.Write(36 + dataBytes);
+      w.Write("WAVEfmt "u8.ToArray());
+      w.Write(16); w.Write((short)1); w.Write((short)1);  // PCM, mono
+      w.Write(sampleRate); w.Write(sampleRate * 2);        // byte rate
+      w.Write((short)2); w.Write((short)16);               // block align, 
+  16-bit
+      w.Write("data"u8.ToArray()); w.Write(dataBytes);
+      foreach (var s in samples) w.Write(s);
+  }
+
+  Signal flow: oscillator → filter → VCA — filter sees the raw pulse, then
+  amplitude is shaped last. This is the standard analog synth order (OSC → VCF →
+   VCA).
+
+  A few practical notes for the real APU:
+
+  - Don't recalculate biquad coefficients every sample in production — only when
+   the cutoff changes. Cache (w0, b0..b2, a1, a2) and recompute only when cutoff
+   differs from last tick. In fixed-cutoff mode that's once per register write.
+  - Reset z1/z2 on silence only, not on coefficient change. Resetting them
+  mid-note causes a click.
+  - 4-pole (24 dB): add a second biquad stage with its own z1b/z2b state,
+  feeding filtered from stage 1 into stage 2 with the same coefficients. No
+  other changes needed.
+
+✻ Crunched for 1m 24s
