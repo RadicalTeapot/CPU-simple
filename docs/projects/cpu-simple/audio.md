@@ -31,7 +31,7 @@ The APU produces a **pulse wave** (square wave with variable duty cycle). Pulse 
 
 | `PW[1:0]` | Duty cycle |
 |-----------|------------|
-| `00` | 6% |
+| `00` | 6.25% |
 | `01` | 12.5% |
 | `10` | 25% |
 | `11` | 50% (square wave) |

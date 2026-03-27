@@ -22,4 +22,8 @@
     <Using Include="NUnit.Framework" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\AudioChip\AudioChip.csproj" />
+  </ItemGroup>
+
 </Project>
