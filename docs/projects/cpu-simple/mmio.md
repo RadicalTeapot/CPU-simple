@@ -109,18 +109,23 @@ MMIO region: `0xEF00–0xEFFF` (256 slots, offsets `0x00–0xFF`).
 | `0xEF04` | PPU | `0x04` | `PPUBDG` | W |
 | `0xEF05` | PPU | `0x05` | `PPUBDB` | W |
 | `0xEF06` | Gamepad | `0x00` | `GAMEPAD` | R |
-| `0xEF06–0xEFFF` | — | — | Reserved | — |
+| `0xEF07` | Audio | `0x00` | `AUDNOTE` | W |
+| `0xEF08` | Audio | `0x01` | `AUDENV` | W |
+| `0xEF09` | Audio | `0x02` | `AUDFLT` | W |
+| `0xEF0A` | Audio | `0x03` | `AUDCTL` | W |
+| `0xEF0B–0xEFFF` | — | — | Reserved | — |
 
 Device registration:
 
 ```
 PPU      base=0x00 size=6
 Gamepad  base=0x06 size=1
+Audio    base=0x07 size=4
 ```
 
-Used: 7 of 256 slots. Reserved: 249 slots.
+Used: 11 of 256 slots. Reserved: 245 slots.
 
-Note that the design of the APU for the 16 bit version is TBD, this document will be updated once design is finalized.
+> **Note:** `CpuHandler` currently registers devices at the same fixed offsets in both builds (PPU 0x00/3, Gamepad 0x03/1, Audio 0x04/4). In 16-bit mode this places audio at `0xEF04–0xEF07`, not `0xEF07–0xEF0A` as shown above. The table above reflects the intended design; the implementation will be aligned when the 16-bit PPU register set is fully wired.
 
 ---
 

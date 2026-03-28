@@ -19,8 +19,8 @@ All four registers are **write-only**. The APU occupies 4 MMIO slots (relative o
 | Rel offset | Name | Bits | Description |
 |------------|------|------|-------------|
 | `0x00` | `AUDNOTE` | `[7]` gate, `[6:0]` MIDI note | Gate and pitch |
-| `0x01` | `AUDENV` | `[7:4]` attack, `[3:0]` release | Envelope timing |
-| `0x02` | `AUDFLT` | `[7]` filter mode, `[6:0]` cutoff (MIDI note) | Low-pass filter |
+| `0x01` | `AUDENV` | `[3:0]` attack, `[7:4]` release | Envelope timing |
+| `0x02` | `AUDFLT` | `[7]` filter mode, `[6:0]` cutoff (MIDI note) | Filter cutoff |
 | `0x03` | `AUDCTL` | `[7]` filter slope, `[6]` filter type, `[5:4]` pulse width, `[3:0]` gain/sustain | Oscillator and filter control |
 
 ---
@@ -42,7 +42,7 @@ Pitch is determined by the MIDI note value in bits `[6:0]` of `AUDNOTE`. The sta
 f = 440 × 2^((N − 69) / 12)   Hz
 ```
 
-MIDI note 0 maps to ~8.18 Hz; note 127 maps to ~12,543 Hz. Note 69 = A4 = 440 Hz.
+MIDI note 0 maps to ~8 Hz; note 127 maps to ~12,544 Hz. Note 69 = A4 = 440 Hz. Integer truncation is applied: the result is stored as an `int` (Hz).
 
 ---
 
@@ -64,7 +64,7 @@ The APU uses an **Attack–Sustain–Release** (ASR) envelope, not ADSR. There i
 ```
 amplitude
    ▲                sustain
-   │   '   ─────────────────────────  
+   │   '   ─────────────────────────
    │   '  /                         '\
    │   ' /attack               release\
    │   '/                           '  \
@@ -72,42 +72,76 @@ amplitude
     gate high                   gate low
 ```
 
-- **Attack** (`AUDENV[7:4]`, 4 bits): time to rise from 0 to maximum amplitude. 16 steps.
-- **Sustain** (`AUDCTL[3:0]`, 4 bits): amplitude level held after attack completes. `0x0` = silent, `0xF` = maximum. Also called "gain" — it sets the peak the attack ramps toward.
-- **Release** (`AUDENV[3:0]`, 4 bits): time to fall from the current sustain level to 0 after the gate drops. 16 steps.
+- **Attack** (`AUDENV[3:0]`, 4 bits, lower nibble): time to rise from 0 to maximum amplitude.
+- **Sustain** (`AUDCTL[3:0]`, 4 bits): amplitude level held after attack completes.
+- **Release** (`AUDENV[7:4]`, 4 bits, upper nibble): time to fall from sustain level to 0 after gate drops.
 
-The exact timing curve (linear vs. exponential, milliseconds per step) is TBD and will be defined in the implementation. Real hardware (e.g., SID chip) uses exponential curves for a more natural decay; a linear approximation is acceptable for a first implementation.
+The envelope uses a **linear ramp** (not exponential). The attack ramps from 0 to 1 linearly over the attack time; release ramps from 1 to 0 linearly over the release time.
+
+### Attack times (seconds)
+
+The 4-bit attack value indexes into a SID-derived lookup table:
+
+| Value | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 |
+|-------|------|------|------|------|------|------|------|------|-----|------|-----|-----|-----|-----|-----|-----|
+| Seconds | 0.002 | 0.008 | 0.016 | 0.024 | 0.038 | 0.056 | 0.068 | 0.080 | 0.1 | 0.24 | 0.5 | 0.8 | 1.0 | 3.0 | 5.0 | 8.0 |
+
+### Release times (seconds)
+
+The 4-bit release value indexes into a SID-derived lookup table:
+
+| Value | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 |
+|-------|------|------|------|------|------|------|------|------|-----|------|-----|-----|-----|-----|-----|-----|
+| Seconds | 0.006 | 0.024 | 0.048 | 0.072 | 0.114 | 0.168 | 0.204 | 0.24 | 0.3 | 0.75 | 1.5 | 2.4 | 3.0 | 9.0 | 15.0 | 24.0 |
+
+### Sustain level
+
+The 4-bit sustain nibble is converted linearly to a `[0.0, 1.0]` amplitude multiplier:
+
+```
+sustain_level = nibble / 15
+```
+
+`0x0` = silent (0.0), `0xF` = maximum (1.0). The sustain level acts as the peak the attack ramps toward and the starting level for release.
 
 ---
 
 ## Filter
 
-The filter is a **low-pass filter** or **high-pass filter**. Frequencies above the cutoff are attenuated; frequencies below pass through.
+The filter is a biquad **low-pass** or **high-pass** filter. Frequencies above (LP) or below (HP) the cutoff are attenuated.
+
+### Cutoff frequency
 
 Bit `[7]` of `AUDFLT` selects the filter mode:
 
 | `AUDFLT[7]` | Mode |
 |-------------|------|
 | `0` | Fixed cutoff — the cutoff frequency is static at the value written to `AUDFLT[6:0]` |
-| `1` | ASR-modulated cutoff — the cutoff frequency follows the **same ASR envelope** as the oscillator amplitude (same attack time, same sustain level proportionally, same release time). The cutoff sweeps from 0 to `AUDFLT[6:0]` during attack, holds at `AUDFLT[6:0]` during sustain, and sweeps back to 0 during release. |
+| `1` | ASR-modulated cutoff (designed; see limitation below) |
 
-The cutoff frequency is expressed as a **MIDI note value** (`[6:0]`, 0–127), using the same formula as pitch. This keeps the filter musically in tune with the oscillator — a cutoff at note N is always harmonically related to a pitch also set to note N.
+> **Current implementation note:** `AUDFLT[7]` is decoded but not yet applied. The filter envelope always uses attack=0 and release=0, meaning the cutoff opens instantly on gate-high and closes instantly on gate-low. Manual filter sweeps in fixed mode work correctly; programmatic ASR sweep is reserved for a future update.
 
-In ASR mode, `AUDFLT[6:0]` defines the **peak cutoff** (the sustain level of the filter envelope). In fixed mode, the cutoff register can be updated mid-note by the CPU for manual filter sweeps.
+The cutoff frequency is expressed as a **MIDI note value** (`[6:0]`, 0–127), converted with the same formula as pitch. This keeps the filter musically in tune with the oscillator.
+
+### Filter type
 
 Bit `[6]` of `AUDCTL` selects the filter type:
 
-| `AUDFLT[6]` | Mode |
+| `AUDCTL[6]` | Mode |
 |-------------|------|
 | `0` | Low pass filter |
 | `1` | High pass filter |
 
+### Filter slope
+
 Bit `[7]` of `AUDCTL` selects the filter slope:
 
-| `AUDFLT[7]` | Mode |
+| `AUDCTL[7]` | Mode |
 |-------------|------|
-| `0` | 2 pole (12dB) |
-| `1` | 4 pole (24dB) |
+| `0` | 2 pole (12 dB/octave) |
+| `1` | 4 pole (24 dB/octave) |
+
+The filter is implemented as a Direct Form II Transposed biquad (numerically stable). The 24 dB/octave slope cascades two biquad stages.
 
 ---
 
@@ -115,11 +149,36 @@ Bit `[7]` of `AUDCTL` selects the filter slope:
 
 | Action | Registers written |
 |--------|-------------------|
-| Start a note | `AUDENV` (timing), `AUDCTL` (PW, gain), `AUDFLT` (filter), then `AUDNOTE` with gate=1 |
+| Start a note | `AUDENV` (timing), `AUDCTL` (PW, gain, filter), `AUDFLT` (filter cutoff), then `AUDNOTE` with gate=1 |
 | Change pitch without retriggering | `AUDNOTE` with gate=1 and new note value |
 | Stop a note (enter release) | `AUDNOTE` with gate=0 (note value ignored on release) |
 | Retrigger (restart envelope) | `AUDNOTE` gate=0, then gate=1 with new note value |
 | Sweep filter manually | Write new value to `AUDFLT` mid-note (fixed mode only) |
+
+---
+
+## Emulator integration
+
+The APU is automatically enabled whenever the PPU is active (`--vram` flag). Two optional flags configure audio output:
+
+| Flag | Config key | Default | Description |
+|------|------------|---------|-------------|
+| `--sample-rate HZ` | `SampleRate` | `44100` | Output sample rate in Hz |
+| `--buffer-size N` | `AudioBufferSize` | `1024` | Raylib audio stream buffer size (samples) |
+
+Neither flag can be used without `--vram`. The CPU clock rate used internally by the APU is derived from the PPU configuration at startup (`TotalScanlines × CyclesPerScanline / PpuCyclesPerCpuCycle × 60 fps`) and is not user-configurable.
+
+Audio samples are generated in a batch at the end of each video frame (after PPU `FrameReady` fires). Raylib consumes one buffer's worth of samples per frame via `IsAudioStreamProcessed` / `UpdateAudioStream`.
+
+### emulator.json example
+
+```json
+{
+  "vram": 256,
+  "SampleRate": 44100,
+  "AudioBufferSize": 1024
+}
+```
 
 ---
 

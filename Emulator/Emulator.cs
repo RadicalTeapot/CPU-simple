@@ -1,3 +1,4 @@
+using AudioChip.Configuration;
 using Controller.Configuration;
 using Emulator.IO;
 using PPU.Configuration;
@@ -7,7 +8,7 @@ namespace Emulator
 {
     public class Emulator
     {
-        public const string Usage = "emulator [-m/--memory SIZE] [-s/--stack SIZE] [--registers COUNT] [--vram SIZE] [--scale N] [--chr PATH] [--prog PATH] [--buttons COUNT] [-h/--help]";
+        public const string Usage = "emulator [-m/--memory SIZE] [-s/--stack SIZE] [--registers COUNT] [--vram SIZE] [--scale N] [--chr PATH] [--prog PATH] [--buttons COUNT] [--sample-rate HZ] [--buffer-size N] [-h/--help]";
 
         public static int Main(string[] args)
         {
@@ -68,8 +69,19 @@ namespace Emulator
                 ? new ControllerConfiguration(result.ButtonCount.Value)
                 : null;
 
+            AudioConfiguration? audioConfig = null;
+            if (ppuConfig != null)
+            {
+                var cpuClockRate = ppuConfig.TotalScanlines * ppuConfig.CyclesPerScanline / ppuConfig.PpuCyclesPerCpuCycle * 60;
+                audioConfig = new AudioConfiguration(
+                    result.SampleRate ?? DefaultSampleRate,
+                    result.AudioBufferSize ?? DefaultAudioBufferSize,
+                    cpuClockRate
+                );
+            }
+
             var peripherals = ppuConfig != null
-                ? new PeripheralSet(ppuConfig, chrData, controllerConfig)
+                ? new PeripheralSet(ppuConfig, chrData, controllerConfig, audioConfig)
                 : null;
 
             var context = new EmulatorApplication.EmulatorContext(
@@ -96,6 +108,8 @@ namespace Emulator
             string? chrPath = null;
             string? progPath = null;
             int? buttonCount = null;
+            int? sampleRate = null;
+            int? audioBufferSize = null;
             result = new(default, DefaultScale, null, null);
 
             // emulator [-m/--memory SIZE] [-s/--stack SIZE] [--registers COUNT] [--vram SIZE] [--scale N] [--chr PATH] [--prog PATH] [--buttons COUNT] [-h/--help]
@@ -205,6 +219,32 @@ namespace Emulator
                             return InvalidArgExitCode;
                         }
                         break;
+                    case "--sample-rate":
+                        if (i + 1 < args.Length && int.TryParse(args[i + 1], out var sr))
+                        {
+                            logger.Log($"Audio sample rate set to {sr}");
+                            sampleRate = sr;
+                            i++;
+                        }
+                        else
+                        {
+                            logger.Error("Invalid sample rate specified.");
+                            return InvalidArgExitCode;
+                        }
+                        break;
+                    case "--buffer-size":
+                        if (i + 1 < args.Length && int.TryParse(args[i + 1], out var bs))
+                        {
+                            logger.Log($"Audio buffer size set to {bs}");
+                            audioBufferSize = bs;
+                            i++;
+                        }
+                        else
+                        {
+                            logger.Error("Invalid buffer size specified.");
+                            return InvalidArgExitCode;
+                        }
+                        break;
                     case "-h":
                     case "--help":
                         return HelpExitCode;
@@ -224,7 +264,9 @@ namespace Emulator
                 scale ?? configFile?.Scale ?? DefaultScale,
                 chrPath ?? configFile?.Chr,
                 progPath ?? configFile?.Prog,
-                buttonCount ?? configFile?.Buttons
+                buttonCount ?? configFile?.Buttons,
+                sampleRate ?? configFile?.SampleRate,
+                audioBufferSize ?? configFile?.AudioBufferSize
             );
             return 0;
         }
@@ -234,7 +276,9 @@ namespace Emulator
             int Scale,
             string? ChrPath,
             string? ProgPath,
-            int? ButtonCount = null
+            int? ButtonCount = null,
+            int? SampleRate = null,
+            int? AudioBufferSize = null
         );
 
         internal record EmulatorConfig(
@@ -245,7 +289,9 @@ namespace Emulator
             int? Scale = null,
             string? Chr = null,
             string? Prog = null,
-            int? Buttons = null
+            int? Buttons = null,
+            int? SampleRate = null,
+            int? AudioBufferSize = null
         );
 
         internal static bool ValidateArgs(ParsedArgsResult args, ILogger logger)
@@ -311,6 +357,26 @@ namespace Emulator
                 logger.Error("Controller (--buttons) requires PPU (--vram must also be set).");
                 return false;
             }
+            if (args.SampleRate.HasValue && args.Config.VramSize <= 0)
+            {
+                logger.Error("Audio (--sample-rate) requires PPU (--vram must also be set).");
+                return false;
+            }
+            if (args.AudioBufferSize.HasValue && args.Config.VramSize <= 0)
+            {
+                logger.Error("Audio (--buffer-size) requires PPU (--vram must also be set).");
+                return false;
+            }
+            if (args.SampleRate.HasValue && args.SampleRate.Value <= 0)
+            {
+                logger.Error("Sample rate must be a positive integer.");
+                return false;
+            }
+            if (args.AudioBufferSize.HasValue && args.AudioBufferSize.Value <= 0)
+            {
+                logger.Error("Buffer size must be a positive integer.");
+                return false;
+            }
             return true;
         }
 
@@ -335,6 +401,8 @@ namespace Emulator
         private const int DefaultRegisterCount = 4;
         private const int DefaultVramSize = 0;
         private const int DefaultScale = 4;
+        private const int DefaultSampleRate = 44100;
+        private const int DefaultAudioBufferSize = 1024;
         private const int HelpExitCode = 1;
         private const int InvalidArgExitCode = 2;
     }

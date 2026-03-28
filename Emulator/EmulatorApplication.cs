@@ -1,4 +1,5 @@
-﻿using Controller.Configuration;
+﻿using AudioChip.Configuration;
+using Controller.Configuration;
 using Emulator.Commands.GlobalCommands;
 using Emulator.Commands.StateCommands;
 using Emulator.IO;
@@ -11,7 +12,8 @@ namespace Emulator
     public record PeripheralSet(
         PpuConfig PpuConfig,
         IReadOnlyList<byte>? ChrData = null,
-        ControllerConfiguration? ControllerConfig = null
+        ControllerConfiguration? ControllerConfig = null,
+        AudioConfiguration? AudioConfig = null
     );
 
     public class EmulatorApplication
@@ -47,7 +49,8 @@ namespace Emulator
             if (context.Peripherals == null)
                 return;
 
-            _display = new Display(context.Peripherals.PpuConfig.ScreenWidth, context.Peripherals.PpuConfig.ScreenHeight, context.DisplayScale);
+            _audioBufferSize = context.Peripherals.AudioConfig?.BufferSize ?? 0;
+            _display = new Display(context.Peripherals.PpuConfig.ScreenWidth, context.Peripherals.PpuConfig.ScreenHeight, context.DisplayScale, context.Peripherals.AudioConfig);
             _cpuHandler.FrameReady += _display.UpdateFrame;
         }
 
@@ -86,6 +89,12 @@ namespace Emulator
                 finally
                 {
                     _output.StatusSuppressed = false; // Ensure that status output is re-enabled even if an exception occurs during TickFrame
+                }
+                var audioChip = _cpuHandler.AudioChip;
+                if (audioChip != null && _audioBufferSize > 0 && _display!.IsAudioReady()
+                    && audioChip.AvailableSamples >= _audioBufferSize)
+                {
+                    _display.SubmitAudio(audioChip.ConsumeSamples(_audioBufferSize));
                 }
                 _display!.Render();
             }
@@ -155,6 +164,7 @@ namespace Emulator
         private readonly ILogger _logger;
         private readonly IOutput _output;
 
+        private readonly int _audioBufferSize;
         private readonly Display? _display;
         private readonly CpuHandler _cpuHandler;
         private readonly GlobalCommandRegistry _globalCommandRegistry;

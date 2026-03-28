@@ -1,3 +1,4 @@
+using AudioChip.Configuration;
 using Controller.Storage;
 using Raylib_cs;
 
@@ -7,7 +8,7 @@ namespace Emulator
     {
         public static bool ShouldClose => Raylib.WindowShouldClose();
 
-        public Display(int screenWidth, int screenHeight, int scale)
+        public Display(int screenWidth, int screenHeight, int scale, AudioConfiguration? audioConfig = null)
         {
             _scale = scale;
             _colors = new Color[screenWidth * screenHeight];
@@ -17,6 +18,15 @@ namespace Emulator
             _texture = Raylib.LoadTextureFromImage(image);
             Raylib.UnloadImage(image);
             Raylib.SetTargetFPS(60);
+
+            if (audioConfig != null)
+            {
+                Raylib.InitAudioDevice();
+                Raylib.SetAudioStreamBufferSizeDefault(audioConfig.BufferSize);
+                var stream = Raylib.LoadAudioStream((uint)audioConfig.SampleRate, 32, 1);
+                Raylib.PlayAudioStream(stream);
+                _audioStream = stream;
+            }
         }
 
         public void UpdateFrame(IReadOnlyList<byte> rgbPixels)
@@ -50,6 +60,16 @@ namespace Emulator
             }
         }
 
+        public bool IsAudioReady() =>
+            _audioStream.HasValue && Raylib.IsAudioStreamProcessed(_audioStream.Value);
+
+        public unsafe void SubmitAudio(Span<float> samples)
+        {
+            if (!_audioStream.HasValue) return;
+            fixed (float* ptr = samples)
+                Raylib.UpdateAudioStream(_audioStream.Value, ptr, samples.Length);
+        }
+
         public void Render()
         {
             Raylib.BeginDrawing();
@@ -61,11 +81,18 @@ namespace Emulator
         public void Dispose()
         {
             Raylib.UnloadTexture(_texture);
+            if (_audioStream.HasValue)
+            {
+                Raylib.StopAudioStream(_audioStream.Value);
+                Raylib.UnloadAudioStream(_audioStream.Value);
+                Raylib.CloseAudioDevice();
+            }
             Raylib.CloseWindow();
         }
 
         private readonly int _scale;
         private readonly Color[] _colors;
         private readonly Texture2D _texture;
+        private readonly AudioStream? _audioStream;
     }
 }

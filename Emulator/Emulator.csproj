@@ -28,6 +28,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Assembler\Assembler.csproj" />
+    <ProjectReference Include="..\AudioChip\AudioChip.csproj" />
     <ProjectReference Include="..\Controller\Controller.csproj" />
     <ProjectReference Include="..\CPU\CPU.csproj" />
     <ProjectReference Include="..\PPU\PPU.csproj" />

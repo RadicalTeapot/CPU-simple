@@ -22,6 +22,7 @@ namespace Emulator
 
         public event Action<IReadOnlyList<byte>>? FrameReady;
         public ButtonsState? ButtonState => _controller?.ButtonState;
+        public AudioChip.AudioChip? AudioChip => _audioChip;
 
         public CpuHandler(CpuHandlerContext context)
         {
@@ -43,6 +44,12 @@ namespace Emulator
                 {
                     _controller = new Controller.Controller(context.Peripherals.ControllerConfig);
                     mmioRouter.Register(0x03, 0x01, _controller.Registers);
+                }
+
+                if (context.Peripherals.AudioConfig != null)
+                {
+                    _audioChip = new AudioChip.AudioChip(context.Peripherals.AudioConfig);
+                    mmioRouter.Register(0x04, 0x04, _audioChip.Registers);
                 }
 
                 _cpu = new CPU.CPU(context.CpuConfig, mmioRouter);
@@ -105,6 +112,13 @@ namespace Emulator
                 int remaining = totalPpuCycles - ppuCyclesRun;
                 for (int i = 0; i < remaining; i++)
                     _ppu.Tick();
+            }
+
+            if (_audioChip != null)
+            {
+                int cpuTicksForFrame = totalPpuCycles / _ppuTickRatio;
+                for (int i = 0; i < cpuTicksForFrame; i++)
+                    _audioChip.Tick();
             }
         }
 
@@ -169,6 +183,7 @@ namespace Emulator
         private readonly int _ppuTickRatio;
 
         private readonly Controller.Controller? _controller;
+        private readonly AudioChip.AudioChip? _audioChip;
 
         private readonly CpuStateFactory _cpuStateFactory;
         private readonly ILogger _logger;
