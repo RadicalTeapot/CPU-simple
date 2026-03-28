@@ -10,7 +10,9 @@ namespace AudioChip
         public float GetSample()
         {
             var osc = _pulseWaveOscillator.NextSample(voice.Frequency, voice.PulseWidth);
-            var filterEnv = _filterEnvelope.NextSample(voice.Filter.Envelope.Attack, voice.Filter.Envelope.Release, 0.0f, voice.Filter.Cutoff, voice.Gate);
+            var fltAttack = voice.Filter.UseEnvelope ? voice.Envelope.Attack : 0.0f;
+            var fltRelease = voice.Filter.UseEnvelope ? voice.Envelope.Release : 0.0f;
+            var filterEnv = _filterEnvelope.NextSample(fltAttack, fltRelease, 0.0f, voice.Filter.Cutoff, voice.Gate);
             _filter.SetCutoff((int)filterEnv, voice.Filter.Type);
             _filter.SetFilterSlope(voice.Filter.Slope);
             var filtered = _filter.Apply(osc);

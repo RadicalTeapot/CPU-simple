@@ -77,6 +77,28 @@ namespace AudioChip.Tests
         }
 
         [Test]
+        public void NextSample_ZeroAttack_FirstGateSampleReturnsMax()
+        {
+            var env = new Envelope(SampleRate);
+
+            var first = env.NextSample(attack: 0f, Release, min: 0f, max: 1f, gate: true);
+
+            Assert.That(first, Is.EqualTo(1f));
+        }
+
+        [Test]
+        public void NextSample_ZeroRelease_FirstReleaseSampleReturnsMin()
+        {
+            var env = new Envelope(SampleRate);
+            for (int i = 0; i < SampleRate; i++)
+                env.NextSample(Attack, release: 0f, min: 0f, max: 1f, gate: true);
+
+            var first = env.NextSample(Attack, release: 0f, min: 0f, max: 1f, gate: false);
+
+            Assert.That(first, Is.EqualTo(0f));
+        }
+
+        [Test]
         public void Reset_RestartsAttackFromBeginning()
         {
             var env = new Envelope(SampleRate);

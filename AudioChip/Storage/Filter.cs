@@ -12,14 +12,14 @@
         Slope24dB
     };
 
-    internal class Filter(int cutoff, FilterType type, FilterSlope slope, Envelope envelope)
+    internal class Filter(int cutoff, FilterType type, FilterSlope slope, bool useEnvelope)
     {
         public int Cutoff { get; set; } = cutoff;
         public FilterType Type { get; set; } = type;
         public FilterSlope Slope { get; set; } = slope;
-        public Envelope Envelope { get; set; } = envelope;
+        public bool UseEnvelope { get; set; } = useEnvelope;
 
-        public static Filter Default => new(20000, FilterType.LowPass, FilterSlope.Slope12dB, Envelope.Default);
+        public static Filter Default => new(20000, FilterType.LowPass, FilterSlope.Slope12dB, false);
 
         public static (int cutoff, bool useEnv) GetFilterParameters(byte value)
         {

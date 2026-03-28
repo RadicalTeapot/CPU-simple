@@ -174,7 +174,6 @@ I did review and tested the code but exercise caution when using it.
     - current state tick method is actually a step, rename it
     - using the cpu inspector to get the number of micro-ticks in tickppu is hacky, fix it
 - [ ] Implement sound chip and map some memory for it too (for 16-bit version)
-  - [ ] Wire into Emulator (figure out if better to compute CpuClockRate and call in Tick() or call in TickFrame() and use SampleRate / 60)
   - [ ] Write a small MIDI player application
 - [ ] Cleanup opcode constructors to take only necessary parameters (or use an interface to mask un-necessary parameters)
 - [ ] Write a bank of small programs for 8 and 16 bit version and document them

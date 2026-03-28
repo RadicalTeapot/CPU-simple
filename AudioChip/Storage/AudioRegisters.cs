@@ -51,6 +51,7 @@ namespace AudioChip.Storage
         {
             var (cutoff, useEnv) = Filter.GetFilterParameters(value);
             voice.Filter.Cutoff = cutoff;
+            voice.Filter.UseEnvelope = useEnv;
         }
 
         private static void WriteFilterTypeAndSlope(byte value, Voice voice)

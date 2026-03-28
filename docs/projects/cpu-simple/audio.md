@@ -116,10 +116,8 @@ Bit `[7]` of `AUDFLT` selects the filter mode:
 
 | `AUDFLT[7]` | Mode |
 |-------------|------|
-| `0` | Fixed cutoff — the cutoff frequency is static at the value written to `AUDFLT[6:0]` |
-| `1` | ASR-modulated cutoff (designed; see limitation below) |
-
-> **Current implementation note:** `AUDFLT[7]` is decoded but not yet applied. The filter envelope always uses attack=0 and release=0, meaning the cutoff opens instantly on gate-high and closes instantly on gate-low. Manual filter sweeps in fixed mode work correctly; programmatic ASR sweep is reserved for a future update.
+| `0` | Fixed cutoff — the cutoff frequency opens instantly on gate-high and closes instantly on gate-low at the value written to `AUDFLT[6:0]` |
+| `1` | ASR-modulated cutoff — the cutoff ramps from 0 to the written value using the same attack/release timing as the note envelope (`AUDENV`) |
 
 The cutoff frequency is expressed as a **MIDI note value** (`[6:0]`, 0–127), converted with the same formula as pitch. This keeps the filter musically in tune with the oscillator.
 
