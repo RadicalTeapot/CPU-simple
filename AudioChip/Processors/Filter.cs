@@ -4,11 +4,12 @@ namespace AudioChip.Processors
 {
     internal class Filter(int sampleRate)
     {
-        public void SetFilter(Storage.Filter filter)
+        public void SetFilterSlope(FilterSlope slope)
         {
-            _type = filter.Type;
-            SetCutoff(filter.Cutoff);
-            switch (filter.Slope)
+            if (_slope == slope) return; // No need to recalculate if slope hasn't changed
+            _slope = slope;
+            
+            switch (_slope)
             {
                 case FilterSlope.Slope12dB:
                     _filterStrategy = new SinglePoleStrategy();
@@ -19,15 +20,17 @@ namespace AudioChip.Processors
             }
         }
 
-        public void SetCutoff(int cutoff)
+        public void SetCutoff(int cutoff, FilterType type)
         {
-            if (cutoff == _cutoff) return; // No need to recalculate if cutoff hasn't changed
+            cutoff = GetValidCutoff(cutoff);
+            if (cutoff == _cutoff && type == _type) return; // No need to recalculate if cutoff hasn't changed
             _cutoff = cutoff;
+            _type = type;
 
             var w0 = TwoPi * cutoff / sampleRate;
             var cosW0 = MathF.Cos(w0);
             var alpha = MathF.Sin(w0) / (2f * Q);
-            switch (_type) // This could also be a strategy pattern if we wanted to avoid the switch, change if needed
+            switch (_type)
             {
                 case FilterType.LowPass:
                     SetLowPassCoefficients(cosW0, alpha);
@@ -68,7 +71,15 @@ namespace AudioChip.Processors
             };
         }
 
+        /// <summary>
+        /// Clamps the cutoff frequency to ensure it's within a valid range (1 Hz to Nyquist frequency) to prevent instability in the filter calculations.
+        /// </summary>
+        /// <param name="cutoff">The desired cutoff frequency.</param>
+        /// <returns>The clamped cutoff frequency.</returns>
+        private int GetValidCutoff(int cutoff) => Math.Clamp(cutoff, 1, sampleRate / 2 - 1);
+
         private int _cutoff;
+        private FilterSlope _slope;
         private FilterType _type;
         private BiquadCoefficients _biquadCoefficients;
         private IApplyFilterStrategy _filterStrategy = new SinglePoleStrategy();

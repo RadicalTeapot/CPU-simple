@@ -52,9 +52,6 @@ namespace AudioChip.Tests
             Assert.That(env.NextSample(Attack, Release, min: 0f, max: 0.5f, gate: true), Is.EqualTo(0.5f).Within(1e-4f));
         }
 
-        // NOTE: This test currently fails — the release formula returns (phase - attack) / release
-        // (rising 0→1) instead of 1 - (phase - attack) / release (falling 1→0).
-        // Fix: change the return to MathF.Max(1f - (_phase - attack) / release, 0f);
         [Test]
         public void NextSample_ReleasePhase_FirstValueIsNearMax()
         {

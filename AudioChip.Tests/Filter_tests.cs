@@ -70,7 +70,8 @@ namespace AudioChip.Tests
         private static ProcessorFilter CreateFilter(int cutoff, FilterType type, FilterSlope slope)
         {
             var filter = new ProcessorFilter(SampleRate);
-            filter.SetFilter(new Storage.Filter(cutoff, type, slope, Envelope.Default));
+            filter.SetFilterSlope(slope);
+            filter.SetCutoff(cutoff, type);
             return filter;
         }
     }

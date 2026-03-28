@@ -43,7 +43,7 @@ namespace AudioChip.Storage
 
         private static void WriteEnvelopeSustain(byte value, Voice voice)
         {
-            byte sustain = Envelope.GetSustain(value);
+            var sustain = Envelope.GetSustain(value);
             voice.Envelope.Sustain = sustain;
         }
 

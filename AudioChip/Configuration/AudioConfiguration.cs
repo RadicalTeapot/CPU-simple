@@ -1,8 +1,9 @@
 ﻿namespace AudioChip.Configuration
 {
-    internal record AudioConfiguration(
+    public record AudioConfiguration(
         int SampleRate,
-        int BufferSize)
+        int BufferSize,
+        int CpuClockRate)
     {
     }
 }

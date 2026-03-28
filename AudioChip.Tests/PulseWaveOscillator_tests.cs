@@ -21,10 +21,6 @@ namespace AudioChip.Tests
             Assert.That(osc.NextSample(frequency: 440, dutyCycle: 0.5f), Is.EqualTo(-1.0f));
         }
 
-        // NOTE: The following two tests currently fail because frequency/sampleRate uses integer
-        // division (e.g. 1/16 = 0), so phase never advances for typical audio frequencies.
-        // Fix: change _phase += frequency / sampleRate to _phase += (float)frequency / sampleRate;
-
         [TestCase(0.0625f, 1, 15)]
         [TestCase(0.125f,  2, 14)]
         [TestCase(0.25f,   4, 12)]
