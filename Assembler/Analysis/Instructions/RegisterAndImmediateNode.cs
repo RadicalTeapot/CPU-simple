@@ -18,7 +18,7 @@ namespace Assembler.Analysis.Instructions
                 case InstructionOperandSet.RegisterAndLabelOperand(var registerOperand, var labelReferenceOperand):
                     var labelRefNode = labelRefManager.CreateAndRegisterEmitNode(labelReferenceOperand);
                     EmitNodes = [
-                        new DataEmitNode([GetOpcodeByteWithRegister(opcode, registerOperand)], NodeSpan.Exclude(instruction.Span, labelRefNode.Span)), 
+                        new DataEmitNode([GetOpcodeByteWithRegister(opcode, registerOperand)], ExcludeSpan(instruction, labelRefNode.Span)),
                         labelRefNode
                     ];
                     break;

@@ -280,6 +280,20 @@ namespace Assembler.Tests
 #endif
         }
 
+        // Regression: EOL token column was missing startCol. When startCol + label_start_pos
+        // exceeded the trimmed line length, NodeSpan.Exclude threw an ArgumentException.
+        // Trigger condition: startCol + label_pos_in_trimmed > trimmed_line_length.
+        // "        sta r0, [x]" → startCol=8, label at pos 9 in "sta r0, [x]" (len=10) → 8+9 > 10.
+
+        [TestCase("        sta r0, [x]", 0x24)] // STA r0 — 8-space indent, short label
+        [TestCase("        lda r0, [x]", 0x14)] // LDA r0 — same indent, different instruction
+        public void DeeplyIndentedRegisterAndMemoryAddress_Assembles(string instruction, byte expectedOpcode)
+        {
+            var program = $".data\n    x: .byte #0x01\n.text\n{instruction}";
+            var bytes = AnalyserTestsHelper.AnalyseAndEmit(program);
+            Assert.That(bytes[0], Is.EqualTo(expectedOpcode));
+        }
+
         [Test]
         public void InvalidMnemonic_Throws()
         {

@@ -33,5 +33,17 @@ namespace Assembler.Analysis
             var secondRegIdx = GetRegisterIndex(secondRegisterOperand);
             return (byte)((byte)opcode | (secondRegIdx << 2) | firstRegIdx);
         }
+
+        protected static NodeSpan ExcludeSpan(InstructionNode instruction, NodeSpan other)
+        {
+            try
+            {
+                return NodeSpan.Exclude(instruction.Span, other);
+            }
+            catch (ArgumentException ex)
+            {
+                throw new AnalyserException(ex.Message, instruction.Span.Line, instruction.Span.StartColumn);
+            }
+        }
     }
 }

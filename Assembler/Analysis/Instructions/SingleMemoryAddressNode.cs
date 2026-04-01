@@ -27,21 +27,21 @@ namespace Assembler.Analysis.Instructions
                     break;
                 case MemoryAddress.Label(var labelReference):
                     EmitNodes = [
-                        new DataEmitNode([ opcodeByte ], NodeSpan.Exclude(instruction.Span, labelReference.Span)), 
+                        new DataEmitNode([ opcodeByte ], ExcludeSpan(instruction, labelReference.Span)), 
                         labelRefManager.CreateAndRegisterEmitNode(labelReference)
                     ];
                     break;
                 case MemoryAddress.LabelWithPositiveOffset(var labelReference, var offset):
                     var positiveOffset = OperandValueProcessor.ParseHexNumberString(offset.Value);
                     EmitNodes = [
-                        new DataEmitNode([ opcodeByte ], NodeSpan.Exclude(instruction.Span, labelReference.Span)),
+                        new DataEmitNode([ opcodeByte ], ExcludeSpan(instruction, labelReference.Span)),
                         labelRefManager.CreateAndRegisterEmitNode(labelReference, positiveOffset)
                     ];
                     break;
                 case MemoryAddress.LabelWithNegativeOffset(var labelReference, var offset):
                     var negativeOffset = OperandValueProcessor.ParseHexNumberString(offset.Value) * -1;
                     EmitNodes = [
-                        new DataEmitNode([ opcodeByte ], NodeSpan.Exclude(instruction.Span, labelReference.Span)),
+                        new DataEmitNode([ opcodeByte ], ExcludeSpan(instruction, labelReference.Span)),
                         labelRefManager.CreateAndRegisterEmitNode(labelReference, negativeOffset)
                     ];
                     break;

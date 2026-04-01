@@ -73,7 +73,7 @@ namespace Assembler
                 throw new LexerException($"Unrecognized expression '{line[column..]}'", lineNumber, column);
             }
 
-            tokens.Add(new Token(TokenType.EndOfLine, string.Empty, lineNumber, column));
+            tokens.Add(new Token(TokenType.EndOfLine, string.Empty, lineNumber, column + startCol));
             return tokens;
         }
 

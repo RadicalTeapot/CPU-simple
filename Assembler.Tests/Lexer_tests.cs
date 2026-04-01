@@ -78,6 +78,16 @@ namespace Assembler.Tests
         }
 
         [Test]
+        public void EndOfLineToken_ColumnIncludesLeadingWhitespace()
+        {
+            var lexer = new Lexer();
+            var result = lexer.Tokenize("    nop");
+            var eolToken = result.First(t => t.Type == TokenType.EndOfLine);
+            // "    nop" → startCol=4, trimmed "nop" has length 3, so EOL should be at 4+3=7
+            Assert.That(eolToken.Column, Is.EqualTo(7));
+        }
+
+        [Test]
         public void IsCaseInsensitive()
         {
             var lexer = new Lexer();
