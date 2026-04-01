@@ -1,0 +1,121 @@
+.data
+    sprite: 
+        .byte #0x00 ; position
+        .byte #0x01 ; tile index
+    
+    spritePos:
+        .byte #0x67 ; visible screen center
+        .byte #0xD0 ; hidden offscreen
+
+    note:
+        .byte #0xBC ; Middle C, gate on
+        .byte #0x3C ; Middle C, gate off
+
+    triggerCounter: .byte #0x78 ; Play a note every 120 frames (2s at 60 fps)
+    posUpdateCounter: .byte #0x06 ; Draw the sprite for 6 frames (0.1s at 60 fps)
+    gateUpdateCounter: .byte #0x1E ; Keep gate high for 30 frames (0.5s at 60 fps)
+    counters: .zero #0x03 ; note, pos and gate
+    
+    frameTrigger: .byte #0x01
+
+.text
+
+    cal [resetCounters] ; Initialize counters
+
+    ; Set sound defaults
+    ldi r0, #0x49 ; 38ms attack, 750ms release env
+    sta r0, [#0xed]
+    ldi r0, #0x7F ; No env, fully open filter
+    sta r0, [#0xee]
+    ldi r0, #0x35 ; two pole, low pass filter with 33% sustain
+    sta r0, [#0xef]
+
+    main:
+        ; Wait for new frame
+        lda r0, [frameTrigger]
+        cpi r0, #0x00
+        jzs [main]
+
+        ; Mark new frame as handled
+        ldi r0, #0x00
+        sta r0, [frameTrigger]
+
+        cal [updateNoteAndSprite]
+
+        jmp [main]
+
+    resetCounters:
+        psh r0
+        ; Set note counter
+        lda r0, [triggerCounter]
+        sta r0, [counters]
+        ; Set sprite counter
+        lda r0, [posUpdateCounter]
+        sta r0, [counters + #0x01]
+        ; Set gate counter
+        lda r0, [gateUpdateCounter]
+        sta r0, [counters + #0x02]
+        pop r0
+        ret
+
+    updateNoteAndSprite:
+        psh r0
+
+        ; Check sprite counter
+        lda r0, [counters + #0x01]
+        cpi r0, #0x00
+        jzc [decCounterAndShowSprite] ; Decrease counter and set visible
+        lda r0, [spritePos + #0x01] ; Hide and finalize
+        jmp [updateSpriteEnd]
+        
+        decCounterAndShowSprite:
+            dec r0
+            sta r0, [counters+#0x01]
+            lda r0, [spritePos] ; Show
+
+        updateSpriteEnd:
+            sta r0, [sprite]
+        
+        ; Check note counter
+        lda r0, [counters]
+        dec r0
+        sta r0, [counters]
+        jzc [setGate] ; Skip trigger is not zero
+
+        cal [resetCounters]
+
+        setGate:
+            ; Check gate counter
+            lda r0, [counters + #0x02]
+            cpi r0, #0x00
+            jzc [decCounterAndSetHighGate] ; Decrease counter and set high gate
+            lda r0, [note + #0x01] ; Low gate and finalize
+            jmp [updateGateEnd]
+
+        decCounterAndSetHighGate:
+            dec r0
+            sta r0, [counters+#0x02]
+            lda r0, [note]
+
+        updateGateEnd:
+            sta r0, [#0xec]
+
+        postlude:
+            pop r0
+            ret
+
+.irq
+    psh r0
+
+    ldi r0, #0xd0
+    sta r0, [#0xe8] ; Set VRAM target write address to 1st OAM entry
+    lda r0, [sprite]
+    sta r0, [#0xe9] ; Set sprite pos
+    lda r0, [sprite+#0x01]
+    sta r0, [#0xe9] ; Set sprite tile idx
+
+    ldi r0, #0x01
+    sta r0, [frameTrigger] 
+
+    pop r0
+    rti
