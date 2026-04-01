@@ -12,10 +12,10 @@ namespace AudioChip.Processors
             switch (_slope)
             {
                 case FilterSlope.Slope12dB:
-                    _filterStrategy = new SinglePoleStrategy();
+                    _filterStrategy = new TwoPoleStrategy();
                     break;
                 case FilterSlope.Slope24dB:
-                    _filterStrategy = new TwoPoleStrategy();
+                    _filterStrategy = new FourPoleStrategy();
                     break;
             }
         }
@@ -82,7 +82,7 @@ namespace AudioChip.Processors
         private FilterSlope _slope;
         private FilterType _type;
         private BiquadCoefficients _biquadCoefficients;
-        private IApplyFilterStrategy _filterStrategy = new SinglePoleStrategy();
+        private IApplyFilterStrategy _filterStrategy = new TwoPoleStrategy();
         private const float Q = 0.7071f;  // Butterworth (maximally flat passband)
         private const float TwoPi = 2f * MathF.PI;
 
@@ -97,7 +97,7 @@ namespace AudioChip.Processors
             float Apply(float input, BiquadCoefficients coefficients);
         }
 
-        private class SinglePoleStrategy : IApplyFilterStrategy
+        private class TwoPoleStrategy : IApplyFilterStrategy
         {
             public void Reset()
             {
@@ -114,7 +114,7 @@ namespace AudioChip.Processors
             private float z1, z2; // State variables for single-pole filter
         }
 
-        private class TwoPoleStrategy : IApplyFilterStrategy
+        private class FourPoleStrategy : IApplyFilterStrategy
         {
             public void Reset()
             {
@@ -128,8 +128,8 @@ namespace AudioChip.Processors
                 filtered = _secondPole.Apply(filtered, coefficients);
                 return filtered;
             }
-            private SinglePoleStrategy _firstPole = new();
-            private SinglePoleStrategy _secondPole = new();
+            private TwoPoleStrategy _firstPole = new();
+            private TwoPoleStrategy _secondPole = new();
         }
     }
 }

@@ -1,4 +1,6 @@
-﻿using Raylib_cs;
+﻿using AudioChip.Configuration;
+using AudioChip.Storage;
+using Raylib_cs;
 using System.Runtime.CompilerServices;
 using static Raylib_cs.Raylib;
 
@@ -243,6 +245,69 @@ namespace AudioChip.Tests
             }
         }
 
+
+        [Test]
+        //[Ignore("Integration test: 8-bit-sound-example.csasm playback via AudioChain — gate on for 0.5 s every 2 s with matching envelope/filter/sustain. Run manually in Visual Studio to diagnose audio issues.")]
+        public unsafe void AudioChain_SoundExample_Integration_Test()
+        {
+            // Register values from 8-bit-sound-example.csasm:
+            //   AUDENV = 0x49  AUDCTL = 0x35  AUDFLT = 0x7F  AUDNOTE = 0xBC
+            // Parsed via the same static helpers that AudioRegisters uses internally.
+            var (attack, release) = Envelope.GetAttackRelease(0x49);
+            var sustain = Envelope.GetSustain(0x35);
+            var (filterCutoff, useFilterEnv) = Filter.GetFilterParameters(0x7F);
+            var (filterType, filterSlope) = Filter.GetFilterTypeAndSlope(0x35);
+            var pulseWidth = Voice.GetPulseWidth(0x35);
+            var (frequency, _) = Voice.GetNoteAndGate(0xBC);
+
+            var voice = new Voice(
+                frequency,
+                gate: false,
+                new Envelope(attack, sustain, release),
+                new Filter(filterCutoff, filterType, filterSlope, useFilterEnv),
+                pulseWidth);
+            var chain = new AudioChain(new AudioConfiguration(SampleRate, BufferSize, CpuClockRate: 1), voice);
+
+            var ringBuffer = new RingBuffer(BufferSize * 4, BufferSize);
+            var submitBuffer = new float[BufferSize];
+            var fractionalIndex = 0.0;
+            var samplesPerFrame = (double)SampleRate / FrameRate;
+
+            // Gate timing matches 8-bit-sound-example.csasm:
+            //   note counter fires every 120 frames (2 s); gate counter keeps gate high for 30 frames (0.5 s)
+            const int GatePeriodFrames = 120;
+            const int GateHighFrames = 30;
+            var frameCount = 0;
+
+            while (!WindowShouldClose())
+            {
+                var frameInPeriod = frameCount % GatePeriodFrames;
+                voice.Gate = frameInPeriod < GateHighFrames;
+                frameCount++;
+
+                var intended = (int)(samplesPerFrame + fractionalIndex);
+                fractionalIndex += samplesPerFrame - intended;
+                var samplesToWrite = Math.Min(intended, ringBuffer.FreeSpace);
+                for (int i = 0; i < samplesToWrite; i++)
+                {
+                    ringBuffer.Write(chain.GetSample() * 0.1f);
+                }
+
+                if (IsAudioStreamProcessed(_audioStream) && ringBuffer.AvailableSamples >= BufferSize)
+                {
+                    for (int i = 0; i < BufferSize; i++)
+                        submitBuffer[i] = ringBuffer.Read();
+
+                    fixed (float* bufferPtr = submitBuffer)
+                        UpdateAudioStream(_audioStream, bufferPtr, BufferSize);
+                }
+
+                BeginDrawing();
+                ClearBackground(Color.Black);
+                DrawText($"8-bit-sound-example: gate on {GateHighFrames}/{GatePeriodFrames} frames — ESC to exit", 20, 20, 20, Color.RayWhite);
+                EndDrawing();
+            }
+        }
 
         private const int SampleRate = 44100;
         private const int FrameRate = 60;

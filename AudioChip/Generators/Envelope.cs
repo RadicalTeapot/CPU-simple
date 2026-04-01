@@ -17,6 +17,11 @@
         {
             if (gate)
             {
+                if (_phase >= (attack + release)) // If we're past the release phase, reset to 0 to start attack
+                {
+                    _phase = 0f;
+                }
+
                 if (_phase < attack) // Attack phase
                 {
                     _phase += 1f / (attack * sampleRate);
