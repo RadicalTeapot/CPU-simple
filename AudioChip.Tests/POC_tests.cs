@@ -247,7 +247,7 @@ namespace AudioChip.Tests
 
 
         [Test]
-        //[Ignore("Integration test: 8-bit-sound-example.csasm playback via AudioChain — gate on for 0.5 s every 2 s with matching envelope/filter/sustain. Run manually in Visual Studio to diagnose audio issues.")]
+        [Ignore("Integration test: 8-bit-sound-example.csasm playback via AudioChain — gate on for 0.5 s every 2 s with matching envelope/filter/sustain. Run manually in Visual Studio to diagnose audio issues.")]
         public unsafe void AudioChain_SoundExample_Integration_Test()
         {
             // Register values from 8-bit-sound-example.csasm:
@@ -268,7 +268,7 @@ namespace AudioChip.Tests
                 pulseWidth);
             var chain = new AudioChain(new AudioConfiguration(SampleRate, BufferSize, CpuClockRate: 1), voice);
 
-            var ringBuffer = new RingBuffer(BufferSize * 4, BufferSize);
+            var ringBuffer = new RingBuffer(BufferSize * 4, BufferSize * 2);
             var submitBuffer = new float[BufferSize];
             var fractionalIndex = 0.0;
             var samplesPerFrame = (double)SampleRate / FrameRate;

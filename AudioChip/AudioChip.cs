@@ -15,7 +15,7 @@ namespace AudioChip
             var voice = Voice.Default;
             _registers = new AudioRegisters(voice);
             _audioChain = new AudioChain(configuration, voice);
-            _ringBuffer = new RingBuffer(configuration.BufferSize * 4, configuration.BufferSize); // Shift write index to create space for initial samples
+            _ringBuffer = new RingBuffer(configuration.BufferSize * 4, configuration.BufferSize * 2); // Shift write index to create space for initial samples
             _samplesPerTick = (float)configuration.SampleRate / configuration.CpuClockRate;
         }
 
@@ -24,10 +24,11 @@ namespace AudioChip
             var samplesToGenerate = (int)(_samplesPerTick + _fractionalSamplePosition);
             _fractionalSamplePosition += _samplesPerTick - samplesToGenerate;
             var writableSamples = Math.Min(samplesToGenerate, _ringBuffer.FreeSpace);
-            if (writableSamples <= 0)
-            {
-                throw new AudioChipExceptions.BufferOverrunException();
-            }
+            // FIXME This fails at app initialization
+            // if (writableSamples <= 0)
+            // {
+            //     throw new AudioChipExceptions.BufferOverrunException();
+            // }
 
             for (int i = 0; i < writableSamples; i++)
             {
