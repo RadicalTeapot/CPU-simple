@@ -28,8 +28,8 @@
 
         public static (float attack, float release) GetAttackRelease(byte value)
         {
-            byte attack = (byte)(value & 0x0F);
-            byte release = (byte)((value >> 4) & 0x0F);
+            byte attack = (byte)((value >> 4) & 0x0F);
+            byte release = (byte)(value & 0x0F);
             return (AttackRates[attack], ReleaseRates[release]);
         }
 
