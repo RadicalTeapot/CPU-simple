@@ -166,6 +166,7 @@ I did review and tested the code but exercise caution when using it.
   - [ ] When assembled, if sidebar was never opened, open the configured panels, otherwise just re-open sidebar
   - [ ] Test if assembler errors are handled
   - [ ] Add info about how much space a program uses in Neovim
+  - [ ] Also output that information as part of the assembly procedure
 - [ ] Implement PPU and map some memory for it
    - [ ] What about PPU micro-code?
    - [ ] Check if it would make more sense to diminish the per-tick status rather than suppressing it entirely in windowed mode
@@ -176,7 +177,7 @@ I did review and tested the code but exercise caution when using it.
 - [ ] Implement sound chip and map some memory for it too (for 16-bit version)
   - [ ] Write a small MIDI player application
 - [ ] Cleanup opcode constructors to take only necessary parameters (or use an interface to mask un-necessary parameters)
-- [ ] Write a bank of small programs for 8 and 16 bit version and document them
+- [/] Write a bank of small programs for 8 and 16 bit version and document them
 - [/] Cleanup docs and document design choices
   - [ ] Rewrite lexer, parser and analyser documentation
   - [ ] Update and merge memory, memory-mapper and mmio
